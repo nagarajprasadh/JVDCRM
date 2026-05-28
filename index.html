@@ -10,6 +10,7 @@
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<script src="https://cdn.sheetjs.com/xlsx-0.20.2/package/dist/xlsx.full.min.js"></script>
 <style>
 :root{
   /* Van Cleef & Arpels inspired — warm ivory, antique gold, sage green */
@@ -393,6 +394,46 @@ body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);displ
   .section-header{flex-wrap:wrap;gap:8px}
 }
 
+
+/* ── LOGIN OVERLAY ── */
+.login-overlay{position:fixed;inset:0;background:linear-gradient(135deg,#1C1810 0%,#2A2218 50%,#1C1810 100%);z-index:9999;display:flex;align-items:center;justify-content:center;font-family:'Inter',sans-serif}
+.login-box{background:var(--card);border:1px solid var(--border2);border-radius:20px;padding:44px 40px;width:90%;max-width:400px;box-shadow:0 32px 80px rgba(0,0,0,.4),0 0 0 1px rgba(180,138,80,.1)}
+.login-logo{text-align:center;margin-bottom:28px}
+.login-logo img{height:44px;filter:brightness(1.1)}
+.login-title{font-family:'Playfair Display',serif;font-size:22px;font-weight:600;color:var(--text);text-align:center;margin-bottom:6px}
+.login-sub{font-size:12px;color:var(--text3);text-align:center;margin-bottom:28px;letter-spacing:.5px}
+.login-field{margin-bottom:16px}
+.login-field label{display:block;font-size:10px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:1px;margin-bottom:6px}
+.login-field input{width:100%;background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:11px 14px;font-size:14px;color:var(--text);outline:none;font-family:'Inter',sans-serif;transition:border .2s,box-shadow .2s}
+.login-field input:focus{border-color:var(--gold);box-shadow:0 0 0 3px var(--gold-glow)}
+.login-btn{width:100%;background:var(--gold);color:#fff;border:none;border-radius:10px;padding:13px;font-size:14px;font-weight:700;cursor:pointer;font-family:'Inter',sans-serif;letter-spacing:.5px;transition:all .15s;margin-top:8px}
+.login-btn:hover{background:var(--gold2);transform:translateY(-1px)}
+.login-error{background:#FEF0EE;border:1px solid #E8A090;border-radius:8px;padding:10px 14px;font-size:13px;color:#B03020;margin-top:12px;display:none}
+.login-footer{text-align:center;margin-top:22px;font-size:11px;color:var(--text3)}
+/* ── USER BADGE (topbar) ── */
+.user-badge{display:flex;align-items:center;gap:8px;padding:5px 12px;background:var(--bg2);border:1px solid var(--border);border-radius:20px;cursor:pointer;transition:all .15s;font-size:12px;color:var(--text2);white-space:nowrap}
+.user-badge:hover{border-color:var(--gold);color:var(--gold)}
+.user-badge .ub-avatar{width:24px;height:24px;border-radius:50%;background:var(--gold);color:#fff;font-size:10px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.user-badge .ub-role{font-size:10px;color:var(--text3);margin-left:2px}
+/* ── USER MANAGEMENT TABLE ── */
+.user-table{width:100%;border-collapse:collapse;font-size:13px}
+.user-table th{background:var(--bg2);border-bottom:2px solid var(--border2);padding:10px 12px;text-align:left;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:var(--text2)}
+.user-table td{padding:10px 12px;border-bottom:1px solid var(--border);color:var(--text2);vertical-align:middle}
+.user-table tr:last-child td{border-bottom:none}
+.user-table tbody tr:hover td{background:var(--hover)}
+.role-badge{padding:2px 10px;border-radius:20px;font-size:11px;font-weight:700}
+.role-admin{background:#FEF0E0;color:#8A5010;border:1px solid #D0A060}
+.role-user{background:#EEF4FF;color:#3A5898;border:1px solid #B0C8E8}
+/* ── EXCEL IMPORT ── */
+.import-zone{border:2px dashed var(--border2);border-radius:12px;padding:32px 24px;text-align:center;background:var(--bg2);cursor:pointer;transition:all .2s}
+.import-zone:hover,.import-zone.drag-over{border-color:var(--gold);background:#F5EDD8}
+.import-preview{background:var(--bg2);border:1px solid var(--border);border-radius:10px;overflow:hidden;margin-top:14px}
+.import-preview table{width:100%;font-size:12px;border-collapse:collapse}
+.import-preview th{background:var(--gold);color:#fff;padding:7px 10px;text-align:left;font-size:10px;font-weight:700;text-transform:uppercase}
+.import-preview td{padding:6px 10px;border-bottom:1px solid var(--border);color:var(--text2)}
+.import-preview tr.dup-row td{background:#FEF5F0;color:#B03020}
+.import-preview tr.dup-row td:first-child::before{content:'⚠ ';font-size:11px}
+
 /* ── SMALL MOBILE (≤480px) ── */
 @media(max-width:480px){
   .kpi-hero{grid-template-columns:repeat(2,1fr);gap:6px}
@@ -407,6 +448,29 @@ body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);displ
 
 </head>
 <body>
+
+
+<!-- ══════════════════ LOGIN OVERLAY ══════════════════ -->
+<div class="login-overlay" id="login-overlay">
+  <div class="login-box">
+    <div class="login-logo">
+      <div style="font-family:'Playfair Display',serif;font-size:28px;font-weight:600;color:var(--gold)">◈</div>
+    </div>
+    <div class="login-title">Diamond CRM</div>
+    <div class="login-sub">JAY VIJAY DIAMOND CO., LTD.</div>
+    <div class="login-field">
+      <label>Username</label>
+      <input type="text" id="login-user" placeholder="Enter username" autocomplete="username" onkeydown="if(event.key==='Enter')doLogin()">
+    </div>
+    <div class="login-field">
+      <label>Password</label>
+      <input type="password" id="login-pass" placeholder="Enter password" autocomplete="current-password" onkeydown="if(event.key==='Enter')doLogin()">
+    </div>
+    <button class="login-btn" onclick="doLogin()">Sign In</button>
+    <div class="login-error" id="login-error">Incorrect username or password. Please try again.</div>
+    <div class="login-footer">🔒 Access restricted to authorised personnel only</div>
+  </div>
+</div>
 
 <!-- Mobile sidebar backdrop -->
 <div class="sidebar-backdrop" id="sidebar-backdrop" onclick="closeSidebar()"></div>
@@ -429,6 +493,8 @@ body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);displ
   <div class="nav-item" onclick="nav('campaigns')"><span class="icon">📣</span>Campaigns<span class="badge" id="nb-camp">0</span></div>
   <div class="nav-item" onclick="nav('bizcard')"><span class="icon">🪪</span>Business Cards<span class="badge" id="nb-bc">0</span></div>
   <div class="nav-item" onclick="nav('accounting')"><span class="icon">🧾</span>Invoices & Payments<span class="badge" id="nb-inv">0</span></div>
+  <div class="nav-item" id="nav-users" onclick="nav('users')" style="display:none"><span class="icon">🔐</span>Users &amp; Access</div>
+  <div class="nav-item" onclick="nav('help')"><span class="icon">❓</span>Help &amp; FAQ</div>
   <div class="nav-item" onclick="nav('settings')" style="margin-top:auto"><span class="icon">⚙️</span>Settings</div>
 </div>
 
@@ -438,6 +504,11 @@ body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);displ
     <button class="hamburger" onclick="toggleSidebar()" aria-label="Menu">☰</button>
     <div class="topbar-title" id="page-title">Dashboard</div>
     <input class="topbar-search" id="global-search" placeholder="🔍 Search customers..." oninput="globalSearch(this.value)">
+    <div class="user-badge" id="user-badge" onclick="isAdmin()&&nav('users')" style="display:none">
+      <div class="ub-avatar" id="ub-initials">?</div>
+      <div><div id="ub-name" style="font-weight:600">User</div><div class="ub-role" id="ub-role">—</div></div>
+    </div>
+    <button class="btn btn-outline btn-sm" id="btn-logout" onclick="doLogout()" style="display:none;font-size:11px">Sign Out</button>
     <button class="btn btn-gold" onclick="showModal('modal-cust')">+ Add Customer</button>
   </div>
   <div class="content" id="content"></div>
@@ -469,13 +540,33 @@ body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);displ
   </div>
 </div>
 
+<!-- User Management Modal -->
+<div class="modal-overlay" id="modal-users">
+  <div class="modal" style="max-width:760px">
+    <button class="modal-close" onclick="closeModal('modal-users')">✕</button>
+    <div class="modal-title">Users &amp; Access Management</div>
+    <div id="modal-users-body"></div>
+  </div>
+</div>
+<!-- Excel Import Modal -->
+<div class="modal-overlay" id="modal-import">
+  <div class="modal" style="max-width:860px">
+    <button class="modal-close" onclick="closeModal('modal-import');importState=null">✕</button>
+    <div class="modal-title">Import Customers from Excel / CSV</div>
+    <div id="modal-import-body"></div>
+  </div>
+</div>
+
 <script>
 // ══════════════════════════════════════════════
 // DATA STORE
 // ══════════════════════════════════════════════
 const DB_KEY = 'diamondCRM_v2';
+const AUTH_KEY = 'diamondCRM_auth';
+let currentUser = null; // set after login
+let importState = null; // excel import state
 // Built-in demo data — always available even without localStorage
-const DEMO_DB = {"customers":[{"id":"c001","firstName":"Rajesh","lastName":"Agarwal","salutation":"Mr","email":"rajesh.agarwal@gmail.com","phone":"+91 98200 11234","whatsapp":"+91 98200 11234","nationality":"Indian","language":"English, Hindi","dob":"1978-04-12","city":"Mumbai","country":"India","company":"Agarwal Textiles Pvt Ltd","designation":"Chairman","leadSource":"Referral","referredBy":"Kanokwan Thana","assignedTo":"Arjun Mehta","leadStatus":"Won","pipelineStage":"Won","vipLevel":"Platinum","dealValue":2850000,"probability":100,"expectedCloseDate":"2026-01-18","currency":"THB","budgetMin":2000000,"budgetMax":3500000,"diamondType":"Natural","purpose":"Investment","preferredShapes":["Round","Cushion"],"caratMin":3,"caratMax":5,"colorGrade":["D","E","F"],"clarityGrade":["FL","IF","VVS1"],"certification":["GIA"],"settingInterest":"Loose Stone","metalPreference":["Platinum"],"totalLifetimeValue":4200000,"paymentPreference":"Wire Transfer","purchaseUrgency":"Immediate","conflictFreePriority":"Yes","envConcern":"No","commPref":["WhatsApp","Email"],"notes":"Repeat client. Purchased 3.2ct D/FL round brilliant. Very particular about GIA certification.","tags":["VIP","HNI","Investment","Repeat"],"createdAt":"2025-11-05T01:39:30","updatedAt":"2026-04-29T01:39:30"},{"id":"c002","firstName":"Siriporn","lastName":"Charoenwong","salutation":"Ms","email":"siriporn.c@outlook.com","phone":"+66 81 234 9988","whatsapp":"+66 81 234 9988","nationality":"Thai","language":"Thai, English","dob":"1985-09-22","city":"Bangkok","country":"Thailand","company":"","designation":"","leadSource":"Walk-in","referredBy":"","assignedTo":"Kanokwan Thana","leadStatus":"Won","pipelineStage":"Won","vipLevel":"Gold","dealValue":980000,"probability":100,"expectedCloseDate":"2026-02-14","currency":"THB","budgetMin":800000,"budgetMax":1200000,"diamondType":"Natural","purpose":"Engagement Ring","preferredShapes":["Oval","Cushion"],"caratMin":1.5,"caratMax":2.5,"colorGrade":["E","F","G"],"clarityGrade":["VS1","VS2","VVS2"],"certification":["GIA","IGI"],"settingInterest":"Setting","settingType":"Halo","metalPreference":["White Gold","Platinum"],"totalLifetimeValue":980000,"paymentPreference":"Credit Card","purchaseUrgency":"Immediate","conflictFreePriority":"No","envConcern":"No","commPref":["Line","WhatsApp"],"notes":"Purchased 1.8ct F/VS1 oval with halo setting. Valentine's Day delivery.","tags":["Engagement","Thai-VIP","Walk-in"],"createdAt":"2026-02-03T01:39:30","updatedAt":"2026-04-24T01:39:30"},{"id":"c003","firstName":"Ahmed","lastName":"Al-Mansoori","salutation":"HE","email":"ahmed.almansoori@uae.ae","phone":"+971 50 123 4567","whatsapp":"+971 50 123 4567","nationality":"Emirati","language":"Arabic, English","dob":"1971-03-05","city":"Dubai","country":"UAE","company":"Al-Mansoori Holdings","designation":"Managing Director","leadSource":"Exhibition","referredBy":"","assignedTo":"Nadia Al-Rashid","leadStatus":"Won","pipelineStage":"Won","vipLevel":"Platinum","dealValue":5200000,"probability":100,"expectedCloseDate":"2025-12-20","currency":"THB","budgetMin":4000000,"budgetMax":7000000,"diamondType":"Natural","purpose":"Investment","preferredShapes":["Round","Princess"],"caratMin":5,"caratMax":10,"colorGrade":["D","E"],"clarityGrade":["FL","IF"],"certification":["GIA"],"settingInterest":"Loose Stone","metalPreference":["Platinum"],"totalLifetimeValue":8900000,"paymentPreference":"Wire Transfer","purchaseUrgency":"Flexible","conflictFreePriority":"Yes","envConcern":"No","commPref":["WhatsApp","In-Person"],"notes":"Purchased 6.1ct D/IF round for collection. Interested in coloured diamonds next visit.","tags":["Platinum","GCC","Investment","Exhibition"],"createdAt":"2025-10-06T01:39:30","updatedAt":"2026-04-04T01:39:30"},{"id":"c004","firstName":"Jennifer","lastName":"Wu","salutation":"Ms","email":"jennifer.wu@jw-capital.hk","phone":"+852 9123 4567","whatsapp":"+852 9123 4567","nationality":"Hong Kong","language":"English, Cantonese","dob":"1983-11-30","city":"Hong Kong","country":"Hong Kong","company":"JW Capital Group","designation":"Partner","leadSource":"Referral","referredBy":"Ahmed Al-Mansoori","assignedTo":"David Lim","leadStatus":"Won","pipelineStage":"Won","vipLevel":"Gold","dealValue":1650000,"probability":100,"expectedCloseDate":"2026-02-28","currency":"THB","budgetMin":1000000,"budgetMax":2000000,"diamondType":"Natural","purpose":"Self-purchase","preferredShapes":["Emerald","Asscher"],"caratMin":2,"caratMax":3.5,"colorGrade":["D","E","F"],"clarityGrade":["VS1","VVS2","IF"],"certification":["GIA","HRD"],"settingInterest":"Setting","settingType":"Bezel","metalPreference":["Platinum","White Gold"],"totalLifetimeValue":1650000,"paymentPreference":"Wire Transfer","purchaseUrgency":"Within a month","conflictFreePriority":"Yes","envConcern":"Yes","commPref":["Email","WhatsApp"],"notes":"2.5ct E/VS1 emerald cut in platinum bezel setting. Referral from Ahmed.","tags":["HNI","HK","Emerald Cut","Referral"],"createdAt":"2026-03-05T01:39:30","updatedAt":"2026-04-26T01:39:30"},{"id":"c005","firstName":"Vikram","lastName":"Malhotra","salutation":"Mr","email":"vikram.malhotra@malhotragroup.in","phone":"+91 99000 22334","whatsapp":"+91 99000 22334","nationality":"Indian","language":"English, Hindi, Punjabi","dob":"1975-06-18","city":"Delhi","country":"India","company":"Malhotra Group","designation":"CEO","leadSource":"Referral","referredBy":"Rajesh Agarwal","assignedTo":"Arjun Mehta","leadStatus":"Proposal","pipelineStage":"Negotiation","vipLevel":"Gold","dealValue":3400000,"probability":75,"expectedCloseDate":"2026-05-16","currency":"THB","budgetMin":2500000,"budgetMax":4000000,"diamondType":"Natural","purpose":"Investment","preferredShapes":["Round","Cushion"],"caratMin":4,"caratMax":6,"colorGrade":["D","E"],"clarityGrade":["IF","VVS1","VVS2"],"certification":["GIA"],"settingInterest":"Loose Stone","metalPreference":["Platinum"],"totalLifetimeValue":3400000,"paymentPreference":"Wire Transfer","purchaseUrgency":"Within a month","conflictFreePriority":"Yes","envConcern":"No","commPref":["WhatsApp","Phone"],"notes":"Negotiating on a 4.8ct D/VVS1 round. Price point is the main discussion. Decision expected end of May.","tags":["HNI","Investment","Negotiation","Hot Lead"],"createdAt":"2026-03-20T01:39:30","updatedAt":"2026-05-02T01:39:30"},{"id":"c006","firstName":"Lin","lastName":"Mei-Xiu","salutation":"Ms","email":"linmeixiu@cnenterprises.com","phone":"+86 138 1234 5678","whatsapp":"+86 138 1234 5678","nationality":"Chinese","language":"Mandarin, English","dob":"1980-08-08","city":"Shanghai","country":"China","company":"CN Luxury Enterprises","designation":"Director","leadSource":"Exhibition","referredBy":"","assignedTo":"David Lim","leadStatus":"Proposal","pipelineStage":"Negotiation","vipLevel":"Silver","dealValue":1800000,"probability":65,"expectedCloseDate":"2026-05-22","currency":"THB","budgetMin":1500000,"budgetMax":2200000,"diamondType":"Natural","purpose":"Anniversary Gift","preferredShapes":["Round","Pear"],"caratMin":2,"caratMax":3,"colorGrade":["E","F","G"],"clarityGrade":["VS1","VS2"],"certification":["GIA"],"settingInterest":"Setting","settingType":"Halo","metalPreference":["Platinum","White Gold"],"totalLifetimeValue":1800000,"paymentPreference":"Wire Transfer","purchaseUrgency":"Within a month","conflictFreePriority":"No","envConcern":"No","commPref":["WeChat","WhatsApp"],"notes":"20th wedding anniversary gift. Comparing options between us and a competitor in Hong Kong.","tags":["China Market","Anniversary","Hot Lead"],"createdAt":"2026-03-27T01:39:30","updatedAt":"2026-05-03T01:39:30"},{"id":"c007","firstName":"Chalit","lastName":"Pornprasert","salutation":"Mr","email":"chalit.p@cpg.co.th","phone":"+66 85 678 9012","whatsapp":"+66 85 678 9012","nationality":"Thai","language":"Thai, English","dob":"1982-04-28","city":"Bangkok","country":"Thailand","company":"CP Group","designation":"VP Finance","leadSource":"Walk-in","referredBy":"","assignedTo":"Kanokwan Thana","leadStatus":"Proposal","pipelineStage":"Proposal","vipLevel":"Gold","dealValue":2200000,"probability":55,"expectedCloseDate":"2026-05-25","currency":"THB","budgetMin":1800000,"budgetMax":2500000,"diamondType":"Natural","purpose":"Engagement Ring","preferredShapes":["Round","Cushion"],"caratMin":3,"caratMax":4,"colorGrade":["E","F"],"clarityGrade":["VS1","VVS2"],"certification":["GIA"],"settingInterest":"Setting","settingType":"Solitaire","metalPreference":["Platinum"],"totalLifetimeValue":2200000,"paymentPreference":"Wire Transfer","purchaseUrgency":"Within a month","conflictFreePriority":"No","envConcern":"No","commPref":["Line","Phone"],"notes":"Proposal presented for 3.1ct F/VS1 solitaire. Awaiting client's decision post family consultation.","tags":["Engagement","Thai-VIP","Proposal Stage"],"createdAt":"2026-04-06T01:39:30","updatedAt":"2026-05-01T01:39:30"},{"id":"c008","firstName":"Sophie","lastName":"Beaumont","salutation":"Ms","email":"sophie.beaumont@beaumont-partners.fr","phone":"+33 6 12 34 56 78","whatsapp":"+33 6 12 34 56 78","nationality":"French","language":"French, English","dob":"1988-02-14","city":"Paris","country":"France","company":"Beaumont & Partners Law","designation":"Partner","leadSource":"Website","referredBy":"","assignedTo":"Priya Sharma","leadStatus":"Proposal","pipelineStage":"Proposal","vipLevel":"Silver","dealValue":680000,"probability":50,"expectedCloseDate":"2026-05-29","currency":"THB","budgetMin":500000,"budgetMax":800000,"diamondType":"Lab-Grown","purpose":"Engagement Ring","preferredShapes":["Oval","Pear"],"caratMin":1.5,"caratMax":2,"colorGrade":["E","F","G"],"clarityGrade":["VS1","VS2","VVS2"],"certification":["IGI","GIA"],"settingInterest":"Setting","settingType":"Pav\u00e9","metalPreference":["White Gold","Rose Gold"],"totalLifetimeValue":680000,"paymentPreference":"Credit Card","purchaseUrgency":"Within a month","conflictFreePriority":"Yes","envConcern":"Yes","commPref":["Email","WhatsApp"],"notes":"Strongly prefers lab-grown for ethical reasons. Proposal for 1.8ct F/VS1 oval, IGI certified.","tags":["Lab-Grown","Engagement","Europe","Eco-Conscious"],"createdAt":"2026-04-12T01:39:30","updatedAt":"2026-04-30T01:39:30"},{"id":"c009","firstName":"Sanjay","lastName":"Kapoor","salutation":"Mr","email":"sanjay.kapoor@kapoorindustries.in","phone":"+91 98100 44556","whatsapp":"+91 98100 44556","nationality":"Indian","language":"English, Hindi","dob":"1970-12-01","city":"Jaipur","country":"India","company":"Kapoor Industries","designation":"Chairman","leadSource":"Referral","referredBy":"Vikram Malhotra","assignedTo":"Arjun Mehta","leadStatus":"Qualified","pipelineStage":"Evaluation","vipLevel":"None","dealValue":4800000,"probability":40,"expectedCloseDate":"2026-06-08","currency":"THB","budgetMin":3500000,"budgetMax":6000000,"diamondType":"Natural","purpose":"Investment","preferredShapes":["Round"],"caratMin":5,"caratMax":8,"colorGrade":["D","E"],"clarityGrade":["FL","IF"],"certification":["GIA"],"settingInterest":"Loose Stone","metalPreference":["Platinum"],"totalLifetimeValue":4800000,"paymentPreference":"Wire Transfer","purchaseUrgency":"3\u20136 months","conflictFreePriority":"Yes","envConcern":"No","commPref":["WhatsApp","Email"],"notes":"Very selective. Evaluating a 5.5ct D/FL round. Wants to see GIA report before deciding.","tags":["HNI","Investment","Large Carat","Evaluation"],"createdAt":"2026-04-16T01:39:30","updatedAt":"2026-04-29T01:39:30"},{"id":"c010","firstName":"Park","lastName":"Ji-Young","salutation":"Ms","email":"jiyoung.park@seoulstyle.kr","phone":"+82 10 1234 5678","whatsapp":"+82 10 1234 5678","nationality":"Korean","language":"Korean, English","dob":"1991-07-17","city":"Seoul","country":"South Korea","company":"Seoul Style Group","designation":"Creative Director","leadSource":"Social Media","referredBy":"","assignedTo":"Priya Sharma","leadStatus":"Qualified","pipelineStage":"Evaluation","vipLevel":"None","dealValue":420000,"probability":35,"expectedCloseDate":"2026-06-03","currency":"THB","budgetMin":350000,"budgetMax":550000,"diamondType":"Lab-Grown","purpose":"Self-purchase","preferredShapes":["Marquise","Oval"],"caratMin":1,"caratMax":1.5,"colorGrade":["E","F","G","H"],"clarityGrade":["VS1","VS2","SI1"],"certification":["IGI"],"settingInterest":"Setting","settingType":"Solitaire","metalPreference":["Rose Gold","White Gold"],"totalLifetimeValue":420000,"paymentPreference":"Credit Card","purchaseUrgency":"2\u20133 months","conflictFreePriority":"No","envConcern":"Yes","commPref":["Instagram DM","Email"],"notes":"Influencer, 850k followers. Interested in a marquise lab-grown for editorial shoot and personal use.","tags":["Lab-Grown","Social Media","Korea","Influencer"],"createdAt":"2026-04-20T01:39:30","updatedAt":"2026-04-28T01:39:30"},{"id":"c011","firstName":"Omar","lastName":"Al-Farsi","salutation":"Mr","email":"omar.alfarsi@alfarsi.ae","phone":"+971 55 987 6543","whatsapp":"+971 55 987 6543","nationality":"Emirati","language":"Arabic, English","dob":"1985-01-20","city":"Abu Dhabi","country":"UAE","company":"Al-Farsi Real Estate","designation":"Director","leadSource":"Walk-in","referredBy":"","assignedTo":"Nadia Al-Rashid","leadStatus":"Contacted","pipelineStage":"Interest","vipLevel":"None","dealValue":1200000,"probability":25,"expectedCloseDate":"2026-06-23","currency":"THB","budgetMin":1000000,"budgetMax":1800000,"diamondType":"Natural","purpose":"Anniversary Gift","preferredShapes":["Round","Heart"],"caratMin":2,"caratMax":3,"colorGrade":["E","F","G"],"clarityGrade":["VS1","VS2"],"certification":["GIA"],"settingInterest":"Setting","settingType":"Three-Stone","metalPreference":["Yellow Gold","Platinum"],"totalLifetimeValue":1200000,"paymentPreference":"Wire Transfer","purchaseUrgency":"3\u20136 months","conflictFreePriority":"No","envConcern":"No","commPref":["WhatsApp"],"notes":"Browsing for anniversary options. Has come in once. Follow up scheduled for May 20.","tags":["GCC","Anniversary","Middle East"],"createdAt":"2026-04-24T01:39:30","updatedAt":"2026-04-24T01:39:30"},{"id":"c012","firstName":"Yuki","lastName":"Tanaka","salutation":"Ms","email":"yuki.tanaka@tanaka-corp.jp","phone":"+81 90 1234 5678","whatsapp":"+81 90 1234 5678","nationality":"Japanese","language":"Japanese, English","dob":"1987-03-25","city":"Tokyo","country":"Japan","company":"Tanaka Corp","designation":"Executive","leadSource":"Exhibition","referredBy":"","assignedTo":"David Lim","leadStatus":"Contacted","pipelineStage":"Interest","vipLevel":"None","dealValue":580000,"probability":20,"expectedCloseDate":"2026-06-18","currency":"THB","budgetMin":450000,"budgetMax":700000,"diamondType":"Natural","purpose":"Self-purchase","preferredShapes":["Cushion","Asscher"],"caratMin":1,"caratMax":1.8,"colorGrade":["F","G","H"],"clarityGrade":["VS1","VS2","VVS2"],"certification":["GIA","HRD"],"settingInterest":"Setting","settingType":"Vintage","metalPreference":["Platinum","White Gold"],"totalLifetimeValue":580000,"paymentPreference":"Wire Transfer","purchaseUrgency":"3\u20136 months","conflictFreePriority":"No","envConcern":"No","commPref":["Email","WhatsApp"],"notes":"Met at Bangkok Gems & Jewellery Fair. Interested in vintage-style settings. Needs follow-up with lookbook.","tags":["Japan","Exhibition","Vintage","Interest"],"createdAt":"2026-04-26T01:39:30","updatedAt":"2026-04-26T01:39:30"},{"id":"c013","firstName":"Mehmet","lastName":"Yilmaz","salutation":"Mr","email":"mehmet.yilmaz@yilmazholding.tr","phone":"+90 532 123 4567","whatsapp":"+90 532 123 4567","nationality":"Turkish","language":"Turkish, English","dob":"1976-09-14","city":"Istanbul","country":"Turkey","company":"Yilmaz Holding","designation":"Owner","leadSource":"Cold Outreach","referredBy":"","assignedTo":"Nadia Al-Rashid","leadStatus":"New","pipelineStage":"Awareness","vipLevel":"None","dealValue":900000,"probability":10,"expectedCloseDate":"2026-07-18","currency":"THB","budgetMin":800000,"budgetMax":1200000,"diamondType":"Natural","purpose":"Investment","preferredShapes":["Round"],"caratMin":2,"caratMax":4,"colorGrade":["D","E","F"],"clarityGrade":["IF","VVS1","VVS2"],"certification":["GIA"],"settingInterest":"Loose Stone","metalPreference":["Platinum"],"totalLifetimeValue":900000,"paymentPreference":"Wire Transfer","purchaseUrgency":"6\u201312 months","conflictFreePriority":"No","envConcern":"No","commPref":["WhatsApp","Email"],"notes":"Sent initial brochure via WhatsApp. No response yet. Follow up after 2 weeks.","tags":["Turkey","New Lead","Investment","Cold Outreach"],"createdAt":"2026-04-30T01:39:30","updatedAt":"2026-04-30T01:39:30"},{"id":"c014","firstName":"Shreya","lastName":"Patel","salutation":"Ms","email":"shreya.patel@gmail.com","phone":"+65 9123 4567","whatsapp":"+65 9123 4567","nationality":"Singaporean","language":"English, Gujarati","dob":"1993-05-11","city":"Singapore","country":"Singapore","company":"","designation":"","leadSource":"Website","referredBy":"","assignedTo":"Priya Sharma","leadStatus":"New","pipelineStage":"Awareness","vipLevel":"None","dealValue":320000,"probability":10,"expectedCloseDate":"2026-07-03","currency":"THB","budgetMin":250000,"budgetMax":400000,"diamondType":"Lab-Grown","purpose":"Engagement Ring","preferredShapes":["Round","Oval"],"caratMin":1,"caratMax":1.5,"colorGrade":["E","F","G"],"clarityGrade":["VS1","VS2"],"certification":["IGI","GIA"],"settingInterest":"Setting","settingType":"Solitaire","metalPreference":["White Gold"],"totalLifetimeValue":320000,"paymentPreference":"Credit Card","purchaseUrgency":"3\u20136 months","conflictFreePriority":"Yes","envConcern":"Yes","commPref":["Email","WhatsApp"],"notes":"Submitted enquiry form on website. Interested in lab-grown for ethical and budget reasons.","tags":["Singapore","Lab-Grown","Web Lead","New"],"createdAt":"2026-05-02T01:39:30","updatedAt":"2026-05-02T01:39:30"},{"id":"c015","firstName":"Robert","lastName":"Chen","salutation":"Mr","email":"robert.chen@rc-investments.hk","phone":"+852 9876 5432","whatsapp":"+852 9876 5432","nationality":"Hong Kong","language":"English, Cantonese","dob":"1968-07-30","city":"Hong Kong","country":"Hong Kong","company":"RC Investments","designation":"Managing Partner","leadSource":"Referral","referredBy":"Jennifer Wu","assignedTo":"David Lim","leadStatus":"Lost","pipelineStage":"Lost","vipLevel":"None","dealValue":0,"probability":0,"expectedCloseDate":"2026-03-15","currency":"THB","budgetMin":3000000,"budgetMax":5000000,"diamondType":"Natural","purpose":"Investment","preferredShapes":["Round"],"caratMin":5,"caratMax":8,"colorGrade":["D","E"],"clarityGrade":["FL","IF"],"certification":["GIA"],"settingInterest":"Loose Stone","metalPreference":["Platinum"],"totalLifetimeValue":0,"paymentPreference":"Wire Transfer","purchaseUrgency":"Immediate","conflictFreePriority":"Yes","envConcern":"No","commPref":["Email"],"notes":"Lost to Christie's Geneva auction. Client preferred a 6ct stone with coloured fluorescence \u2014 something we could not source in time.","tags":["Lost","HK","Investment","Competition"],"createdAt":"2026-01-29T01:39:30","updatedAt":"2026-04-12T01:39:30"},{"id":"c016","firstName":"Isabella","lastName":"Rossi","salutation":"Ms","email":"isabella.rossi@rossigroup.it","phone":"+39 335 123 4567","whatsapp":"+39 335 123 4567","nationality":"Italian","language":"Italian, English","dob":"1979-12-03","city":"Milan","country":"Italy","company":"Rossi Group","designation":"Creative Director","leadSource":"Exhibition","referredBy":"","assignedTo":"Priya Sharma","leadStatus":"Dormant","pipelineStage":"Interest","vipLevel":"None","dealValue":750000,"probability":15,"expectedCloseDate":"","currency":"THB","budgetMin":600000,"budgetMax":900000,"diamondType":"Natural","purpose":"Self-purchase","preferredShapes":["Pear","Marquise"],"caratMin":1.5,"caratMax":2.5,"colorGrade":["D","E","F"],"clarityGrade":["VS1","VVS2"],"certification":["GIA","HRD"],"settingInterest":"Setting","settingType":"Pav\u00e9","metalPreference":["White Gold","Platinum"],"totalLifetimeValue":750000,"paymentPreference":"Credit Card","purchaseUrgency":"6\u201312 months","conflictFreePriority":"No","envConcern":"No","commPref":["Email","WhatsApp"],"notes":"Went cold after initial consultation in November 2025. Send re-engagement email for upcoming collection preview.","tags":["Dormant","Italy","Exhibition","Re-engage"],"createdAt":"2025-11-25T01:39:30","updatedAt":"2026-02-13T01:39:30"},{"id":"c017","firstName":"Priya","lastName":"Singh","salutation":"Ms","email":"client017@email.com","phone":"+66 817 000 0017","nationality":"Indian","leadSource":"Referral","assignedTo":"Arjun Mehta","leadStatus":"Lost","pipelineStage":"Lost","vipLevel":"Bronze","dealValue":657000,"probability":0,"diamondType":"Natural","purpose":"Engagement Ring","preferredShapes":["Emerald"],"currency":"THB","createdAt":"2025-11-15T01:39:30","updatedAt":"2025-11-22T01:39:30"},{"id":"c018","firstName":"Rohan","lastName":"Gupta","salutation":"Mr","email":"client018@email.com","phone":"+66 818 000 0018","nationality":"Indian","leadSource":"Social Media","assignedTo":"Arjun Mehta","leadStatus":"Won","pipelineStage":"Won","vipLevel":"None","dealValue":647000,"probability":100,"diamondType":"Natural","purpose":"Engagement Ring","preferredShapes":["Emerald"],"currency":"THB","createdAt":"2025-11-17T01:39:30","updatedAt":"2025-11-28T01:39:30"},{"id":"c019","firstName":"Min","lastName":"Chen","salutation":"Ms","email":"client019@email.com","phone":"+66 819 000 0019","nationality":"Chinese","leadSource":"Website","assignedTo":"David Lim","leadStatus":"Won","pipelineStage":"Won","vipLevel":"Gold","dealValue":1406000,"probability":100,"diamondType":"Lab-Grown","purpose":"Engagement Ring","preferredShapes":["Oval"],"currency":"THB","createdAt":"2025-12-15T01:39:30","updatedAt":"2026-01-02T01:39:30"},{"id":"c020","firstName":"Fatima","lastName":"Hassan","salutation":"Mr","email":"client020@email.com","phone":"+66 820 000 0020","nationality":"Saudi","leadSource":"Walk-in","assignedTo":"Priya Sharma","leadStatus":"Won","pipelineStage":"Lost","vipLevel":"Silver","dealValue":409000,"probability":0,"diamondType":"Natural","purpose":"Self-purchase","preferredShapes":["Round"],"currency":"THB","createdAt":"2025-12-25T01:39:30","updatedAt":"2026-01-10T01:39:30"},{"id":"c021","firstName":"Carlos","lastName":"Martinez","salutation":"Ms","email":"client021@email.com","phone":"+66 821 000 0021","nationality":"Spanish","leadSource":"Website","assignedTo":"Kanokwan Thana","leadStatus":"Won","pipelineStage":"Won","vipLevel":"Gold","dealValue":1298000,"probability":100,"diamondType":"Natural","purpose":"Self-purchase","preferredShapes":["Round"],"currency":"THB","createdAt":"2025-12-24T01:39:30","updatedAt":"2026-01-15T01:39:30"},{"id":"c022","firstName":"Ana","lastName":"Costa","salutation":"Mr","email":"client022@email.com","phone":"+66 822 000 0022","nationality":"Portuguese","leadSource":"Website","assignedTo":"Kanokwan Thana","leadStatus":"Won","pipelineStage":"Won","vipLevel":"None","dealValue":293000,"probability":100,"diamondType":"Natural","purpose":"Anniversary Gift","preferredShapes":["Round"],"currency":"THB","createdAt":"2026-01-25T01:39:30","updatedAt":"2026-02-06T01:39:30"},{"id":"c023","firstName":"Kenji","lastName":"Nakamura","salutation":"Ms","email":"client023@email.com","phone":"+66 823 000 0023","nationality":"Japanese","leadSource":"Social Media","assignedTo":"Kanokwan Thana","leadStatus":"Dormant","pipelineStage":"Lost","vipLevel":"Silver","dealValue":533000,"probability":0,"diamondType":"Lab-Grown","purpose":"Anniversary Gift","preferredShapes":["Oval"],"currency":"THB","createdAt":"2026-01-31T01:39:30","updatedAt":"2026-02-13T01:39:30"},{"id":"c024","firstName":"Lars","lastName":"Jensen","salutation":"Mr","email":"client024@email.com","phone":"+66 824 000 0024","nationality":"Danish","leadSource":"Referral","assignedTo":"Nadia Al-Rashid","leadStatus":"Won","pipelineStage":"Won","vipLevel":"Bronze","dealValue":534000,"probability":100,"diamondType":"Both","purpose":"Self-purchase","preferredShapes":["Cushion"],"currency":"THB","createdAt":"2026-01-14T01:39:30","updatedAt":"2026-02-08T01:39:30"},{"id":"c025","firstName":"Nina","lastName":"Petrov","salutation":"Ms","email":"client025@email.com","phone":"+66 825 000 0025","nationality":"Russian","leadSource":"Exhibition","assignedTo":"Kanokwan Thana","leadStatus":"Won","pipelineStage":"Won","vipLevel":"Bronze","dealValue":265000,"probability":100,"diamondType":"Lab-Grown","purpose":"Self-purchase","preferredShapes":["Cushion"],"currency":"THB","createdAt":"2026-02-16T01:39:30","updatedAt":"2026-02-23T01:39:30"},{"id":"c026","firstName":"Aisha","lastName":"Khan","salutation":"Mr","email":"client026@email.com","phone":"+66 826 000 0026","nationality":"Pakistani","leadSource":"Website","assignedTo":"Kanokwan Thana","leadStatus":"Won","pipelineStage":"Lost","vipLevel":"Gold","dealValue":1010000,"probability":0,"diamondType":"Both","purpose":"Investment","preferredShapes":["Cushion"],"currency":"THB","createdAt":"2026-02-27T01:39:30","updatedAt":"2026-03-08T01:39:30"},{"id":"c027","firstName":"Pierre","lastName":"Dubois","salutation":"Ms","email":"client027@email.com","phone":"+66 827 000 0027","nationality":"French","leadSource":"Website","assignedTo":"Nadia Al-Rashid","leadStatus":"Lost","pipelineStage":"Won","vipLevel":"Gold","dealValue":1395000,"probability":100,"diamondType":"Both","purpose":"Anniversary Gift","preferredShapes":["Oval"],"currency":"THB","createdAt":"2026-03-28T01:39:30","updatedAt":"2026-04-06T01:39:30"},{"id":"c028","firstName":"Zara","lastName":"Al-Said","salutation":"Mr","email":"client028@email.com","phone":"+66 828 000 0028","nationality":"Emirati","leadSource":"Social Media","assignedTo":"Arjun Mehta","leadStatus":"Won","pipelineStage":"Won","vipLevel":"None","dealValue":513000,"probability":100,"diamondType":"Natural","purpose":"Self-purchase","preferredShapes":["Emerald"],"currency":"THB","createdAt":"2026-03-19T01:39:30","updatedAt":"2026-03-26T01:39:30"},{"id":"c029","firstName":"Ravi","lastName":"Verma","salutation":"Ms","email":"client029@email.com","phone":"+66 829 000 0029","nationality":"Indian","leadSource":"Social Media","assignedTo":"Nadia Al-Rashid","leadStatus":"Dormant","pipelineStage":"Lost","vipLevel":"Silver","dealValue":1333000,"probability":0,"diamondType":"Natural","purpose":"Engagement Ring","preferredShapes":["Emerald"],"currency":"THB","createdAt":"2026-04-22T01:39:30","updatedAt":"2026-05-04T01:39:30"},{"id":"c030","firstName":"Mei","lastName":"Huang","salutation":"Mr","email":"client030@email.com","phone":"+66 830 000 0030","nationality":"Chinese","leadSource":"Walk-in","assignedTo":"Arjun Mehta","leadStatus":"Lost","pipelineStage":"Won","vipLevel":"Gold","dealValue":523000,"probability":100,"diamondType":"Both","purpose":"Engagement Ring","preferredShapes":["Cushion"],"currency":"THB","createdAt":"2026-04-14T01:39:30","updatedAt":"2026-05-04T01:39:30"}],"salespeople":[{"id":"sp001","name":"Arjun Mehta","empId":"JV-001","email":"arjun@saraff.co.th","phone":"+66 81 234 5678","role":"Senior Sales","team":"High Jewellery","commRate":4.5,"startDate":"2021-03-15","notes":"Top performer, specialises in HNI clients from India & Singapore."},{"id":"sp002","name":"Priya Sharma","empId":"JV-002","email":"priya@saraff.co.th","phone":"+66 82 345 6789","role":"Sales Consultant","team":"Engagement","commRate":3.5,"startDate":"2022-07-01","notes":"Strong closer for engagement rings and anniversary gifts."},{"id":"sp003","name":"Kanokwan Thana","empId":"JV-003","email":"kanokwan@saraff.co.th","phone":"+66 89 456 7890","role":"Manager","team":"Thailand & ASEAN","commRate":5.0,"startDate":"2019-11-01","notes":"Manages Thai VIP clients and ASEAN wholesale relationships."},{"id":"sp004","name":"David Lim","empId":"JV-004","email":"david@saraff.co.th","phone":"+66 83 567 8901","role":"Sales Consultant","team":"Greater China","commRate":3.5,"startDate":"2023-01-10","notes":"Mandarin and Cantonese speaker. Focused on China & HK market."},{"id":"sp005","name":"Nadia Al-Rashid","empId":"JV-005","email":"nadia@saraff.co.th","phone":"+66 84 678 9012","role":"Senior Sales","team":"Middle East","commRate":4.0,"startDate":"2022-02-14","notes":"Arabic speaker, handles GCC clients visiting Bangkok."}],"campaigns":[{"id":"camp001","name":"Valentine's Engagement Drive 2026","type":"WhatsApp","status":"Active","startDate":"2026-01-20","endDate":"2026-02-28","budget":85000,"spent":62400,"targetAudience":"Existing leads \u2013 Engagement purpose, Budget > \u0e3f300k","template":"Dear {name}, this Valentine's Day, let us help you find the perfect diamond that tells your story...","sentCount":148,"openCount":112,"replyCount":34,"notes":"Best campaign performance to date. High reply rate from Indian and Thai clients."},{"id":"camp002","name":"GIA Certified Lab-Grown Showcase","type":"Email","status":"Active","startDate":"2026-03-01","endDate":"2026-04-30","budget":45000,"spent":31200,"targetAudience":"Eco-conscious leads, Budget \u0e3f150k\u2013\u0e3f500k","template":"Introducing our curated collection of GIA-certified lab-grown diamonds...","sentCount":220,"openCount":165,"replyCount":28,"notes":"Good engagement from younger clientele, 25\u201335 age bracket."},{"id":"camp003","name":"Songkran VIP Preview 2026","type":"In-Person Event","status":"Active","startDate":"2026-04-10","endDate":"2026-04-15","budget":200000,"spent":188000,"targetAudience":"Gold & Platinum VIP clients, Bangkok-based","template":"You are exclusively invited to our private Songkran jewellery preview at Jay Vijay, Silom...","sentCount":42,"openCount":42,"replyCount":35,"notes":"Hosted 35 VIP guests. 8 deals closed on the night. Exceptional ROI."},{"id":"camp004","name":"Q2 Investment Diamond Seminar","type":"Email","status":"Scheduled","startDate":"2026-05-20","endDate":"2026-05-20","budget":30000,"spent":0,"targetAudience":"Investment-purpose leads, Portfolio > \u0e3f1M","template":"Join us for an exclusive seminar on coloured diamond investments...","sentCount":0,"openCount":0,"replyCount":0,"notes":"Targeting HNI segment. Keynote by GIA graduate gemologist."},{"id":"camp005","name":"Diwali Gifting Collection 2025","type":"WhatsApp","status":"Completed","startDate":"2025-10-15","endDate":"2025-11-05","budget":60000,"spent":58500,"targetAudience":"Indian community, Bangkok & Singapore","template":"Celebrate Diwali with timeless diamond jewellery. Special Diwali pricing available for this week only...","sentCount":310,"openCount":248,"replyCount":67,"notes":"Highest volume campaign. Generated 22 new leads, 14 converted."}],"invoices":[{"id":"inv001","invoiceNo":"JV-0001","type":"Invoice","customerId":"c001","clientName":"Rajesh Agarwal","invoiceDate":"2026-03-03","dueDate":"2026-04-02","currency":"THB","paymentMethod":"Wire Transfer","lineItems":[{"desc":"3.2ct D/FL Round Brilliant \u2013 GIA #2467891234","qty":1,"unitPrice":2750000,"discount":0},{"desc":"GIA Certificate & Insurance Documentation","qty":1,"unitPrice":8500,"discount":0}],"discountPct":0,"taxPct":7,"subtotal":2758500,"discountAmt":0,"taxAmt":193095,"total":2951595,"paidAmount":2951595,"balanceDue":0,"status":"Paid","payments":[{"amount":2951595,"date":"2026-03-05","method":"Wire Transfer","ref":"SWIFT-TH20260301-9981","notes":"Full payment received, confirmed by bank.","recordedAt":"2026-03-05T10:00:00"}],"notes":"Payment terms: 100% upfront. Wire transfer to Bangkok Bank, Silom Branch.\nSwift: BKKBTHBK. Account: 172-3-09182-5","createdAt":"2026-03-02T09:00:00","updatedAt":"2026-03-05T10:00:00"},{"id":"inv002","invoiceNo":"JV-0002","type":"Invoice","customerId":"c003","clientName":"Ahmed Al-Mansoori","invoiceDate":"2026-01-29","dueDate":"2026-02-13","currency":"USD","paymentMethod":"Wire Transfer","lineItems":[{"desc":"6.1ct D/IF Round Brilliant \u2013 GIA #4892341005","qty":1,"unitPrice":4800000,"discount":0},{"desc":"Platinum Loose Stone Setting (client's own design)","qty":1,"unitPrice":85000,"discount":5},{"desc":"International Courier & Insurance (FedEx Priority)","qty":1,"unitPrice":12000,"discount":0}],"discountPct":0,"taxPct":0,"subtotal":4892750,"discountAmt":0,"taxAmt":0,"total":4892750,"paidAmount":4892750,"balanceDue":0,"status":"Paid","payments":[{"amount":2500000,"date":"2026-02-08","method":"Wire Transfer","ref":"SWIFT-UAE-20251201-44A","notes":"50% deposit received.","recordedAt":"2026-02-08T14:00:00"},{"amount":2392750,"date":"2026-02-18","method":"Wire Transfer","ref":"SWIFT-UAE-20251215-88B","notes":"Balance received, stone dispatched.","recordedAt":"2026-02-18T11:00:00"}],"notes":"Tax-exempt (export). Delivered to Dubai. No VAT applicable.","cryptoRef":"","createdAt":"2026-01-28T09:00:00","updatedAt":"2026-02-18T11:00:00"},{"id":"inv003","invoiceNo":"JV-0003","type":"Invoice","customerId":"c002","clientName":"Siriporn Charoenwong","invoiceDate":"2026-03-17","dueDate":"2026-04-16","currency":"THB","paymentMethod":"Credit Card","lineItems":[{"desc":"1.8ct F/VS1 Oval \u2013 GIA #3381920045","qty":1,"unitPrice":720000,"discount":0},{"desc":"18K White Gold Halo Setting \u2013 Handcrafted","qty":1,"unitPrice":185000,"discount":5},{"desc":"Engraving & Packaging","qty":1,"unitPrice":3500,"discount":0}],"discountPct":0,"taxPct":7,"subtotal":899750,"discountAmt":0,"taxAmt":62983,"total":962733,"paidAmount":962733,"balanceDue":0,"status":"Paid","payments":[{"amount":962733,"date":"2026-03-20","method":"Credit Card","ref":"CC-AUTH-882947","notes":"Visa card, 3 installments, interest-free.","recordedAt":"2026-03-20T16:00:00"}],"notes":"Valentine's special. Delivered Feb 14, 2026.","createdAt":"2026-03-16T10:00:00","updatedAt":"2026-03-20T16:00:00"},{"id":"inv004","invoiceNo":"JV-0004","type":"Invoice","customerId":"c004","clientName":"Jennifer Wu","invoiceDate":"2026-04-12","dueDate":"2026-05-12","currency":"THB","paymentMethod":"Wire Transfer","lineItems":[{"desc":"2.5ct E/VS1 Emerald Cut \u2013 GIA #7723901887","qty":1,"unitPrice":1420000,"discount":0},{"desc":"Platinum Bezel Setting","qty":1,"unitPrice":145000,"discount":0},{"desc":"HRD Appraisal Certificate","qty":1,"unitPrice":8500,"discount":0}],"discountPct":2,"taxPct":7,"subtotal":1573500,"discountAmt":31470,"taxAmt":107101,"total":1649131,"paidAmount":824565,"balanceDue":824566,"status":"Partial","payments":[{"amount":824565,"date":"2026-04-14","method":"Wire Transfer","ref":"SWIFT-HK-20260312-33X","notes":"50% deposit paid. Balance due on collection.","recordedAt":"2026-04-14T09:00:00"}],"notes":"Balance of 50% due upon collection. Client collecting in person in Bangkok May 12.","createdAt":"2026-04-11T11:00:00","updatedAt":"2026-04-14T09:00:00"},{"id":"inv005","invoiceNo":"JV-0005","type":"Quote","customerId":"c005","clientName":"Vikram Malhotra","invoiceDate":"2026-04-26","dueDate":"2026-05-26","currency":"THB","paymentMethod":"Wire Transfer","lineItems":[{"desc":"4.8ct D/VVS1 Round Brilliant \u2013 GIA Certified (stock no. JV-2026-048)","qty":1,"unitPrice":3200000,"discount":0},{"desc":"Diamond Origin Report (KP Certified \u2013 Botswana)","qty":1,"unitPrice":12000,"discount":0}],"discountPct":0,"taxPct":7,"subtotal":3212000,"discountAmt":0,"taxAmt":224840,"total":3436840,"paidAmount":0,"balanceDue":3436840,"status":"Sent","payments":[],"notes":"Quote valid for 14 days. Price subject to exchange rate fluctuation. 30% deposit required to confirm.","cryptoRef":"","createdAt":"2026-04-26T14:00:00","updatedAt":"2026-04-26T14:00:00"},{"id":"inv006","invoiceNo":"JV-0006","type":"Invoice","customerId":"c007","clientName":"Chalit Pornprasert","invoiceDate":"2026-04-29","dueDate":"2026-05-29","currency":"THB","paymentMethod":"Crypto \u2013 USDT","lineItems":[{"desc":"3.1ct F/VS1 Round Brilliant Solitaire \u2013 GIA #9901234556","qty":1,"unitPrice":1950000,"discount":0},{"desc":"Platinum Solitaire Setting \u2013 4-claw basket","qty":1,"unitPrice":165000,"discount":0},{"desc":"Ring Sizing & Polishing","qty":1,"unitPrice":3500,"discount":0}],"discountPct":0,"taxPct":7,"subtotal":2118500,"discountAmt":0,"taxAmt":148295,"total":2266795,"paidAmount":0,"balanceDue":2266795,"status":"Sent","payments":[],"notes":"Client prefers USDT (TRC20) payment. Wallet: TJYJdLgH7rkQnmXV8D5yZ4mXj1KQnpTZ88\nPayment due within 30 days of invoice date.","cryptoRef":"TJYJdLgH7rkQnmXV8D5yZ4mXj1KQnpTZ88 (TRC20)","createdAt":"2026-04-29T10:00:00","updatedAt":"2026-04-29T10:00:00"},{"id":"inv007","invoiceNo":"JV-0007","type":"Invoice","customerId":"c008","clientName":"Sophie Beaumont","invoiceDate":"2026-04-19","dueDate":"2026-05-04","currency":"THB","paymentMethod":"Credit Card","lineItems":[{"desc":"1.8ct F/VS1 Oval Lab-Grown \u2013 IGI Certified #LG4923881","qty":1,"unitPrice":380000,"discount":0},{"desc":"18K White Gold Pav\u00e9 Halo Setting","qty":1,"unitPrice":220000,"discount":5},{"desc":"Packaging & Insurance Shipping (Paris)","qty":1,"unitPrice":8500,"discount":0}],"discountPct":0,"taxPct":0,"subtotal":597500,"discountAmt":0,"taxAmt":0,"total":597500,"paidAmount":0,"balanceDue":597500,"status":"Overdue","payments":[],"notes":"Tax-exempt (export, France). Net 15 terms agreed. Client to pay by card. Follow up required.","createdAt":"2026-04-19T09:00:00","updatedAt":"2026-04-19T09:00:00"},{"id":"inv008","invoiceNo":"JV-0008","type":"Proforma Invoice","customerId":"c006","clientName":"Lin Mei-Xiu","invoiceDate":"2026-05-01","dueDate":"2026-05-18","currency":"THB","paymentMethod":"Wire Transfer","lineItems":[{"desc":"2.2ct E/VS1 Round Brilliant \u2013 GIA Certified","qty":1,"unitPrice":1600000,"discount":0},{"desc":"Platinum Halo Setting with Pav\u00e9 Band","qty":1,"unitPrice":145000,"discount":0}],"discountPct":0,"taxPct":7,"subtotal":1745000,"discountAmt":0,"taxAmt":122150,"total":1867150,"paidAmount":0,"balanceDue":1867150,"status":"Draft","payments":[],"notes":"Proforma for client approval before final order. 40% deposit required to proceed.","createdAt":"2026-05-01T11:00:00","updatedAt":"2026-05-01T11:00:00"}],"businessCards":[{"id":"bc001","name":"Thomas Bergmann","title":"Senior Diamond Trader","company":"Antwerp Diamond Bourse","email":"t.bergmann@adb.be","phone":"+32 3 222 0594","website":"www.antwerpdiamondbourse.be","address":"Hoveniersstraat 22, 2018 Antwerp, Belgium","notes":"Met at Bangkok Gems Fair 2025. Interested in wholesale rough supply. Follow up Q3 2026.","createdAt":"2026-03-20T01:39:30","source":"PDF Scan"},{"id":"bc002","name":"Preethi Ramachandran","title":"GIA Graduate Gemologist","company":"GIA Mumbai","email":"p.ramachandran@gia.edu","phone":"+91 22 4090 4040","website":"www.gia.edu","address":"Bharat Diamond Bourse, G Block, BKC, Mumbai 400051","notes":"GIA rep, useful for certification queries and training partnerships.","createdAt":"2026-04-04T01:39:30","source":"Image Upload"},{"id":"bc003","name":"Zhang Wei","title":"Procurement Director","company":"Luk Fook Jewellery HK","email":"zhang.wei@lukfook.com","phone":"+852 2128 0900","website":"www.lukfook.com","address":"8 Hart Avenue, Tsim Sha Tsui, Hong Kong","notes":"Interested in loose natural diamonds, 0.5\u20132ct range for retail. High volume potential.","createdAt":"2026-04-14T01:39:30","source":"PDF Scan"},{"id":"bc004","name":"Maria Kowalski","title":"Luxury Brand Manager","company":"Vasco Gems Poland","email":"m.kowalski@vascogems.pl","phone":"+48 22 123 4567","website":"www.vascogems.pl","address":"ul. Mokotowska 48, 00-543 Warsaw, Poland","notes":"Eastern European market contact. Looking for coloured diamonds and fancy shapes.","createdAt":"2026-04-22T01:39:30","source":"Image Upload"}],"version":"2.0"};
+const DEMO_DB = {"customers":[{"id":"c001","firstName":"Rajesh","lastName":"Agarwal","salutation":"Mr","email":"rajesh.agarwal@gmail.com","phone":"+91 98200 11234","whatsapp":"+91 98200 11234","nationality":"Indian","language":"English, Hindi","dob":"1978-04-12","city":"Mumbai","country":"India","company":"Agarwal Textiles Pvt Ltd","designation":"Chairman","leadSource":"Referral","referredBy":"Kanokwan Thana","assignedTo":"Arjun Mehta","leadStatus":"Won","pipelineStage":"Won","vipLevel":"Platinum","dealValue":2850000,"probability":100,"expectedCloseDate":"2026-01-18","currency":"THB","budgetMin":2000000,"budgetMax":3500000,"diamondType":"Natural","purpose":"Investment","preferredShapes":["Round","Cushion"],"caratMin":3,"caratMax":5,"colorGrade":["D","E","F"],"clarityGrade":["FL","IF","VVS1"],"certification":["GIA"],"settingInterest":"Loose Stone","metalPreference":["Platinum"],"totalLifetimeValue":4200000,"paymentPreference":"Wire Transfer","purchaseUrgency":"Immediate","conflictFreePriority":"Yes","envConcern":"No","commPref":["WhatsApp","Email"],"notes":"Repeat client. Purchased 3.2ct D/FL round brilliant. Very particular about GIA certification.","tags":["VIP","HNI","Investment","Repeat"],"createdAt":"2025-11-05T01:39:30","updatedAt":"2026-04-29T01:39:30"},{"id":"c002","firstName":"Siriporn","lastName":"Charoenwong","salutation":"Ms","email":"siriporn.c@outlook.com","phone":"+66 81 234 9988","whatsapp":"+66 81 234 9988","nationality":"Thai","language":"Thai, English","dob":"1985-09-22","city":"Bangkok","country":"Thailand","company":"","designation":"","leadSource":"Walk-in","referredBy":"","assignedTo":"Kanokwan Thana","leadStatus":"Won","pipelineStage":"Won","vipLevel":"Gold","dealValue":980000,"probability":100,"expectedCloseDate":"2026-02-14","currency":"THB","budgetMin":800000,"budgetMax":1200000,"diamondType":"Natural","purpose":"Engagement Ring","preferredShapes":["Oval","Cushion"],"caratMin":1.5,"caratMax":2.5,"colorGrade":["E","F","G"],"clarityGrade":["VS1","VS2","VVS2"],"certification":["GIA","IGI"],"settingInterest":"Setting","settingType":"Halo","metalPreference":["White Gold","Platinum"],"totalLifetimeValue":980000,"paymentPreference":"Credit Card","purchaseUrgency":"Immediate","conflictFreePriority":"No","envConcern":"No","commPref":["Line","WhatsApp"],"notes":"Purchased 1.8ct F/VS1 oval with halo setting. Valentine's Day delivery.","tags":["Engagement","Thai-VIP","Walk-in"],"createdAt":"2026-02-03T01:39:30","updatedAt":"2026-04-24T01:39:30"},{"id":"c003","firstName":"Ahmed","lastName":"Al-Mansoori","salutation":"HE","email":"ahmed.almansoori@uae.ae","phone":"+971 50 123 4567","whatsapp":"+971 50 123 4567","nationality":"Emirati","language":"Arabic, English","dob":"1971-03-05","city":"Dubai","country":"UAE","company":"Al-Mansoori Holdings","designation":"Managing Director","leadSource":"Exhibition","referredBy":"","assignedTo":"Nadia Al-Rashid","leadStatus":"Won","pipelineStage":"Won","vipLevel":"Platinum","dealValue":5200000,"probability":100,"expectedCloseDate":"2025-12-20","currency":"THB","budgetMin":4000000,"budgetMax":7000000,"diamondType":"Natural","purpose":"Investment","preferredShapes":["Round","Princess"],"caratMin":5,"caratMax":10,"colorGrade":["D","E"],"clarityGrade":["FL","IF"],"certification":["GIA"],"settingInterest":"Loose Stone","metalPreference":["Platinum"],"totalLifetimeValue":8900000,"paymentPreference":"Wire Transfer","purchaseUrgency":"Flexible","conflictFreePriority":"Yes","envConcern":"No","commPref":["WhatsApp","In-Person"],"notes":"Purchased 6.1ct D/IF round for collection. Interested in coloured diamonds next visit.","tags":["Platinum","GCC","Investment","Exhibition"],"createdAt":"2025-10-06T01:39:30","updatedAt":"2026-04-04T01:39:30"},{"id":"c004","firstName":"Jennifer","lastName":"Wu","salutation":"Ms","email":"jennifer.wu@jw-capital.hk","phone":"+852 9123 4567","whatsapp":"+852 9123 4567","nationality":"Hong Kong","language":"English, Cantonese","dob":"1983-11-30","city":"Hong Kong","country":"Hong Kong","company":"JW Capital Group","designation":"Partner","leadSource":"Referral","referredBy":"Ahmed Al-Mansoori","assignedTo":"David Lim","leadStatus":"Won","pipelineStage":"Won","vipLevel":"Gold","dealValue":1650000,"probability":100,"expectedCloseDate":"2026-02-28","currency":"THB","budgetMin":1000000,"budgetMax":2000000,"diamondType":"Natural","purpose":"Self-purchase","preferredShapes":["Emerald","Asscher"],"caratMin":2,"caratMax":3.5,"colorGrade":["D","E","F"],"clarityGrade":["VS1","VVS2","IF"],"certification":["GIA","HRD"],"settingInterest":"Setting","settingType":"Bezel","metalPreference":["Platinum","White Gold"],"totalLifetimeValue":1650000,"paymentPreference":"Wire Transfer","purchaseUrgency":"Within a month","conflictFreePriority":"Yes","envConcern":"Yes","commPref":["Email","WhatsApp"],"notes":"2.5ct E/VS1 emerald cut in platinum bezel setting. Referral from Ahmed.","tags":["HNI","HK","Emerald Cut","Referral"],"createdAt":"2026-03-05T01:39:30","updatedAt":"2026-04-26T01:39:30"},{"id":"c005","firstName":"Vikram","lastName":"Malhotra","salutation":"Mr","email":"vikram.malhotra@malhotragroup.in","phone":"+91 99000 22334","whatsapp":"+91 99000 22334","nationality":"Indian","language":"English, Hindi, Punjabi","dob":"1975-06-18","city":"Delhi","country":"India","company":"Malhotra Group","designation":"CEO","leadSource":"Referral","referredBy":"Rajesh Agarwal","assignedTo":"Arjun Mehta","leadStatus":"Proposal","pipelineStage":"Negotiation","vipLevel":"Gold","dealValue":3400000,"probability":75,"expectedCloseDate":"2026-05-16","currency":"THB","budgetMin":2500000,"budgetMax":4000000,"diamondType":"Natural","purpose":"Investment","preferredShapes":["Round","Cushion"],"caratMin":4,"caratMax":6,"colorGrade":["D","E"],"clarityGrade":["IF","VVS1","VVS2"],"certification":["GIA"],"settingInterest":"Loose Stone","metalPreference":["Platinum"],"totalLifetimeValue":3400000,"paymentPreference":"Wire Transfer","purchaseUrgency":"Within a month","conflictFreePriority":"Yes","envConcern":"No","commPref":["WhatsApp","Phone"],"notes":"Negotiating on a 4.8ct D/VVS1 round. Price point is the main discussion. Decision expected end of May.","tags":["HNI","Investment","Negotiation","Hot Lead"],"createdAt":"2026-03-20T01:39:30","updatedAt":"2026-05-02T01:39:30"},{"id":"c006","firstName":"Lin","lastName":"Mei-Xiu","salutation":"Ms","email":"linmeixiu@cnenterprises.com","phone":"+86 138 1234 5678","whatsapp":"+86 138 1234 5678","nationality":"Chinese","language":"Mandarin, English","dob":"1980-08-08","city":"Shanghai","country":"China","company":"CN Luxury Enterprises","designation":"Director","leadSource":"Exhibition","referredBy":"","assignedTo":"David Lim","leadStatus":"Proposal","pipelineStage":"Negotiation","vipLevel":"Silver","dealValue":1800000,"probability":65,"expectedCloseDate":"2026-05-22","currency":"THB","budgetMin":1500000,"budgetMax":2200000,"diamondType":"Natural","purpose":"Anniversary Gift","preferredShapes":["Round","Pear"],"caratMin":2,"caratMax":3,"colorGrade":["E","F","G"],"clarityGrade":["VS1","VS2"],"certification":["GIA"],"settingInterest":"Setting","settingType":"Halo","metalPreference":["Platinum","White Gold"],"totalLifetimeValue":1800000,"paymentPreference":"Wire Transfer","purchaseUrgency":"Within a month","conflictFreePriority":"No","envConcern":"No","commPref":["WeChat","WhatsApp"],"notes":"20th wedding anniversary gift. Comparing options between us and a competitor in Hong Kong.","tags":["China Market","Anniversary","Hot Lead"],"createdAt":"2026-03-27T01:39:30","updatedAt":"2026-05-03T01:39:30"},{"id":"c007","firstName":"Chalit","lastName":"Pornprasert","salutation":"Mr","email":"chalit.p@cpg.co.th","phone":"+66 85 678 9012","whatsapp":"+66 85 678 9012","nationality":"Thai","language":"Thai, English","dob":"1982-04-28","city":"Bangkok","country":"Thailand","company":"CP Group","designation":"VP Finance","leadSource":"Walk-in","referredBy":"","assignedTo":"Kanokwan Thana","leadStatus":"Proposal","pipelineStage":"Proposal","vipLevel":"Gold","dealValue":2200000,"probability":55,"expectedCloseDate":"2026-05-25","currency":"THB","budgetMin":1800000,"budgetMax":2500000,"diamondType":"Natural","purpose":"Engagement Ring","preferredShapes":["Round","Cushion"],"caratMin":3,"caratMax":4,"colorGrade":["E","F"],"clarityGrade":["VS1","VVS2"],"certification":["GIA"],"settingInterest":"Setting","settingType":"Solitaire","metalPreference":["Platinum"],"totalLifetimeValue":2200000,"paymentPreference":"Wire Transfer","purchaseUrgency":"Within a month","conflictFreePriority":"No","envConcern":"No","commPref":["Line","Phone"],"notes":"Proposal presented for 3.1ct F/VS1 solitaire. Awaiting client's decision post family consultation.","tags":["Engagement","Thai-VIP","Proposal Stage"],"createdAt":"2026-04-06T01:39:30","updatedAt":"2026-05-01T01:39:30"},{"id":"c008","firstName":"Sophie","lastName":"Beaumont","salutation":"Ms","email":"sophie.beaumont@beaumont-partners.fr","phone":"+33 6 12 34 56 78","whatsapp":"+33 6 12 34 56 78","nationality":"French","language":"French, English","dob":"1988-02-14","city":"Paris","country":"France","company":"Beaumont & Partners Law","designation":"Partner","leadSource":"Website","referredBy":"","assignedTo":"Priya Sharma","leadStatus":"Proposal","pipelineStage":"Proposal","vipLevel":"Silver","dealValue":680000,"probability":50,"expectedCloseDate":"2026-05-29","currency":"THB","budgetMin":500000,"budgetMax":800000,"diamondType":"Lab-Grown","purpose":"Engagement Ring","preferredShapes":["Oval","Pear"],"caratMin":1.5,"caratMax":2,"colorGrade":["E","F","G"],"clarityGrade":["VS1","VS2","VVS2"],"certification":["IGI","GIA"],"settingInterest":"Setting","settingType":"Pav\u00e9","metalPreference":["White Gold","Rose Gold"],"totalLifetimeValue":680000,"paymentPreference":"Credit Card","purchaseUrgency":"Within a month","conflictFreePriority":"Yes","envConcern":"Yes","commPref":["Email","WhatsApp"],"notes":"Strongly prefers lab-grown for ethical reasons. Proposal for 1.8ct F/VS1 oval, IGI certified.","tags":["Lab-Grown","Engagement","Europe","Eco-Conscious"],"createdAt":"2026-04-12T01:39:30","updatedAt":"2026-04-30T01:39:30"},{"id":"c009","firstName":"Sanjay","lastName":"Kapoor","salutation":"Mr","email":"sanjay.kapoor@kapoorindustries.in","phone":"+91 98100 44556","whatsapp":"+91 98100 44556","nationality":"Indian","language":"English, Hindi","dob":"1970-12-01","city":"Jaipur","country":"India","company":"Kapoor Industries","designation":"Chairman","leadSource":"Referral","referredBy":"Vikram Malhotra","assignedTo":"Arjun Mehta","leadStatus":"Qualified","pipelineStage":"Evaluation","vipLevel":"None","dealValue":4800000,"probability":40,"expectedCloseDate":"2026-06-08","currency":"THB","budgetMin":3500000,"budgetMax":6000000,"diamondType":"Natural","purpose":"Investment","preferredShapes":["Round"],"caratMin":5,"caratMax":8,"colorGrade":["D","E"],"clarityGrade":["FL","IF"],"certification":["GIA"],"settingInterest":"Loose Stone","metalPreference":["Platinum"],"totalLifetimeValue":4800000,"paymentPreference":"Wire Transfer","purchaseUrgency":"3\u20136 months","conflictFreePriority":"Yes","envConcern":"No","commPref":["WhatsApp","Email"],"notes":"Very selective. Evaluating a 5.5ct D/FL round. Wants to see GIA report before deciding.","tags":["HNI","Investment","Large Carat","Evaluation"],"createdAt":"2026-04-16T01:39:30","updatedAt":"2026-04-29T01:39:30"},{"id":"c010","firstName":"Park","lastName":"Ji-Young","salutation":"Ms","email":"jiyoung.park@seoulstyle.kr","phone":"+82 10 1234 5678","whatsapp":"+82 10 1234 5678","nationality":"Korean","language":"Korean, English","dob":"1991-07-17","city":"Seoul","country":"South Korea","company":"Seoul Style Group","designation":"Creative Director","leadSource":"Social Media","referredBy":"","assignedTo":"Priya Sharma","leadStatus":"Qualified","pipelineStage":"Evaluation","vipLevel":"None","dealValue":420000,"probability":35,"expectedCloseDate":"2026-06-03","currency":"THB","budgetMin":350000,"budgetMax":550000,"diamondType":"Lab-Grown","purpose":"Self-purchase","preferredShapes":["Marquise","Oval"],"caratMin":1,"caratMax":1.5,"colorGrade":["E","F","G","H"],"clarityGrade":["VS1","VS2","SI1"],"certification":["IGI"],"settingInterest":"Setting","settingType":"Solitaire","metalPreference":["Rose Gold","White Gold"],"totalLifetimeValue":420000,"paymentPreference":"Credit Card","purchaseUrgency":"2\u20133 months","conflictFreePriority":"No","envConcern":"Yes","commPref":["Instagram DM","Email"],"notes":"Influencer, 850k followers. Interested in a marquise lab-grown for editorial shoot and personal use.","tags":["Lab-Grown","Social Media","Korea","Influencer"],"createdAt":"2026-04-20T01:39:30","updatedAt":"2026-04-28T01:39:30"},{"id":"c011","firstName":"Omar","lastName":"Al-Farsi","salutation":"Mr","email":"omar.alfarsi@alfarsi.ae","phone":"+971 55 987 6543","whatsapp":"+971 55 987 6543","nationality":"Emirati","language":"Arabic, English","dob":"1985-01-20","city":"Abu Dhabi","country":"UAE","company":"Al-Farsi Real Estate","designation":"Director","leadSource":"Walk-in","referredBy":"","assignedTo":"Nadia Al-Rashid","leadStatus":"Contacted","pipelineStage":"Interest","vipLevel":"None","dealValue":1200000,"probability":25,"expectedCloseDate":"2026-06-23","currency":"THB","budgetMin":1000000,"budgetMax":1800000,"diamondType":"Natural","purpose":"Anniversary Gift","preferredShapes":["Round","Heart"],"caratMin":2,"caratMax":3,"colorGrade":["E","F","G"],"clarityGrade":["VS1","VS2"],"certification":["GIA"],"settingInterest":"Setting","settingType":"Three-Stone","metalPreference":["Yellow Gold","Platinum"],"totalLifetimeValue":1200000,"paymentPreference":"Wire Transfer","purchaseUrgency":"3\u20136 months","conflictFreePriority":"No","envConcern":"No","commPref":["WhatsApp"],"notes":"Browsing for anniversary options. Has come in once. Follow up scheduled for May 20.","tags":["GCC","Anniversary","Middle East"],"createdAt":"2026-04-24T01:39:30","updatedAt":"2026-04-24T01:39:30"},{"id":"c012","firstName":"Yuki","lastName":"Tanaka","salutation":"Ms","email":"yuki.tanaka@tanaka-corp.jp","phone":"+81 90 1234 5678","whatsapp":"+81 90 1234 5678","nationality":"Japanese","language":"Japanese, English","dob":"1987-03-25","city":"Tokyo","country":"Japan","company":"Tanaka Corp","designation":"Executive","leadSource":"Exhibition","referredBy":"","assignedTo":"David Lim","leadStatus":"Contacted","pipelineStage":"Interest","vipLevel":"None","dealValue":580000,"probability":20,"expectedCloseDate":"2026-06-18","currency":"THB","budgetMin":450000,"budgetMax":700000,"diamondType":"Natural","purpose":"Self-purchase","preferredShapes":["Cushion","Asscher"],"caratMin":1,"caratMax":1.8,"colorGrade":["F","G","H"],"clarityGrade":["VS1","VS2","VVS2"],"certification":["GIA","HRD"],"settingInterest":"Setting","settingType":"Vintage","metalPreference":["Platinum","White Gold"],"totalLifetimeValue":580000,"paymentPreference":"Wire Transfer","purchaseUrgency":"3\u20136 months","conflictFreePriority":"No","envConcern":"No","commPref":["Email","WhatsApp"],"notes":"Met at Bangkok Gems & Jewellery Fair. Interested in vintage-style settings. Needs follow-up with lookbook.","tags":["Japan","Exhibition","Vintage","Interest"],"createdAt":"2026-04-26T01:39:30","updatedAt":"2026-04-26T01:39:30"},{"id":"c013","firstName":"Mehmet","lastName":"Yilmaz","salutation":"Mr","email":"mehmet.yilmaz@yilmazholding.tr","phone":"+90 532 123 4567","whatsapp":"+90 532 123 4567","nationality":"Turkish","language":"Turkish, English","dob":"1976-09-14","city":"Istanbul","country":"Turkey","company":"Yilmaz Holding","designation":"Owner","leadSource":"Cold Outreach","referredBy":"","assignedTo":"Nadia Al-Rashid","leadStatus":"New","pipelineStage":"Awareness","vipLevel":"None","dealValue":900000,"probability":10,"expectedCloseDate":"2026-07-18","currency":"THB","budgetMin":800000,"budgetMax":1200000,"diamondType":"Natural","purpose":"Investment","preferredShapes":["Round"],"caratMin":2,"caratMax":4,"colorGrade":["D","E","F"],"clarityGrade":["IF","VVS1","VVS2"],"certification":["GIA"],"settingInterest":"Loose Stone","metalPreference":["Platinum"],"totalLifetimeValue":900000,"paymentPreference":"Wire Transfer","purchaseUrgency":"6\u201312 months","conflictFreePriority":"No","envConcern":"No","commPref":["WhatsApp","Email"],"notes":"Sent initial brochure via WhatsApp. No response yet. Follow up after 2 weeks.","tags":["Turkey","New Lead","Investment","Cold Outreach"],"createdAt":"2026-04-30T01:39:30","updatedAt":"2026-04-30T01:39:30"},{"id":"c014","firstName":"Shreya","lastName":"Patel","salutation":"Ms","email":"shreya.patel@gmail.com","phone":"+65 9123 4567","whatsapp":"+65 9123 4567","nationality":"Singaporean","language":"English, Gujarati","dob":"1993-05-11","city":"Singapore","country":"Singapore","company":"","designation":"","leadSource":"Website","referredBy":"","assignedTo":"Priya Sharma","leadStatus":"New","pipelineStage":"Awareness","vipLevel":"None","dealValue":320000,"probability":10,"expectedCloseDate":"2026-07-03","currency":"THB","budgetMin":250000,"budgetMax":400000,"diamondType":"Lab-Grown","purpose":"Engagement Ring","preferredShapes":["Round","Oval"],"caratMin":1,"caratMax":1.5,"colorGrade":["E","F","G"],"clarityGrade":["VS1","VS2"],"certification":["IGI","GIA"],"settingInterest":"Setting","settingType":"Solitaire","metalPreference":["White Gold"],"totalLifetimeValue":320000,"paymentPreference":"Credit Card","purchaseUrgency":"3\u20136 months","conflictFreePriority":"Yes","envConcern":"Yes","commPref":["Email","WhatsApp"],"notes":"Submitted enquiry form on website. Interested in lab-grown for ethical and budget reasons.","tags":["Singapore","Lab-Grown","Web Lead","New"],"createdAt":"2026-05-02T01:39:30","updatedAt":"2026-05-02T01:39:30"},{"id":"c015","firstName":"Robert","lastName":"Chen","salutation":"Mr","email":"robert.chen@rc-investments.hk","phone":"+852 9876 5432","whatsapp":"+852 9876 5432","nationality":"Hong Kong","language":"English, Cantonese","dob":"1968-07-30","city":"Hong Kong","country":"Hong Kong","company":"RC Investments","designation":"Managing Partner","leadSource":"Referral","referredBy":"Jennifer Wu","assignedTo":"David Lim","leadStatus":"Lost","pipelineStage":"Lost","vipLevel":"None","dealValue":0,"probability":0,"expectedCloseDate":"2026-03-15","currency":"THB","budgetMin":3000000,"budgetMax":5000000,"diamondType":"Natural","purpose":"Investment","preferredShapes":["Round"],"caratMin":5,"caratMax":8,"colorGrade":["D","E"],"clarityGrade":["FL","IF"],"certification":["GIA"],"settingInterest":"Loose Stone","metalPreference":["Platinum"],"totalLifetimeValue":0,"paymentPreference":"Wire Transfer","purchaseUrgency":"Immediate","conflictFreePriority":"Yes","envConcern":"No","commPref":["Email"],"notes":"Lost to Christie's Geneva auction. Client preferred a 6ct stone with coloured fluorescence \u2014 something we could not source in time.","tags":["Lost","HK","Investment","Competition"],"createdAt":"2026-01-29T01:39:30","updatedAt":"2026-04-12T01:39:30"},{"id":"c016","firstName":"Isabella","lastName":"Rossi","salutation":"Ms","email":"isabella.rossi@rossigroup.it","phone":"+39 335 123 4567","whatsapp":"+39 335 123 4567","nationality":"Italian","language":"Italian, English","dob":"1979-12-03","city":"Milan","country":"Italy","company":"Rossi Group","designation":"Creative Director","leadSource":"Exhibition","referredBy":"","assignedTo":"Priya Sharma","leadStatus":"Dormant","pipelineStage":"Interest","vipLevel":"None","dealValue":750000,"probability":15,"expectedCloseDate":"","currency":"THB","budgetMin":600000,"budgetMax":900000,"diamondType":"Natural","purpose":"Self-purchase","preferredShapes":["Pear","Marquise"],"caratMin":1.5,"caratMax":2.5,"colorGrade":["D","E","F"],"clarityGrade":["VS1","VVS2"],"certification":["GIA","HRD"],"settingInterest":"Setting","settingType":"Pav\u00e9","metalPreference":["White Gold","Platinum"],"totalLifetimeValue":750000,"paymentPreference":"Credit Card","purchaseUrgency":"6\u201312 months","conflictFreePriority":"No","envConcern":"No","commPref":["Email","WhatsApp"],"notes":"Went cold after initial consultation in November 2025. Send re-engagement email for upcoming collection preview.","tags":["Dormant","Italy","Exhibition","Re-engage"],"createdAt":"2025-11-25T01:39:30","updatedAt":"2026-02-13T01:39:30"},{"id":"c017","firstName":"Priya","lastName":"Singh","salutation":"Ms","email":"client017@email.com","phone":"+66 817 000 0017","nationality":"Indian","leadSource":"Referral","assignedTo":"Arjun Mehta","leadStatus":"Lost","pipelineStage":"Lost","vipLevel":"Bronze","dealValue":657000,"probability":0,"diamondType":"Natural","purpose":"Engagement Ring","preferredShapes":["Emerald"],"currency":"THB","createdAt":"2025-11-15T01:39:30","updatedAt":"2025-11-22T01:39:30"},{"id":"c018","firstName":"Rohan","lastName":"Gupta","salutation":"Mr","email":"client018@email.com","phone":"+66 818 000 0018","nationality":"Indian","leadSource":"Social Media","assignedTo":"Arjun Mehta","leadStatus":"Won","pipelineStage":"Won","vipLevel":"None","dealValue":647000,"probability":100,"diamondType":"Natural","purpose":"Engagement Ring","preferredShapes":["Emerald"],"currency":"THB","createdAt":"2025-11-17T01:39:30","updatedAt":"2025-11-28T01:39:30"},{"id":"c019","firstName":"Min","lastName":"Chen","salutation":"Ms","email":"client019@email.com","phone":"+66 819 000 0019","nationality":"Chinese","leadSource":"Website","assignedTo":"David Lim","leadStatus":"Won","pipelineStage":"Won","vipLevel":"Gold","dealValue":1406000,"probability":100,"diamondType":"Lab-Grown","purpose":"Engagement Ring","preferredShapes":["Oval"],"currency":"THB","createdAt":"2025-12-15T01:39:30","updatedAt":"2026-01-02T01:39:30"},{"id":"c020","firstName":"Fatima","lastName":"Hassan","salutation":"Mr","email":"client020@email.com","phone":"+66 820 000 0020","nationality":"Saudi","leadSource":"Walk-in","assignedTo":"Priya Sharma","leadStatus":"Won","pipelineStage":"Lost","vipLevel":"Silver","dealValue":409000,"probability":0,"diamondType":"Natural","purpose":"Self-purchase","preferredShapes":["Round"],"currency":"THB","createdAt":"2025-12-25T01:39:30","updatedAt":"2026-01-10T01:39:30"},{"id":"c021","firstName":"Carlos","lastName":"Martinez","salutation":"Ms","email":"client021@email.com","phone":"+66 821 000 0021","nationality":"Spanish","leadSource":"Website","assignedTo":"Kanokwan Thana","leadStatus":"Won","pipelineStage":"Won","vipLevel":"Gold","dealValue":1298000,"probability":100,"diamondType":"Natural","purpose":"Self-purchase","preferredShapes":["Round"],"currency":"THB","createdAt":"2025-12-24T01:39:30","updatedAt":"2026-01-15T01:39:30"},{"id":"c022","firstName":"Ana","lastName":"Costa","salutation":"Mr","email":"client022@email.com","phone":"+66 822 000 0022","nationality":"Portuguese","leadSource":"Website","assignedTo":"Kanokwan Thana","leadStatus":"Won","pipelineStage":"Won","vipLevel":"None","dealValue":293000,"probability":100,"diamondType":"Natural","purpose":"Anniversary Gift","preferredShapes":["Round"],"currency":"THB","createdAt":"2026-01-25T01:39:30","updatedAt":"2026-02-06T01:39:30"},{"id":"c023","firstName":"Kenji","lastName":"Nakamura","salutation":"Ms","email":"client023@email.com","phone":"+66 823 000 0023","nationality":"Japanese","leadSource":"Social Media","assignedTo":"Kanokwan Thana","leadStatus":"Dormant","pipelineStage":"Lost","vipLevel":"Silver","dealValue":533000,"probability":0,"diamondType":"Lab-Grown","purpose":"Anniversary Gift","preferredShapes":["Oval"],"currency":"THB","createdAt":"2026-01-31T01:39:30","updatedAt":"2026-02-13T01:39:30"},{"id":"c024","firstName":"Lars","lastName":"Jensen","salutation":"Mr","email":"client024@email.com","phone":"+66 824 000 0024","nationality":"Danish","leadSource":"Referral","assignedTo":"Nadia Al-Rashid","leadStatus":"Won","pipelineStage":"Won","vipLevel":"Bronze","dealValue":534000,"probability":100,"diamondType":"Both","purpose":"Self-purchase","preferredShapes":["Cushion"],"currency":"THB","createdAt":"2026-01-14T01:39:30","updatedAt":"2026-02-08T01:39:30"},{"id":"c025","firstName":"Nina","lastName":"Petrov","salutation":"Ms","email":"client025@email.com","phone":"+66 825 000 0025","nationality":"Russian","leadSource":"Exhibition","assignedTo":"Kanokwan Thana","leadStatus":"Won","pipelineStage":"Won","vipLevel":"Bronze","dealValue":265000,"probability":100,"diamondType":"Lab-Grown","purpose":"Self-purchase","preferredShapes":["Cushion"],"currency":"THB","createdAt":"2026-02-16T01:39:30","updatedAt":"2026-02-23T01:39:30"},{"id":"c026","firstName":"Aisha","lastName":"Khan","salutation":"Mr","email":"client026@email.com","phone":"+66 826 000 0026","nationality":"Pakistani","leadSource":"Website","assignedTo":"Kanokwan Thana","leadStatus":"Won","pipelineStage":"Lost","vipLevel":"Gold","dealValue":1010000,"probability":0,"diamondType":"Both","purpose":"Investment","preferredShapes":["Cushion"],"currency":"THB","createdAt":"2026-02-27T01:39:30","updatedAt":"2026-03-08T01:39:30"},{"id":"c027","firstName":"Pierre","lastName":"Dubois","salutation":"Ms","email":"client027@email.com","phone":"+66 827 000 0027","nationality":"French","leadSource":"Website","assignedTo":"Nadia Al-Rashid","leadStatus":"Lost","pipelineStage":"Won","vipLevel":"Gold","dealValue":1395000,"probability":100,"diamondType":"Both","purpose":"Anniversary Gift","preferredShapes":["Oval"],"currency":"THB","createdAt":"2026-03-28T01:39:30","updatedAt":"2026-04-06T01:39:30"},{"id":"c028","firstName":"Zara","lastName":"Al-Said","salutation":"Mr","email":"client028@email.com","phone":"+66 828 000 0028","nationality":"Emirati","leadSource":"Social Media","assignedTo":"Arjun Mehta","leadStatus":"Won","pipelineStage":"Won","vipLevel":"None","dealValue":513000,"probability":100,"diamondType":"Natural","purpose":"Self-purchase","preferredShapes":["Emerald"],"currency":"THB","createdAt":"2026-03-19T01:39:30","updatedAt":"2026-03-26T01:39:30"},{"id":"c029","firstName":"Ravi","lastName":"Verma","salutation":"Ms","email":"client029@email.com","phone":"+66 829 000 0029","nationality":"Indian","leadSource":"Social Media","assignedTo":"Nadia Al-Rashid","leadStatus":"Dormant","pipelineStage":"Lost","vipLevel":"Silver","dealValue":1333000,"probability":0,"diamondType":"Natural","purpose":"Engagement Ring","preferredShapes":["Emerald"],"currency":"THB","createdAt":"2026-04-22T01:39:30","updatedAt":"2026-05-04T01:39:30"},{"id":"c030","firstName":"Mei","lastName":"Huang","salutation":"Mr","email":"client030@email.com","phone":"+66 830 000 0030","nationality":"Chinese","leadSource":"Walk-in","assignedTo":"Arjun Mehta","leadStatus":"Lost","pipelineStage":"Won","vipLevel":"Gold","dealValue":523000,"probability":100,"diamondType":"Both","purpose":"Engagement Ring","preferredShapes":["Cushion"],"currency":"THB","createdAt":"2026-04-14T01:39:30","updatedAt":"2026-05-04T01:39:30"}],"salespeople":[{"id":"sp001","name":"Arjun Mehta","empId":"JV-001","email":"arjun@saraff.co.th","phone":"+66 81 234 5678","role":"Senior Sales","team":"High Jewellery","commRate":4.5,"startDate":"2021-03-15","notes":"Top performer, specialises in HNI clients from India & Singapore."},{"id":"sp002","name":"Priya Sharma","empId":"JV-002","email":"priya@saraff.co.th","phone":"+66 82 345 6789","role":"Sales Consultant","team":"Engagement","commRate":3.5,"startDate":"2022-07-01","notes":"Strong closer for engagement rings and anniversary gifts."},{"id":"sp003","name":"Kanokwan Thana","empId":"JV-003","email":"kanokwan@saraff.co.th","phone":"+66 89 456 7890","role":"Manager","team":"Thailand & ASEAN","commRate":5.0,"startDate":"2019-11-01","notes":"Manages Thai VIP clients and ASEAN wholesale relationships."},{"id":"sp004","name":"David Lim","empId":"JV-004","email":"david@saraff.co.th","phone":"+66 83 567 8901","role":"Sales Consultant","team":"Greater China","commRate":3.5,"startDate":"2023-01-10","notes":"Mandarin and Cantonese speaker. Focused on China & HK market."},{"id":"sp005","name":"Nadia Al-Rashid","empId":"JV-005","email":"nadia@saraff.co.th","phone":"+66 84 678 9012","role":"Senior Sales","team":"Middle East","commRate":4.0,"startDate":"2022-02-14","notes":"Arabic speaker, handles GCC clients visiting Bangkok."}],"campaigns":[{"id":"camp001","name":"Valentine's Engagement Drive 2026","type":"WhatsApp","status":"Active","startDate":"2026-01-20","endDate":"2026-02-28","budget":85000,"spent":62400,"targetAudience":"Existing leads \u2013 Engagement purpose, Budget > \u0e3f300k","template":"Dear {name}, this Valentine's Day, let us help you find the perfect diamond that tells your story...","sentCount":148,"openCount":112,"replyCount":34,"notes":"Best campaign performance to date. High reply rate from Indian and Thai clients."},{"id":"camp002","name":"GIA Certified Lab-Grown Showcase","type":"Email","status":"Active","startDate":"2026-03-01","endDate":"2026-04-30","budget":45000,"spent":31200,"targetAudience":"Eco-conscious leads, Budget \u0e3f150k\u2013\u0e3f500k","template":"Introducing our curated collection of GIA-certified lab-grown diamonds...","sentCount":220,"openCount":165,"replyCount":28,"notes":"Good engagement from younger clientele, 25\u201335 age bracket."},{"id":"camp003","name":"Songkran VIP Preview 2026","type":"In-Person Event","status":"Active","startDate":"2026-04-10","endDate":"2026-04-15","budget":200000,"spent":188000,"targetAudience":"Gold & Platinum VIP clients, Bangkok-based","template":"You are exclusively invited to our private Songkran jewellery preview at Jay Vijay, Silom...","sentCount":42,"openCount":42,"replyCount":35,"notes":"Hosted 35 VIP guests. 8 deals closed on the night. Exceptional ROI."},{"id":"camp004","name":"Q2 Investment Diamond Seminar","type":"Email","status":"Scheduled","startDate":"2026-05-20","endDate":"2026-05-20","budget":30000,"spent":0,"targetAudience":"Investment-purpose leads, Portfolio > \u0e3f1M","template":"Join us for an exclusive seminar on coloured diamond investments...","sentCount":0,"openCount":0,"replyCount":0,"notes":"Targeting HNI segment. Keynote by GIA graduate gemologist."},{"id":"camp005","name":"Diwali Gifting Collection 2025","type":"WhatsApp","status":"Completed","startDate":"2025-10-15","endDate":"2025-11-05","budget":60000,"spent":58500,"targetAudience":"Indian community, Bangkok & Singapore","template":"Celebrate Diwali with timeless diamond jewellery. Special Diwali pricing available for this week only...","sentCount":310,"openCount":248,"replyCount":67,"notes":"Highest volume campaign. Generated 22 new leads, 14 converted."}],"invoices":[{"id":"inv001","invoiceNo":"JV-0001","type":"Invoice","customerId":"c001","clientName":"Rajesh Agarwal","invoiceDate":"2026-03-03","dueDate":"2026-04-02","currency":"THB","paymentMethod":"Wire Transfer","lineItems":[{"desc":"3.2ct D/FL Round Brilliant \u2013 GIA #2467891234","qty":1,"unitPrice":2750000,"discount":0},{"desc":"GIA Certificate & Insurance Documentation","qty":1,"unitPrice":8500,"discount":0}],"discountPct":0,"taxPct":7,"subtotal":2758500,"discountAmt":0,"taxAmt":193095,"total":2951595,"paidAmount":2951595,"balanceDue":0,"status":"Paid","payments":[{"amount":2951595,"date":"2026-03-05","method":"Wire Transfer","ref":"SWIFT-TH20260301-9981","notes":"Full payment received, confirmed by bank.","recordedAt":"2026-03-05T10:00:00"}],"notes":"Payment terms: 100% upfront. Wire transfer to Bangkok Bank, Silom Branch.\nSwift: BKKBTHBK. Account: 172-3-09182-5","createdAt":"2026-03-02T09:00:00","updatedAt":"2026-03-05T10:00:00"},{"id":"inv002","invoiceNo":"JV-0002","type":"Invoice","customerId":"c003","clientName":"Ahmed Al-Mansoori","invoiceDate":"2026-01-29","dueDate":"2026-02-13","currency":"USD","paymentMethod":"Wire Transfer","lineItems":[{"desc":"6.1ct D/IF Round Brilliant \u2013 GIA #4892341005","qty":1,"unitPrice":4800000,"discount":0},{"desc":"Platinum Loose Stone Setting (client's own design)","qty":1,"unitPrice":85000,"discount":5},{"desc":"International Courier & Insurance (FedEx Priority)","qty":1,"unitPrice":12000,"discount":0}],"discountPct":0,"taxPct":0,"subtotal":4892750,"discountAmt":0,"taxAmt":0,"total":4892750,"paidAmount":4892750,"balanceDue":0,"status":"Paid","payments":[{"amount":2500000,"date":"2026-02-08","method":"Wire Transfer","ref":"SWIFT-UAE-20251201-44A","notes":"50% deposit received.","recordedAt":"2026-02-08T14:00:00"},{"amount":2392750,"date":"2026-02-18","method":"Wire Transfer","ref":"SWIFT-UAE-20251215-88B","notes":"Balance received, stone dispatched.","recordedAt":"2026-02-18T11:00:00"}],"notes":"Tax-exempt (export). Delivered to Dubai. No VAT applicable.","cryptoRef":"","createdAt":"2026-01-28T09:00:00","updatedAt":"2026-02-18T11:00:00"},{"id":"inv003","invoiceNo":"JV-0003","type":"Invoice","customerId":"c002","clientName":"Siriporn Charoenwong","invoiceDate":"2026-03-17","dueDate":"2026-04-16","currency":"THB","paymentMethod":"Credit Card","lineItems":[{"desc":"1.8ct F/VS1 Oval \u2013 GIA #3381920045","qty":1,"unitPrice":720000,"discount":0},{"desc":"18K White Gold Halo Setting \u2013 Handcrafted","qty":1,"unitPrice":185000,"discount":5},{"desc":"Engraving & Packaging","qty":1,"unitPrice":3500,"discount":0}],"discountPct":0,"taxPct":7,"subtotal":899750,"discountAmt":0,"taxAmt":62983,"total":962733,"paidAmount":962733,"balanceDue":0,"status":"Paid","payments":[{"amount":962733,"date":"2026-03-20","method":"Credit Card","ref":"CC-AUTH-882947","notes":"Visa card, 3 installments, interest-free.","recordedAt":"2026-03-20T16:00:00"}],"notes":"Valentine's special. Delivered Feb 14, 2026.","createdAt":"2026-03-16T10:00:00","updatedAt":"2026-03-20T16:00:00"},{"id":"inv004","invoiceNo":"JV-0004","type":"Invoice","customerId":"c004","clientName":"Jennifer Wu","invoiceDate":"2026-04-12","dueDate":"2026-05-12","currency":"THB","paymentMethod":"Wire Transfer","lineItems":[{"desc":"2.5ct E/VS1 Emerald Cut \u2013 GIA #7723901887","qty":1,"unitPrice":1420000,"discount":0},{"desc":"Platinum Bezel Setting","qty":1,"unitPrice":145000,"discount":0},{"desc":"HRD Appraisal Certificate","qty":1,"unitPrice":8500,"discount":0}],"discountPct":2,"taxPct":7,"subtotal":1573500,"discountAmt":31470,"taxAmt":107101,"total":1649131,"paidAmount":824565,"balanceDue":824566,"status":"Partial","payments":[{"amount":824565,"date":"2026-04-14","method":"Wire Transfer","ref":"SWIFT-HK-20260312-33X","notes":"50% deposit paid. Balance due on collection.","recordedAt":"2026-04-14T09:00:00"}],"notes":"Balance of 50% due upon collection. Client collecting in person in Bangkok May 12.","createdAt":"2026-04-11T11:00:00","updatedAt":"2026-04-14T09:00:00"},{"id":"inv005","invoiceNo":"JV-0005","type":"Quote","customerId":"c005","clientName":"Vikram Malhotra","invoiceDate":"2026-04-26","dueDate":"2026-05-26","currency":"THB","paymentMethod":"Wire Transfer","lineItems":[{"desc":"4.8ct D/VVS1 Round Brilliant \u2013 GIA Certified (stock no. JV-2026-048)","qty":1,"unitPrice":3200000,"discount":0},{"desc":"Diamond Origin Report (KP Certified \u2013 Botswana)","qty":1,"unitPrice":12000,"discount":0}],"discountPct":0,"taxPct":7,"subtotal":3212000,"discountAmt":0,"taxAmt":224840,"total":3436840,"paidAmount":0,"balanceDue":3436840,"status":"Sent","payments":[],"notes":"Quote valid for 14 days. Price subject to exchange rate fluctuation. 30% deposit required to confirm.","cryptoRef":"","createdAt":"2026-04-26T14:00:00","updatedAt":"2026-04-26T14:00:00"},{"id":"inv006","invoiceNo":"JV-0006","type":"Invoice","customerId":"c007","clientName":"Chalit Pornprasert","invoiceDate":"2026-04-29","dueDate":"2026-05-29","currency":"THB","paymentMethod":"Crypto \u2013 USDT","lineItems":[{"desc":"3.1ct F/VS1 Round Brilliant Solitaire \u2013 GIA #9901234556","qty":1,"unitPrice":1950000,"discount":0},{"desc":"Platinum Solitaire Setting \u2013 4-claw basket","qty":1,"unitPrice":165000,"discount":0},{"desc":"Ring Sizing & Polishing","qty":1,"unitPrice":3500,"discount":0}],"discountPct":0,"taxPct":7,"subtotal":2118500,"discountAmt":0,"taxAmt":148295,"total":2266795,"paidAmount":0,"balanceDue":2266795,"status":"Sent","payments":[],"notes":"Client prefers USDT (TRC20) payment. Wallet: TJYJdLgH7rkQnmXV8D5yZ4mXj1KQnpTZ88\nPayment due within 30 days of invoice date.","cryptoRef":"TJYJdLgH7rkQnmXV8D5yZ4mXj1KQnpTZ88 (TRC20)","createdAt":"2026-04-29T10:00:00","updatedAt":"2026-04-29T10:00:00"},{"id":"inv007","invoiceNo":"JV-0007","type":"Invoice","customerId":"c008","clientName":"Sophie Beaumont","invoiceDate":"2026-04-19","dueDate":"2026-05-04","currency":"THB","paymentMethod":"Credit Card","lineItems":[{"desc":"1.8ct F/VS1 Oval Lab-Grown \u2013 IGI Certified #LG4923881","qty":1,"unitPrice":380000,"discount":0},{"desc":"18K White Gold Pav\u00e9 Halo Setting","qty":1,"unitPrice":220000,"discount":5},{"desc":"Packaging & Insurance Shipping (Paris)","qty":1,"unitPrice":8500,"discount":0}],"discountPct":0,"taxPct":0,"subtotal":597500,"discountAmt":0,"taxAmt":0,"total":597500,"paidAmount":0,"balanceDue":597500,"status":"Overdue","payments":[],"notes":"Tax-exempt (export, France). Net 15 terms agreed. Client to pay by card. Follow up required.","createdAt":"2026-04-19T09:00:00","updatedAt":"2026-04-19T09:00:00"},{"id":"inv008","invoiceNo":"JV-0008","type":"Proforma Invoice","customerId":"c006","clientName":"Lin Mei-Xiu","invoiceDate":"2026-05-01","dueDate":"2026-05-18","currency":"THB","paymentMethod":"Wire Transfer","lineItems":[{"desc":"2.2ct E/VS1 Round Brilliant \u2013 GIA Certified","qty":1,"unitPrice":1600000,"discount":0},{"desc":"Platinum Halo Setting with Pav\u00e9 Band","qty":1,"unitPrice":145000,"discount":0}],"discountPct":0,"taxPct":7,"subtotal":1745000,"discountAmt":0,"taxAmt":122150,"total":1867150,"paidAmount":0,"balanceDue":1867150,"status":"Draft","payments":[],"notes":"Proforma for client approval before final order. 40% deposit required to proceed.","createdAt":"2026-05-01T11:00:00","updatedAt":"2026-05-01T11:00:00"}],"businessCards":[{"id":"bc001","name":"Thomas Bergmann","title":"Senior Diamond Trader","company":"Antwerp Diamond Bourse","email":"t.bergmann@adb.be","phone":"+32 3 222 0594","website":"www.antwerpdiamondbourse.be","address":"Hoveniersstraat 22, 2018 Antwerp, Belgium","notes":"Met at Bangkok Gems Fair 2025. Interested in wholesale rough supply. Follow up Q3 2026.","createdAt":"2026-03-20T01:39:30","source":"PDF Scan"},{"id":"bc002","name":"Preethi Ramachandran","title":"GIA Graduate Gemologist","company":"GIA Mumbai","email":"p.ramachandran@gia.edu","phone":"+91 22 4090 4040","website":"www.gia.edu","address":"Bharat Diamond Bourse, G Block, BKC, Mumbai 400051","notes":"GIA rep, useful for certification queries and training partnerships.","createdAt":"2026-04-04T01:39:30","source":"Image Upload"},{"id":"bc003","name":"Zhang Wei","title":"Procurement Director","company":"Luk Fook Jewellery HK","email":"zhang.wei@lukfook.com","phone":"+852 2128 0900","website":"www.lukfook.com","address":"8 Hart Avenue, Tsim Sha Tsui, Hong Kong","notes":"Interested in loose natural diamonds, 0.5\u20132ct range for retail. High volume potential.","createdAt":"2026-04-14T01:39:30","source":"PDF Scan"},{"id":"bc004","name":"Maria Kowalski","title":"Luxury Brand Manager","company":"Vasco Gems Poland","email":"m.kowalski@vascogems.pl","phone":"+48 22 123 4567","website":"www.vascogems.pl","address":"ul. Mokotowska 48, 00-543 Warsaw, Poland","notes":"Eastern European market contact. Looking for coloured diamonds and fancy shapes.","createdAt":"2026-04-22T01:39:30","source":"Image Upload"}],"users":[{"id":"u001","username":"admin","pwd":"6e28012e","role":"admin","salespersonId":null,"name":"Administrator","active":true,"createdAt":"2026-01-01"},{"id":"u002","username":"arjun","pwd":"cbf66923","role":"user","salespersonId":"sp001","name":"Arjun Mehta","active":true,"createdAt":"2026-01-01"},{"id":"u003","username":"priya","pwd":"531f7c32","role":"user","salespersonId":"sp002","name":"Priya Sharma","active":true,"createdAt":"2026-01-01"},{"id":"u004","username":"kanokwan","pwd":"163e4941","role":"user","salespersonId":"sp003","name":"Kanokwan Thana","active":true,"createdAt":"2026-01-01"},{"id":"u005","username":"david","pwd":"07a34d9f","role":"user","salespersonId":"sp004","name":"David Lim","active":true,"createdAt":"2026-01-01"},{"id":"u006","username":"nadia","pwd":"26eae302","role":"user","salespersonId":"sp005","name":"Nadia Al-Rashid","active":true,"createdAt":"2026-01-01"}],"version":"2.0"};
 // Live database — starts with demo data, overwritten from localStorage if available
 let db = JSON.parse(JSON.stringify(DEMO_DB));
 
@@ -497,6 +588,7 @@ function loadDB(){
   if(!db.businessCards) db.businessCards = JSON.parse(JSON.stringify(DEMO_DB.businessCards));
   if(!db.invoices)      db.invoices      = JSON.parse(JSON.stringify(DEMO_DB.invoices));
   if(!db.settings)      db.settings      = {};
+  if(!db.users || !db.users.length) db.users = JSON.parse(JSON.stringify(DEMO_DB.users||[]));
 }
 function saveDB(){
   try{ localStorage.setItem(DB_KEY, JSON.stringify(db)); }catch(e){ console.log('[CRM] Could not persist data: '+e.message); }
@@ -522,9 +614,9 @@ function updateBadges(){
 // NAVIGATION
 // ══════════════════════════════════════════════
 let currentNav = 'dashboard';
-const TITLES = { dashboard:'Dashboard', customers:'Customers & Leads', pipeline:'Sales Pipeline',
+const TITLES = { dashboard:'Dashboard', customers:'Customers & Leads', pipeline:'Sales Pipeline', users:'Users & Access',
   inventory:'Inventory Interest', salespeople:'Salespeople', reports:'Reports',
-  campaigns:'Campaigns', bizcard:'Business Cards', accounting:'Invoices & Payments', settings:'Settings' };
+  campaigns:'Campaigns', bizcard:'Business Cards', accounting:'Invoices & Payments', settings:'Settings', help:'Help & FAQ' };
 
 /* ── MOBILE SIDEBAR ── */
 function toggleSidebar(){
@@ -540,6 +632,408 @@ function closeSidebar(){
   document.body.style.overflow='';
 }
 
+/* ══════════════════════════════════════════════
+   AUTHENTICATION
+   ══════════════════════════════════════════════ */
+function hashPwd(str){
+  let h=5381;
+  for(let i=0;i<str.length;i++) h=((h*33)^str.charCodeAt(i))>>>0;
+  return h.toString(16).padStart(8,'0');
+}
+
+function doLogin(){
+  const uname=(document.getElementById('login-user').value||'').trim().toLowerCase();
+  const pass=document.getElementById('login-pass').value||'';
+  if(!uname||!pass){ showLoginError('Please enter username and password.'); return; }
+  const users=db.users||[];
+  const user=users.find(u=>u.username.toLowerCase()===uname && u.active!==false);
+  if(!user||user.pwd!==hashPwd(pass)){ showLoginError('Incorrect username or password.'); return; }
+  currentUser=user;
+  // Persist session in sessionStorage (cleared when tab closes)
+  try{ sessionStorage.setItem(AUTH_KEY, JSON.stringify({id:user.id,username:user.username})); }catch(e){}
+  document.getElementById('login-overlay').style.display='none';
+  updateUserBadge();
+  nav('dashboard');
+}
+
+function showLoginError(msg){
+  const el=document.getElementById('login-error');
+  el.textContent=msg; el.style.display='block';
+  setTimeout(()=>el.style.display='none',4000);
+}
+
+function doLogout(){
+  currentUser=null;
+  try{ sessionStorage.removeItem(AUTH_KEY); }catch(e){}
+  document.getElementById('user-badge').style.display='none';
+  document.getElementById('btn-logout').style.display='none';
+  document.getElementById('nav-users').style.display='none';
+  document.getElementById('login-user').value='';
+  document.getElementById('login-pass').value='';
+  document.getElementById('login-overlay').style.display='flex';
+}
+
+function isAdmin(){ return currentUser && currentUser.role==='admin'; }
+
+function canEdit(customer){
+  if(!currentUser) return false;
+  if(isAdmin()) return true;
+  const sp=(db.salespeople||[]).find(s=>s.id===currentUser.salespersonId);
+  if(!sp) return false;
+  return (customer.assignedTo||'').toLowerCase()===sp.name.toLowerCase() || customer.salespersonId===currentUser.salespersonId;
+}
+
+function updateUserBadge(){
+  if(!currentUser) return;
+  const badge=document.getElementById('user-badge');
+  const btn=document.getElementById('btn-logout');
+  const navU=document.getElementById('nav-users');
+  badge.style.display='flex';
+  btn.style.display='';
+  const initials=currentUser.name.split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase();
+  document.getElementById('ub-initials').textContent=initials;
+  document.getElementById('ub-name').textContent=currentUser.name;
+  document.getElementById('ub-role').textContent=currentUser.role==='admin'?'Administrator':'Sales User';
+  if(isAdmin()){ navU.style.display=''; }
+}
+
+function tryAutoLogin(){
+  try{
+    const s=sessionStorage.getItem(AUTH_KEY);
+    if(s){
+      const {id}=JSON.parse(s);
+      const user=(db.users||[]).find(u=>u.id===id&&u.active!==false);
+      if(user){ currentUser=user; return true; }
+    }
+  }catch(e){}
+  return false;
+}
+
+/* ══════════════════════════════════════════════
+   USER MANAGEMENT (Admin only)
+   ══════════════════════════════════════════════ */
+function renderUsers(){
+  if(!isAdmin()){ document.getElementById('content').innerHTML='<div class="empty-state"><div class="empty-icon">🔒</div><div>Admin access required.</div></div>'; return; }
+  const users=db.users||[];
+  const spOptions=(db.salespeople||[]).map(s=>`<option value="${s.id}">${s.name}</option>`).join('');
+  const rows=users.map(u=>{
+    const sp=(db.salespeople||[]).find(s=>s.id===u.salespersonId);
+    const isSelf=currentUser&&u.id===currentUser.id;
+    return `<tr>
+      <td><b>${u.username}</b>${isSelf?' <span style="font-size:10px;color:var(--gold)">(you)</span>':''}</td>
+      <td>${u.name}</td>
+      <td><span class="role-badge role-${u.role}">${u.role==='admin'?'Admin':'User'}</span></td>
+      <td>${sp?sp.name:'—'}</td>
+      <td><span style="color:${u.active!==false?'var(--green)':'var(--red)'}">●</span> ${u.active!==false?'Active':'Inactive'}</td>
+      <td>
+        <button class="btn btn-outline btn-xs" onclick="editUserModal('${u.id}')">Edit</button>
+        ${!isSelf?`<button class="btn btn-outline btn-xs" style="color:var(--red);margin-left:4px" onclick="deleteUser('${u.id}')">Delete</button>`:''}
+      </td>
+    </tr>`;
+  }).join('');
+  document.getElementById('content').innerHTML=`
+    <div style="padding:24px 28px">
+      <div class="section-header" style="margin-bottom:20px">
+        <div><div class="section-title">Users &amp; Access</div><div class="section-sub">Manage CRM users, roles and salesperson assignments</div></div>
+        <button class="btn btn-gold" onclick="newUserModal()">+ Add User</button>
+      </div>
+      <div class="card" style="padding:0;overflow:hidden">
+        <table class="user-table">
+          <thead><tr><th>Username</th><th>Full Name</th><th>Role</th><th>Salesperson</th><th>Status</th><th>Actions</th></tr></thead>
+          <tbody>${rows}</tbody>
+        </table>
+      </div>
+      <div class="card" style="margin-top:16px;background:var(--bg2)">
+        <div style="font-size:12px;color:var(--text2);line-height:1.8">
+          <b>Default passwords (first login):</b> Each user's default password is their username + "1234" (e.g. admin → admin1234).
+          Ask users to change passwords immediately in Settings → Change Password.
+          <br><b>Roles:</b> <span class="role-badge role-admin">Admin</span> — full access, can manage users.
+          &nbsp;<span class="role-badge role-user">User</span> — can view all records, but can only edit/delete their own assigned customers.
+        </div>
+      </div>
+    </div>`;
+}
+
+function newUserModal(){
+  const spOpts=(db.salespeople||[]).map(s=>`<option value="${s.id}">${s.name}</option>`).join('');
+  document.getElementById('modal-users-body').innerHTML=`
+    <div class="fields" style="grid-template-columns:1fr 1fr">
+      <div class="field"><label>Username</label><input id="mu-username" placeholder="e.g. john"></div>
+      <div class="field"><label>Full Name</label><input id="mu-name" placeholder="e.g. John Smith"></div>
+      <div class="field"><label>Password</label><input id="mu-pwd" type="password" placeholder="Min 6 characters"></div>
+      <div class="field"><label>Role</label><select id="mu-role"><option value="user">User (Standard)</option><option value="admin">Admin</option></select></div>
+      <div class="field"><label>Linked Salesperson</label><select id="mu-sp"><option value="">— None (Admin) —</option>${spOpts}</select></div>
+      <div class="field"><label>Status</label><select id="mu-active"><option value="true">Active</option><option value="false">Inactive</option></select></div>
+    </div>
+    <div style="display:flex;gap:10px;margin-top:20px">
+      <button class="btn btn-gold" onclick="saveUser(null)">Create User</button>
+      <button class="btn btn-outline" onclick="closeModal('modal-users');renderUsers()">Cancel</button>
+    </div>`;
+  showModal('modal-users');
+}
+
+function editUserModal(id){
+  const u=(db.users||[]).find(x=>x.id===id);
+  if(!u) return;
+  const spOpts=(db.salespeople||[]).map(s=>`<option value="${s.id}" ${s.id===u.salespersonId?'selected':''}>${s.name}</option>`).join('');
+  document.getElementById('modal-users-body').innerHTML=`
+    <div class="fields" style="grid-template-columns:1fr 1fr">
+      <div class="field"><label>Username</label><input id="mu-username" value="${u.username}"></div>
+      <div class="field"><label>Full Name</label><input id="mu-name" value="${u.name}"></div>
+      <div class="field"><label>New Password <span style="font-weight:400;color:var(--text3)">(leave blank to keep)</span></label><input id="mu-pwd" type="password" placeholder="Leave blank to keep current"></div>
+      <div class="field"><label>Role</label><select id="mu-role"><option value="user" ${u.role==='user'?'selected':''}>User (Standard)</option><option value="admin" ${u.role==='admin'?'selected':''}>Admin</option></select></div>
+      <div class="field"><label>Linked Salesperson</label><select id="mu-sp"><option value="">— None (Admin) —</option>${spOpts}</select></div>
+      <div class="field"><label>Status</label><select id="mu-active"><option value="true" ${u.active!==false?'selected':''}>Active</option><option value="false" ${u.active===false?'selected':''}>Inactive</option></select></div>
+    </div>
+    <div style="display:flex;gap:10px;margin-top:20px">
+      <button class="btn btn-gold" onclick="saveUser('${id}')">Save Changes</button>
+      <button class="btn btn-outline" onclick="closeModal('modal-users');renderUsers()">Cancel</button>
+    </div>`;
+  showModal('modal-users');
+}
+
+function saveUser(id){
+  const username=(document.getElementById('mu-username').value||'').trim().toLowerCase();
+  const name=(document.getElementById('mu-name').value||'').trim();
+  const pwdRaw=(document.getElementById('mu-pwd').value||'').trim();
+  const role=document.getElementById('mu-role').value;
+  const spId=document.getElementById('mu-sp').value||null;
+  const active=document.getElementById('mu-active').value==='true';
+  if(!username||!name){ alert('Username and Full Name are required.'); return; }
+  if(!id && !pwdRaw){ alert('Password is required for new users.'); return; }
+  if(pwdRaw && pwdRaw.length<6){ alert('Password must be at least 6 characters.'); return; }
+  // Check username unique
+  const existing=(db.users||[]).find(u=>u.username.toLowerCase()===username && u.id!==id);
+  if(existing){ alert('Username already exists. Please choose a different one.'); return; }
+  if(!db.users) db.users=[];
+  if(id){
+    const idx=db.users.findIndex(u=>u.id===id);
+    if(idx>-1){
+      db.users[idx].username=username; db.users[idx].name=name; db.users[idx].role=role;
+      db.users[idx].salespersonId=spId; db.users[idx].active=active;
+      if(pwdRaw) db.users[idx].pwd=hashPwd(pwdRaw);
+    }
+  } else {
+    const newId='u'+Date.now();
+    db.users.push({id:newId,username,pwd:hashPwd(pwdRaw),role,salespersonId:spId,name,active,createdAt:new Date().toISOString()});
+  }
+  saveDB(); closeModal('modal-users'); renderUsers();
+}
+
+function deleteUser(id){
+  if(currentUser&&id===currentUser.id){ alert('You cannot delete your own account.'); return; }
+  if(!confirm('Delete this user? They will no longer be able to log in.')) return;
+  db.users=(db.users||[]).filter(u=>u.id!==id);
+  saveDB(); renderUsers();
+}
+
+/* ══════════════════════════════════════════════
+   EXCEL / CSV IMPORT
+   ══════════════════════════════════════════════ */
+const IMPORT_COL_MAP = {
+  'first name':'firstName','firstname':'firstName','first':'firstName',
+  'last name':'lastName','lastname':'lastName','last':'lastName','surname':'lastName',
+  'salutation':'salutation','title':'salutation',
+  'email':'email','email address':'email',
+  'phone':'phone','phone number':'phone','mobile':'phone','tel':'phone',
+  'whatsapp':'whatsapp','whatsapp number':'whatsapp',
+  'nationality':'nationality',
+  'language':'language','languages':'language',
+  'dob':'dob','date of birth':'dob','birthday':'dob',
+  'city':'city',
+  'country':'country',
+  'company':'company','organization':'company','organisation':'company',
+  'designation':'designation','job title':'designation','position':'designation',
+  'lead source':'leadSource','leadsource':'leadSource','source':'leadSource',
+  'lead status':'leadStatus','leadstatus':'leadStatus','status':'leadStatus',
+  'pipeline stage':'pipelineStage','pipelinestage':'pipelineStage','stage':'pipelineStage',
+  'assigned to':'assignedTo','assignedto':'assignedTo','salesperson':'assignedTo',
+  'budget min':'budgetMin','budgetmin':'budgetMin','min budget':'budgetMin',
+  'budget max':'budgetMax','budgetmax':'budgetMax','max budget':'budgetMax',
+  'deal value':'dealValue','dealvalue':'dealValue','value':'dealValue',
+  'diamond type':'diamondType','diamondtype':'diamondType','type':'diamondType',
+  'purpose':'purpose',
+  'notes':'notes','note':'notes','comments':'notes',
+  'tags':'tags',
+  'currency':'currency',
+  'vip level':'vipLevel','viplevel':'vipLevel','vip':'vipLevel',
+};
+
+function showImportModal(){
+  importState=null;
+  document.getElementById('modal-import-body').innerHTML=`
+    <div style="margin-bottom:16px">
+      <button class="btn btn-outline btn-sm" onclick="downloadImportTemplate()" style="margin-bottom:12px">📥 Download Template (.xlsx)</button>
+      <div style="font-size:12px;color:var(--text3)">Fill the template and upload it, or upload your own Excel/CSV file. Columns are matched by header name automatically.</div>
+    </div>
+    <div class="import-zone" id="import-zone" onclick="document.getElementById('import-file').click()" ondragover="event.preventDefault();this.classList.add('drag-over')" ondragleave="this.classList.remove('drag-over')" ondrop="handleImportDrop(event)">
+      <div style="font-size:40px;margin-bottom:10px">📊</div>
+      <div style="font-size:15px;font-weight:600;color:var(--text);margin-bottom:6px">Click to upload or drag &amp; drop</div>
+      <div style="font-size:12px;color:var(--text3)">.xlsx, .xls, .csv — max 5,000 rows</div>
+      <input type="file" id="import-file" accept=".xlsx,.xls,.csv" style="display:none" onchange="handleImportFile(this.files[0])">
+    </div>
+    <div id="import-result"></div>`;
+  showModal('modal-import');
+}
+
+function handleImportDrop(e){
+  e.preventDefault();
+  document.getElementById('import-zone').classList.remove('drag-over');
+  const f=e.dataTransfer.files[0];
+  if(f) handleImportFile(f);
+}
+
+function handleImportFile(file){
+  if(!file) return;
+  if(!window.XLSX){ alert('SheetJS not loaded. Please check internet connection.'); return; }
+  document.getElementById('import-result').innerHTML='<div style="padding:20px;text-align:center;color:var(--text3)">⏳ Parsing file…</div>';
+  const reader=new FileReader();
+  reader.onload=e=>{
+    try{
+      const wb=XLSX.read(e.target.result,{type:'binary'});
+      const ws=wb.Sheets[wb.SheetNames[0]];
+      const rows=XLSX.utils.sheet_to_json(ws,{defval:''});
+      if(!rows.length){ document.getElementById('import-result').innerHTML='<div style="color:var(--red);padding:16px">No data found in file.</div>'; return; }
+      processImportRows(rows);
+    }catch(err){ document.getElementById('import-result').innerHTML=`<div style="color:var(--red);padding:16px">Error parsing file: ${err.message}</div>`; }
+  };
+  reader.readAsBinaryString(file);
+}
+
+function processImportRows(rows){
+  // Map columns
+  const mapped=rows.map(row=>{
+    const obj={};
+    Object.entries(row).forEach(([k,v])=>{
+      const field=IMPORT_COL_MAP[k.toLowerCase().trim()];
+      if(field) obj[field]=String(v).trim();
+    });
+    return obj;
+  }).filter(r=>r.firstName||r.lastName||r.email);
+
+  // Detect duplicates
+  const existing=db.customers||[];
+  const dups=[]; const newRecs=[];
+  mapped.forEach(r=>{
+    const emailMatch=r.email && existing.find(c=>(c.email||'').toLowerCase()===r.email.toLowerCase());
+    const phoneMatch=r.phone && existing.find(c=>(c.phone||'').replace(/\s/g,'')===r.phone.replace(/\s/g,''));
+    if(emailMatch||phoneMatch){
+      dups.push({rec:r, matchReason: emailMatch?`Email matches ${emailMatch.firstName} ${emailMatch.lastName}`:`Phone matches ${phoneMatch.firstName} ${phoneMatch.lastName}`});
+    } else {
+      newRecs.push(r);
+    }
+  });
+
+  importState={newRecs, dups};
+
+  // Build preview
+  const previewRows=mapped.slice(0,8).map(r=>{
+    const isDup=dups.find(d=>d.rec===r);
+    return `<tr class="${isDup?'dup-row':''}">
+      <td>${r.firstName||''} ${r.lastName||''}</td>
+      <td>${r.email||'—'}</td>
+      <td>${r.phone||'—'}</td>
+      <td>${r.leadStatus||'—'}</td>
+      <td>${isDup?`<span style="color:var(--red);font-size:11px">${isDup.matchReason}</span>`:'<span style="color:var(--green);font-size:11px">✓ New</span>'}</td>
+    </tr>`;
+  }).join('');
+
+  const moreCount=mapped.length-8;
+  document.getElementById('import-result').innerHTML=`
+    <div style="margin-top:16px">
+      <div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:14px">
+        <div style="background:#EAF4ED;border:1px solid #90C8A0;border-radius:8px;padding:10px 16px;font-size:13px">
+          <b style="font-size:18px;color:var(--green)">${newRecs.length}</b> new records ready to import
+        </div>
+        ${dups.length?`<div style="background:#FEF0EE;border:1px solid #E8A090;border-radius:8px;padding:10px 16px;font-size:13px">
+          <b style="font-size:18px;color:var(--red)">${dups.length}</b> duplicates (will be skipped)
+        </div>`:''}
+        <div style="background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:10px 16px;font-size:13px">
+          <b style="font-size:18px">${mapped.length}</b> total rows detected
+        </div>
+      </div>
+      ${dups.length?`<div style="background:#FEF5F0;border:1px solid #E8C0B0;border-radius:8px;padding:10px 14px;font-size:12px;color:#7A3020;margin-bottom:12px">
+        ⚠ <b>${dups.length} duplicate(s)</b> found (matching email or phone). These rows are highlighted below and will be skipped. Only the ${newRecs.length} new records will be imported.
+      </div>`:''}
+      <div class="import-preview" style="max-height:220px;overflow-y:auto">
+        <table>
+          <thead><tr><th>Name</th><th>Email</th><th>Phone</th><th>Status</th><th>Result</th></tr></thead>
+          <tbody>${previewRows}${moreCount>0?`<tr><td colspan="5" style="color:var(--text3);font-style:italic;padding:8px 10px">…and ${moreCount} more rows</td></tr>`:''}</tbody>
+        </table>
+      </div>
+      ${newRecs.length>0?`
+      <div style="display:flex;gap:10px;margin-top:16px">
+        <button class="btn btn-gold" onclick="confirmImport()">Import ${newRecs.length} New Record${newRecs.length!==1?'s':''}</button>
+        <button class="btn btn-outline" onclick="closeModal('modal-import');importState=null">Cancel</button>
+      </div>`:`<div style="margin-top:14px;color:var(--text3);font-size:13px">No new records to import.</div>`}
+    </div>`;
+}
+
+function confirmImport(){
+  if(!importState||!importState.newRecs.length) return;
+  const today=new Date().toISOString();
+  importState.newRecs.forEach(r=>{
+    const newC={
+      id:'c'+Date.now()+Math.random().toString(36).slice(2,6),
+      firstName:r.firstName||'',
+      lastName:r.lastName||'',
+      salutation:r.salutation||'',
+      email:r.email||'',
+      phone:r.phone||'',
+      whatsapp:r.whatsapp||r.phone||'',
+      nationality:r.nationality||'',
+      language:r.language||'',
+      dob:r.dob||'',
+      city:r.city||'',
+      country:r.country||'',
+      company:r.company||'',
+      designation:r.designation||'',
+      leadSource:r.leadSource||'Manual Import',
+      leadStatus:r.leadStatus||'New',
+      pipelineStage:r.pipelineStage||'Awareness',
+      assignedTo:r.assignedTo||'',
+      budgetMin:parseFloat(r.budgetMin)||0,
+      budgetMax:parseFloat(r.budgetMax)||0,
+      dealValue:parseFloat(r.dealValue)||0,
+      probability:0,
+      diamondType:r.diamondType||'',
+      purpose:r.purpose||'',
+      currency:r.currency||'THB',
+      vipLevel:r.vipLevel||'None',
+      notes:r.notes||'',
+      tags:r.tags?r.tags.split(/[,;]+/).map(t=>t.trim()).filter(Boolean):[],
+      totalLifetimeValue:0,
+      preferredShapes:[],
+      colorGrade:[],
+      clarityGrade:[],
+      certification:[],
+      metalPreference:[],
+      commPref:[],
+      createdAt:today,
+      updatedAt:today,
+      importedAt:today
+    };
+    db.customers.push(newC);
+  });
+  recalcAllVip();
+  const count = importState.newRecs.length;
+  closeModal('modal-import');
+  importState=null;
+  renderCustomers();
+  // small delay so modal closes first
+  setTimeout(()=>alert('✅ Successfully imported '+count+' record'+(count!==1?'s':'')+'.'),200);
+}
+
+function downloadImportTemplate(){
+  if(!window.XLSX){ alert('SheetJS not loaded.'); return; }
+  const headers=['First Name','Last Name','Salutation','Email','Phone','WhatsApp','Nationality','Language','DOB','City','Country','Company','Designation','Lead Source','Lead Status','Pipeline Stage','Assigned To','Budget Min','Budget Max','Deal Value','Diamond Type','Purpose','Currency','VIP Level','Notes','Tags'];
+  const sample=[['Priya','Nair','Ms','priya.nair@email.com','+66 81 000 0000','+66 81 000 0000','Indian','English, Hindi','1990-03-15','Bangkok','Thailand','','','Walk-in','New','Awareness','Arjun Mehta','500000','800000','0','Natural','Engagement Ring','THB','None','Met at Silom store','Engagement,Walk-in']];
+  const ws=XLSX.utils.aoa_to_sheet([headers,...sample]);
+  const wb=XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb,ws,'Customers');
+  XLSX.writeFile(wb,'Diamond_CRM_Import_Template.xlsx');
+}
+
 function nav(section){
   currentNav = section; destroyCharts();
   // Auto-close sidebar on mobile when a nav item is tapped
@@ -551,7 +1045,8 @@ function nav(section){
   try{
     const renders = { dashboard:renderDashboard, customers:renderCustomers, pipeline:renderPipeline,
       inventory:renderInventory, salespeople:renderSalespeople, reports:renderReports,
-      campaigns:renderCampaigns, bizcard:renderBizcard, accounting:renderAccounting, settings:renderSettings };
+      campaigns:renderCampaigns, bizcard:renderBizcard, accounting:renderAccounting,
+      settings:renderSettings, users:renderUsers, help:renderHelp };
     if(renders[section]) renders[section]();
   }catch(e){
     console.error('[CRM] Render error in '+section+':', e);
@@ -894,6 +1389,7 @@ function renderDashboard(){
 
 let custFilter={search:"",status:"All",stage:"All",vip:"All",sp:"All",sort:"newest"};
 let editCustId=null;
+let custPhoto=null; // base64 string or null during form editing
 let selectedCustId=null;
 let custViewMode='card';
 let custTableSort={col:'createdAt',dir:'desc'};
@@ -965,6 +1461,7 @@ function renderCustomers(){
     <button class="view-btn ${custViewMode==='card'?'active':''}" onclick="custViewMode='card';renderCustomers()" title="Card view">${cardSvg}</button>
     <button class="view-btn ${custViewMode==='table'?'active':''}" onclick="custViewMode='table';renderCustomers()" title="Table view">${tableSvg}</button>
   </div>
+  <button class="btn btn-outline btn-sm" onclick="showImportModal()">📥 Import Excel</button>
   <button class="btn btn-gold" onclick="openCustModal(null)">+ Add Customer</button>
 </div>
 <div style="margin-bottom:6px;font-size:12px;color:var(--text3)">${list.length} client${list.length!==1?'s':''} found</div>
@@ -980,7 +1477,7 @@ function renderCustCards(list){
 ${list.map(c=>`
   <div class="cust-card" onclick="selectedCustId='${c.id}';renderCustomers()">
     <div class="flex items-center gap-2">
-      <div class="avatar" style="width:34px;height:34px;font-size:13px">${(c.firstName||'?')[0]}</div>
+      ${avatarHtml(c,40,14)}
       <div style="flex:1;min-width:0">
         <div class="cust-name">${c.firstName} ${c.lastName}${c.vipLevel&&c.vipLevel!=='None'?` <span class="badge badge-vip-${c.vipLevel.toLowerCase()}">${c.vipLevel}</span>`:''}</div>
         <div class="cust-meta">${c.company||c.nationality||''} ${c.assignedTo?'· '+c.assignedTo:''}</div>
@@ -994,8 +1491,8 @@ ${list.map(c=>`
     </div>
     ${c.tags&&c.tags.length?`<div class="cust-tags">${c.tags.slice(0,4).map(t=>`<span class="tag">${t}</span>`).join('')}</div>`:''}
     <div class="flex gap-2 mt-1">
-      <button class="btn btn-outline btn-sm" onclick="event.stopPropagation();openCustModal('${c.id}')">✏️ Edit</button>
-      <button class="btn btn-outline btn-sm" onclick="event.stopPropagation();deleteCust('${c.id}')">🗑</button>
+      ${canEdit(c)?`<button class="btn btn-outline btn-sm" onclick="event.stopPropagation();openCustModal('${c.id}')">✏️ Edit</button>`:''}
+      ${canEdit(c)?`<button class="btn btn-outline btn-sm" onclick="event.stopPropagation();deleteCust('${c.id}')">🗑</button>`:`<span style="font-size:11px;color:var(--text3)">👁 View only</span>`}
     </div>
   </div>`).join('')}
 </div>`;
@@ -1021,7 +1518,7 @@ function renderCustTableHTML(list){
     <tr class="${selectedCustId===c.id?'row-sel':''}" onclick="selectedCustId='${c.id}';renderCustomers()">
       <td>
         <div class="flex items-center gap-2">
-          <div class="avatar" style="width:28px;height:28px;font-size:11px;flex-shrink:0">${(c.firstName||'?')[0]}</div>
+          ${avatarHtml(c,28,11)}
           <div>
             <div class="ct-name">${c.firstName} ${c.lastName}</div>
             <div class="ct-sub">${c.email||''}</div>
@@ -1044,8 +1541,8 @@ function renderCustTableHTML(list){
       <td style="color:var(--text3)">${fmtDate(c.updatedAt||c.createdAt)}</td>
       <td onclick="event.stopPropagation()">
         <div class="flex gap-1">
-          <button class="btn btn-outline btn-sm" style="padding:3px 7px" onclick="openCustModal('${c.id}')">✏️</button>
-          <button class="btn btn-outline btn-sm" style="padding:3px 7px" onclick="deleteCust('${c.id}')">🗑</button>
+          ${canEdit(c)?`<button class="btn btn-outline btn-sm" style="padding:3px 7px" onclick="openCustModal('${c.id}')">✏️</button>`:''}
+          ${canEdit(c)?`<button class="btn btn-outline btn-sm" style="padding:3px 7px" onclick="deleteCust('${c.id}')">🗑</button>`:`<span style="font-size:10px;color:var(--text3)">👁</span>`}
         </div>
       </td>
     </tr>`).join('');
@@ -1079,7 +1576,7 @@ function buildCustDetail(c){
   const actIcons={'Call':'📞','Email':'✉️','WhatsApp':'💬','Meeting':'🤝','Follow-up':'🔔','Note':'📝'};
   return `
     <div class="flex items-center gap-2" style="margin-bottom:16px">
-      <div class="avatar" style="width:44px;height:44px;font-size:18px">${(c.firstName||'?')[0]}</div>
+      ${avatarHtml(c,52,20)}
       <div style="flex:1">
         <div style="font-size:16px;font-weight:800;color:var(--text)">${c.firstName} ${c.lastName}</div>
         <div class="text-xs">${c.email||''} ${c.phone?'· '+c.phone:''}</div>
@@ -1175,18 +1672,48 @@ function deleteCust(id){ if(confirm('Delete this customer?')){ db.customers=db.c
 function openCustModal(id){
   editCustId=id;
   const c=id?db.customers.find(x=>x.id===id):{};
+  custPhoto=(c&&c.photo)||null;
   initFormData(c||{});
   document.getElementById('modal-cust-title').textContent=id?'Edit Customer':'Add Customer';
   document.getElementById('modal-cust-body').innerHTML=buildCustForm(c||{});
   showModal('modal-cust');
 }
 
+function avatarHtml(c, size=34, fs=13){
+  if(c.photo) return `<div style="width:${size}px;height:${size}px;border-radius:50%;overflow:hidden;flex-shrink:0;background:#ddd;border:2px solid var(--border)"><img src="${c.photo}" style="width:100%;height:100%;object-fit:cover" loading="lazy"></div>`;
+  return `<div class="avatar" style="width:${size}px;height:${size}px;font-size:${fs}px;flex-shrink:0">${(c.firstName||'?')[0]}</div>`;
+}
 function v(c,k,def=''){ return c[k]!==undefined?c[k]:def; }
 function sel(c,k,val){ return (c[k]||'')==val?'sel':''; }
 function chk(c,k,val){ return (c[k]||[]).includes(val)?'sel':''; }
 
 function buildCustForm(c){
+  const photoSrc = custPhoto || c.photo || null;
   return `
+<div class="form-section" style="padding-bottom:16px">
+  <div class="form-section-title">📷 Profile Photo</div>
+  <div style="display:flex;align-items:center;gap:18px">
+    <div id="photo-preview-wrap" onclick="document.getElementById('f-photo-input').click()"
+      style="width:84px;height:84px;border-radius:50%;overflow:hidden;background:var(--hover);
+             border:2px dashed var(--border);display:flex;align-items:center;justify-content:center;
+             cursor:pointer;flex-shrink:0;transition:border-color .2s"
+      onmouseover="this.style.borderColor='var(--gold)'" onmouseout="this.style.borderColor='var(--border)'">
+      ${photoSrc
+        ? `<img id="photo-preview-img" src="${photoSrc}" style="width:100%;height:100%;object-fit:cover">`
+        : `<div id="photo-preview-img" style="text-align:center;font-size:12px;color:var(--text3);line-height:1.5">📷<br>Upload</div>`}
+    </div>
+    <div>
+      <input type="file" id="f-photo-input" accept="image/*" style="display:none" onchange="handlePhotoUpload(this)">
+      <button type="button" class="btn btn-outline btn-sm" onclick="document.getElementById('f-photo-input').click()">📷 Upload Photo</button>
+      <button type="button" class="btn btn-outline btn-sm" id="photo-remove-btn" onclick="clearCustPhoto()"
+        style="${photoSrc?'':'display:none'};margin-left:6px;color:#e74c3c;border-color:#e74c3c">✕ Remove</button>
+      <div style="font-size:11px;color:var(--text3);margin-top:8px;line-height:1.5">
+        JPG, PNG or WEBP · Shown on customer cards<br>
+        <span style="color:var(--gold)">Tip: click the circle to upload</span>
+      </div>
+    </div>
+  </div>
+</div>
 <div class="form-section">
   <div class="form-section-title">👤 Personal Information</div>
   <div class="fields">
@@ -1316,6 +1843,47 @@ function buildCustForm(c){
 </div>`;
 }
 
+// ── Photo upload helpers ──
+function handlePhotoUpload(input){
+  const file=input.files[0];
+  if(!file) return;
+  if(file.size > 3*1024*1024){ alert('Photo must be under 3 MB.'); return; }
+  const reader=new FileReader();
+  reader.onload=function(e){
+    custPhoto=e.target.result;
+    const wrap=document.getElementById('photo-preview-wrap');
+    const img=document.getElementById('photo-preview-img');
+    if(img.tagName==='IMG'){
+      img.src=custPhoto;
+    } else {
+      // replace placeholder div with img
+      const newImg=document.createElement('img');
+      newImg.id='photo-preview-img';
+      newImg.src=custPhoto;
+      newImg.style.cssText='width:100%;height:100%;object-fit:cover';
+      img.parentNode.replaceChild(newImg, img);
+    }
+    const btn=document.getElementById('photo-remove-btn');
+    if(btn) btn.style.display='';
+  };
+  reader.readAsDataURL(file);
+}
+function clearCustPhoto(){
+  custPhoto=null;
+  const img=document.getElementById('photo-preview-img');
+  if(img){
+    const placeholder=document.createElement('div');
+    placeholder.id='photo-preview-img';
+    placeholder.style.cssText='text-align:center;font-size:12px;color:var(--text3);line-height:1.5';
+    placeholder.innerHTML='📷<br>Upload';
+    img.parentNode.replaceChild(placeholder, img);
+  }
+  const btn=document.getElementById('photo-remove-btn');
+  if(btn) btn.style.display='none';
+  const fileInput=document.getElementById('f-photo-input');
+  if(fileInput) fileInput.value='';
+}
+
 // ── Form state (radio/checkbox groups) ──
 const formData = {};
 function initFormData(c){
@@ -1352,6 +1920,7 @@ function togglePaymentFields(val){
 function openCustModalFull(id){
   editCustId=id;
   const c=id?db.customers.find(x=>x.id===id):{};
+  custPhoto=(c&&c.photo)||null;
   initFormData(c||{});
   document.getElementById('modal-cust-title').textContent=id?'Edit Customer':'Add Customer';
   document.getElementById('modal-cust-body').innerHTML=buildCustForm(c||{});
@@ -1390,7 +1959,9 @@ function saveCust(){
     clientBankDetails:g('f-bankdetails'), cryptoCoin:g('f-crypto-coin'), cryptoWallet:g('f-crypto-addr'),
     conflictFreePriority:g('f-cfp'), envConcern:g('f-env'), originPreference:g('f-orig'),
     commPreference:formData.commPreference||[],
-    notes:g('f-notes'), tags, updatedAt:new Date().toISOString()
+    notes:g('f-notes'), tags,
+    photo: custPhoto!==undefined ? custPhoto : (editCustId?(db.customers.find(x=>x.id===editCustId)||{}).photo||null:null),
+    updatedAt:new Date().toISOString()
   };
   if(editCustId){
     const idx=db.customers.findIndex(x=>x.id===editCustId);
@@ -2547,6 +3118,346 @@ loadDB();
 // Recalculate VIP from invoice data; if db is empty just update badges
 if(db.customers && db.customers.length > 0){ recalcAllVip(); } else { updateBadges(); }
 nav('dashboard');
+
+// ══════════════════════════════════════════════
+// HELP & FAQ
+// ══════════════════════════════════════════════
+function renderHelp(){
+  document.getElementById('content').innerHTML=`
+<div style="max-width:860px;margin:0 auto;padding-bottom:48px">
+
+<!-- ── search ── -->
+<div style="margin-bottom:22px">
+  <input id="help-search" class="search-box" style="width:100%;max-width:420px;font-size:14px"
+    placeholder="🔍 Search the manual…" oninput="helpSearch(this.value)">
+</div>
+
+<!-- ── hero ── -->
+<div style="background:linear-gradient(120deg,var(--sidebar-bg) 0%,#2a1a4a 100%);border-radius:16px;padding:28px 32px;margin-bottom:28px;color:#fff;position:relative;overflow:hidden">
+  <div style="position:absolute;right:24px;top:50%;transform:translateY(-50%);font-size:72px;opacity:.13;line-height:1">💎</div>
+  <div style="font-size:22px;font-weight:700;color:var(--gold);margin-bottom:6px">Diamond CRM — User Manual</div>
+  <div style="font-size:13px;opacity:.8;margin-bottom:4px">Version 3.0 &nbsp;·&nbsp; Jay Vijay Diamond Co., Ltd. / Saraff Global &nbsp;·&nbsp; Bangkok</div>
+  <div style="font-size:12px;opacity:.6">Confidential — Internal Use Only</div>
+</div>
+
+<!-- ── quick-nav pills ── -->
+<div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:28px" id="help-toc">
+  ${[['#h-start','Getting Started'],['#h-login','Login'],['#h-nav','Navigation'],['#h-customers','Customers'],
+     ['#h-pipeline','Sales Pipeline'],['#h-import','Excel Import'],['#h-users','Users & Access'],
+     ['#h-roles','Role Control'],['#h-other','Other Sections'],['#h-data','Data & Backup'],['#h-creds','Credentials'],['#h-faq','FAQ']]
+    .map(([href,label])=>`<a href="${href}" style="padding:5px 14px;border-radius:20px;background:var(--card);border:1px solid var(--border);font-size:12px;color:var(--text);text-decoration:none;transition:all .15s" onmouseover="this.style.borderColor='var(--gold)';this.style.color='var(--gold)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--text)'">${label}</a>`)
+    .join('')}
+</div>
+
+<!-- ═══════════════════ SECTION: Getting Started ═══════════════════ -->
+<div class="help-section" id="h-start">
+  <div class="help-h1">1. Getting Started</div>
+  <p class="help-p">The Diamond CRM is a self-contained, browser-based tool that runs entirely from a single HTML file — <b>no installation, no internet connection, no server required</b>. All data is stored locally in your browser.</p>
+  <div class="help-steps">
+    <div class="help-step"><span class="help-step-n">1</span>Locate <b>diamond_crm.html</b> on your computer.</div>
+    <div class="help-step"><span class="help-step-n">2</span>Double-click it, or right-click → <b>Open with → Google Chrome</b> (recommended).</div>
+    <div class="help-step"><span class="help-step-n">3</span>The login screen appears. Enter your username and password, then click <b>Sign In</b>.</div>
+  </div>
+  <div class="help-note">💡 Always keep the file in a stable folder. Avoid storing it in Downloads — that folder may be auto-cleared.</div>
+</div>
+
+<!-- ═══════════════════ SECTION: Login ═══════════════════ -->
+<div class="help-section" id="h-login">
+  <div class="help-h1">2. Login &amp; Authentication <span class="help-new">NEW in v3</span></div>
+  <p class="help-p">Every user has their own account. You must sign in before accessing any part of the CRM. If your credentials are wrong, an error appears in the login panel — the page does not reload.</p>
+
+  <div class="help-h2">Session persistence</div>
+  <p class="help-p">Your session is remembered within the same browser tab. If you reload the page it restores automatically. To fully sign out, click <b>Sign Out</b> in the top-right corner.</p>
+
+  <div class="help-h2">Default credentials</div>
+  <p class="help-p" style="color:#e76f51;font-weight:600">⚠️ Change all passwords after first login. Contact your admin to reset a forgotten password.</p>
+  <table class="help-table">
+    <thead><tr><th>Username</th><th>Default Password</th><th>Role</th><th>Linked Salesperson</th></tr></thead>
+    <tbody>
+      <tr><td><code>admin</code></td><td><code>admin1234</code></td><td><span class="role-badge role-admin">Admin</span></td><td>— (full access)</td></tr>
+      <tr><td><code>arjun</code></td><td><code>arjun1234</code></td><td><span class="role-badge role-user">User</span></td><td>Arjun Sharma (SP-001)</td></tr>
+      <tr><td><code>priya</code></td><td><code>priya1234</code></td><td><span class="role-badge role-user">User</span></td><td>Priya Mehta (SP-002)</td></tr>
+      <tr><td><code>kanokwan</code></td><td><code>kanok1234</code></td><td><span class="role-badge role-user">User</span></td><td>Kanokwan T. (SP-003)</td></tr>
+      <tr><td><code>david</code></td><td><code>david1234</code></td><td><span class="role-badge role-user">User</span></td><td>David Chen (SP-004)</td></tr>
+      <tr><td><code>nadia</code></td><td><code>nadia1234</code></td><td><span class="role-badge role-user">User</span></td><td>Nadia Al-Rashid (SP-005)</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<!-- ═══════════════════ SECTION: Navigation ═══════════════════ -->
+<div class="help-section" id="h-nav">
+  <div class="help-h1">3. Navigation</div>
+  <div class="help-h2">Desktop sidebar</div>
+  <p class="help-p">A fixed sidebar on the left contains links to every section. Click any item to navigate.</p>
+  <table class="help-table">
+    <thead><tr><th>Section</th><th>Purpose</th></tr></thead>
+    <tbody>
+      <tr><td>📊 Dashboard</td><td>KPI cards, pipeline summary, top salespeople, recent activity</td></tr>
+      <tr><td>👥 Customers &amp; Leads</td><td>Full customer database — add, edit, search, filter, import Excel</td></tr>
+      <tr><td>🚀 Sales Pipeline</td><td>7-stage Kanban board for deal progression</td></tr>
+      <tr><td>💎 Inventory Interest</td><td>Diamond styles/categories customers have enquired about</td></tr>
+      <tr><td>🤝 Salespeople</td><td>Roster with auto-calculated performance metrics</td></tr>
+      <tr><td>📈 Reports</td><td>Revenue charts, conversion funnel, campaign ROI</td></tr>
+      <tr><td>📣 Campaigns</td><td>Marketing campaign management and customer linkage</td></tr>
+      <tr><td>🪪 Business Cards</td><td>Printable digital business card generator</td></tr>
+      <tr><td>🧾 Invoices &amp; Payments</td><td>Invoice creation, payment recording, balance tracking</td></tr>
+      <tr><td>🔐 Users &amp; Access</td><td><b>Admin only</b> — manage user accounts &amp; roles</td></tr>
+      <tr><td>❓ Help &amp; FAQ</td><td>This screen — full user manual</td></tr>
+      <tr><td>⚙️ Settings</td><td>Company details, VIP thresholds, export/import database</td></tr>
+    </tbody>
+  </table>
+
+  <div class="help-h2">Mobile navigation <span class="help-new">NEW in v3</span></div>
+  <p class="help-p">On screens ≤ 768px the sidebar hides automatically. Tap the <b>☰</b> hamburger button (top-left) to slide it in. Tap the dark backdrop or ☰ again to close it. The sidebar also closes when you tap a section link.</p>
+  <div class="help-note">💡 On phones the top search bar is hidden. Use the search &amp; filter controls inside each section instead.</div>
+</div>
+
+<!-- ═══════════════════ SECTION: Customers ═══════════════════ -->
+<div class="help-section" id="h-customers">
+  <div class="help-h1">4. Customers &amp; Leads</div>
+  <div class="help-h2">Viewing &amp; filtering</div>
+  <p class="help-p">Toggle between <b>Card View</b> (default) and <b>List View</b> using the icons top-right of the toolbar. Use the Search box and the Status / Stage / VIP / Salesperson dropdowns to filter records.</p>
+
+  <div class="help-h2">Adding a customer</div>
+  <p class="help-p">Click <b>+ Add Customer</b> (visible in the top bar on every screen). Fill in personal details, lead status, pipeline stage, assigned salesperson, budget, diamond preferences, and tags. Click <b>Save</b>.</p>
+
+  <div class="help-h2">Editing &amp; deleting</div>
+  <p class="help-p">Click any card to open the detail panel. Edit / Delete buttons appear on cards — availability depends on your role (see Role-Based Access below).</p>
+</div>
+
+<!-- ═══════════════════ SECTION: Sales Pipeline ═══════════════════ -->
+<div class="help-section" id="h-pipeline">
+  <div class="help-h1">5. Sales Pipeline <span class="help-new">NEW in v3</span></div>
+  <p class="help-p">A horizontal Kanban board divided into <b>7 stage columns</b>. Customer cards appear in the column matching their current pipeline stage. A summary strip at the top shows total active deals and combined deal value.</p>
+  <table class="help-table">
+    <thead><tr><th>Stage</th><th>Meaning</th></tr></thead>
+    <tbody>
+      <tr><td><b>Awareness</b></td><td>Customer knows about the business; no active engagement yet</td></tr>
+      <tr><td><b>Interest</b></td><td>Initial contact made; customer has expressed interest</td></tr>
+      <tr><td><b>Evaluation</b></td><td>Customer comparing options or requesting information</td></tr>
+      <tr><td><b>Proposal</b></td><td>Formal quote or proposal has been sent</td></tr>
+      <tr><td><b>Negotiation</b></td><td>Active price / terms negotiation underway</td></tr>
+      <tr><td><b>Won</b></td><td>Deal closed successfully</td></tr>
+      <tr><td><b>Lost</b></td><td>Deal not proceeding</td></tr>
+    </tbody>
+  </table>
+  <p class="help-p">Click any pipeline card to jump to that customer's full detail in Customers &amp; Leads. To move a customer to a different stage, edit their record and change the <b>Pipeline Stage</b> field.</p>
+</div>
+
+<!-- ═══════════════════ SECTION: Excel Import ═══════════════════ -->
+<div class="help-section" id="h-import">
+  <div class="help-h1">6. Excel / CSV Import <span class="help-new">NEW in v3</span></div>
+  <p class="help-p">Bulk-import customers from an offline spreadsheet — no manual data entry needed.</p>
+  <div class="help-steps">
+    <div class="help-step"><span class="help-step-n">1</span>Go to <b>Customers &amp; Leads</b> and click <b>📥 Import Excel</b> in the toolbar.</div>
+    <div class="help-step"><span class="help-step-n">2</span>Optionally click <b>Download Template</b> to get a pre-formatted .xlsx file with the correct headers.</div>
+    <div class="help-step"><span class="help-step-n">3</span>Fill in your data and save the file (or use your own Excel/CSV).</div>
+    <div class="help-step"><span class="help-step-n">4</span>Click <b>Choose File</b>, select your file, and review the preview table.</div>
+    <div class="help-step"><span class="help-step-n">5</span>Click <b>Confirm Import</b>. New records are added; duplicates are automatically skipped.</div>
+  </div>
+
+  <div class="help-h2">Duplicate detection</div>
+  <p class="help-p">Each incoming record is compared against existing customers using <b>email address</b> and <b>phone number</b>. Matches are flagged with a <span style="background:#fff3cd;color:#856404;padding:1px 6px;border-radius:4px;font-size:12px">Duplicate</span> label in the preview. Only genuinely new records are imported.</p>
+
+  <div class="help-h2">Recognised column headers</div>
+  <table class="help-table">
+    <thead><tr><th>CRM Field</th><th>Accepted column header names</th></tr></thead>
+    <tbody>
+      <tr><td>First Name</td><td>First Name, FirstName, Given Name, first_name</td></tr>
+      <tr><td>Last Name</td><td>Last Name, LastName, Surname, Family Name</td></tr>
+      <tr><td>Email</td><td>Email, Email Address, e-mail</td></tr>
+      <tr><td>Phone</td><td>Phone, Mobile, Tel, Cell</td></tr>
+      <tr><td>Lead Status</td><td>Status, Lead Status, Stage Status</td></tr>
+      <tr><td>Pipeline Stage</td><td>Pipeline, Pipeline Stage, Deal Stage, Stage</td></tr>
+      <tr><td>Assigned To</td><td>Assigned To, Salesperson, Owner, Rep</td></tr>
+      <tr><td>Budget Min</td><td>Budget, Budget Min, Min Budget</td></tr>
+      <tr><td>Budget Max</td><td>Budget Max, Max Budget</td></tr>
+      <tr><td>Deal Value</td><td>Deal Value, Value, Amount</td></tr>
+      <tr><td>Notes</td><td>Notes, Comments, Remarks</td></tr>
+      <tr><td>Tags</td><td>Tags, Labels, Categories</td></tr>
+    </tbody>
+  </table>
+  <div class="help-note">💡 Columns whose headers don't match any recognised variant are silently skipped.</div>
+</div>
+
+<!-- ═══════════════════ SECTION: Users & Access ═══════════════════ -->
+<div class="help-section" id="h-users">
+  <div class="help-h1">7. Users &amp; Access — Admin Portal <span class="help-new">NEW in v3</span></div>
+  <p class="help-p">Visible in the sidebar <b>only when logged in as Admin</b>. Manage all CRM user accounts from this screen.</p>
+  <table class="help-table">
+    <thead><tr><th>Column</th><th>Description</th></tr></thead>
+    <tbody>
+      <tr><td>Username</td><td>The login name used for authentication</td></tr>
+      <tr><td>Display Name</td><td>Name shown in the top-right badge and activity logs</td></tr>
+      <tr><td>Role</td><td>Admin or User</td></tr>
+      <tr><td>Linked Salesperson</td><td>Determines which customers this user can edit</td></tr>
+      <tr><td>Actions</td><td>✏️ Edit &nbsp;&nbsp; 🗑 Delete</td></tr>
+    </tbody>
+  </table>
+
+  <div class="help-h2">Adding a user</div>
+  <p class="help-p">Click <b>+ Add User</b>. Fill in username (must be unique), display name, password, role, and linked salesperson. Click Save. The new user can log in immediately.</p>
+
+  <div class="help-h2">Editing a user</div>
+  <p class="help-p">Click ✏️ on any row. Leave the password field blank to keep the existing password unchanged.</p>
+
+  <div class="help-h2">Deleting a user</div>
+  <p class="help-p">Click 🗑 and confirm. The login account is removed; all customer records remain intact.</p>
+  <div class="help-note">⚠️ You cannot delete or demote your own account while logged in. Always keep at least one Admin account.</div>
+</div>
+
+<!-- ═══════════════════ SECTION: Role-Based Access ═══════════════════ -->
+<div class="help-section" id="h-roles">
+  <div class="help-h1">8. Role-Based Access Control <span class="help-new">NEW in v3</span></div>
+  <table class="help-table">
+    <thead><tr><th>Permission</th><th>Admin</th><th>Standard User</th></tr></thead>
+    <tbody>
+      <tr><td>View all customers &amp; leads</td><td>✅</td><td>✅</td></tr>
+      <tr><td>View full Sales Pipeline board</td><td>✅</td><td>✅</td></tr>
+      <tr><td>Edit / delete own assigned customers</td><td>✅</td><td>✅</td></tr>
+      <tr><td>Edit / delete other salespeople's customers</td><td>✅</td><td>❌</td></tr>
+      <tr><td>Add new customers</td><td>✅</td><td>✅</td></tr>
+      <tr><td>Import Excel / CSV</td><td>✅</td><td>✅</td></tr>
+      <tr><td>Users &amp; Access section</td><td>✅</td><td>❌ (hidden)</td></tr>
+      <tr><td>View Reports, Campaigns, Salespeople</td><td>✅</td><td>✅</td></tr>
+      <tr><td>Settings / export &amp; import database</td><td>✅</td><td>✅</td></tr>
+    </tbody>
+  </table>
+  <p class="help-p" style="margin-top:12px">When a standard user views a customer assigned to a different salesperson, the Edit and Delete buttons are replaced with a <b>👁 View only</b> label.</p>
+  <div class="help-note">💡 A customer is "owned" by a user if the <b>Assigned To</b> field matches the salesperson linked to that user's account.</div>
+</div>
+
+<!-- ═══════════════════ SECTION: Other Sections ═══════════════════ -->
+<div class="help-section" id="h-other">
+  <div class="help-h1">9. Other Sections</div>
+  <div class="help-h2">💎 Inventory Interest</div>
+  <p class="help-p">Track which diamond categories, shapes, and quality tiers customers have enquired about. Aggregated data shows which product types are most in demand.</p>
+  <div class="help-h2">🤝 Salespeople</div>
+  <p class="help-p">Lists all sales staff with IDs, contact details, and auto-calculated performance metrics (customers managed, won deals, total deal value). Only admins can add or remove salespeople.</p>
+  <div class="help-h2">📈 Reports</div>
+  <p class="help-p">Charts and tables: deal value by salesperson, customer conversion funnel, status distribution, campaign ROI. Charts can be printed via File → Print.</p>
+  <div class="help-h2">📣 Campaigns</div>
+  <p class="help-p">Create campaigns (Email, WhatsApp, Event, etc.), set budgets and dates, link customers. View engagement metrics and estimated ROI.</p>
+  <div class="help-h2">🪪 Business Cards</div>
+  <p class="help-p">Generate printable digital business cards for any salesperson. Select a person and colour theme — the card renders with their name, title, phone, email, and company details.</p>
+  <div class="help-h2">🧾 Invoices &amp; Payments</div>
+  <p class="help-p">Create invoices linked to customer records. Track Paid / Pending / Overdue status and view a running total of outstanding amounts.</p>
+  <div class="help-h2">⚙️ Settings</div>
+  <p class="help-p">Configure company details used on business cards and invoices, set VIP deal value thresholds (Bronze / Silver / Gold / Platinum), export the full database as a JSON backup, or import a previous backup.</p>
+</div>
+
+<!-- ═══════════════════ SECTION: Data & Backup ═══════════════════ -->
+<div class="help-section" id="h-data">
+  <div class="help-h1">10. Data Management &amp; Backup</div>
+  <div class="help-h2">How data is stored</div>
+  <p class="help-p">All CRM data is stored in your browser's <b>localStorage</b> under the key <code>diamondCRM_v2</code>. It persists until the browser cache is cleared. Session info is in <code>sessionStorage</code> and clears when the tab is closed.</p>
+  <div class="help-h2">Exporting a backup</div>
+  <p class="help-p">Settings → <b>Export Data</b> downloads a complete JSON snapshot of all records and user accounts. Save it somewhere safe.</p>
+  <div class="help-h2">Restoring from backup</div>
+  <p class="help-p">Settings → <b>Import Data</b>, then select a previously exported JSON file. <b>This overwrites the current database — it cannot be undone.</b></p>
+  <div class="help-note">⚠️ Back up regularly (at least weekly). If a team member clears their browser data, a recent export is the only way to recover.</div>
+</div>
+
+<!-- ═══════════════════ SECTION: Quick Credentials ═══════════════════ -->
+<div class="help-section" id="h-creds">
+  <div class="help-h1">11. Quick Credentials Reference</div>
+  <table class="help-table">
+    <thead><tr><th>Username</th><th>Default Password</th><th>Role</th><th>Linked Salesperson</th></tr></thead>
+    <tbody>
+      <tr style="background:#fff9e6"><td><code>admin</code></td><td><code>admin1234</code></td><td><span class="role-badge role-admin">Admin</span></td><td>Full access — all customers</td></tr>
+      <tr><td><code>arjun</code></td><td><code>arjun1234</code></td><td><span class="role-badge role-user">User</span></td><td>Arjun Sharma (SP-001)</td></tr>
+      <tr><td><code>priya</code></td><td><code>priya1234</code></td><td><span class="role-badge role-user">User</span></td><td>Priya Mehta (SP-002)</td></tr>
+      <tr><td><code>kanokwan</code></td><td><code>kanok1234</code></td><td><span class="role-badge role-user">User</span></td><td>Kanokwan T. (SP-003)</td></tr>
+      <tr><td><code>david</code></td><td><code>david1234</code></td><td><span class="role-badge role-user">User</span></td><td>David Chen (SP-004)</td></tr>
+      <tr><td><code>nadia</code></td><td><code>nadia1234</code></td><td><span class="role-badge role-user">User</span></td><td>Nadia Al-Rashid (SP-005)</td></tr>
+    </tbody>
+  </table>
+  <p class="help-p" style="color:#e76f51;font-weight:600;margin-top:12px">⚠️ Passwords are one-way hashed — they cannot be recovered. Ask the admin to set a new password via Users &amp; Access if forgotten.</p>
+</div>
+
+<!-- ═══════════════════ SECTION: FAQ ═══════════════════ -->
+<div class="help-section" id="h-faq">
+  <div class="help-h1">12. Frequently Asked Questions</div>
+
+  <div class="faq-item">
+    <div class="faq-q" onclick="toggleFaq(this)">▶ I cleared my browser data — is the CRM data gone?</div>
+    <div class="faq-a">Yes — all data is stored in localStorage, which is cleared with browser data. This is why regular exports from Settings → Export Data are essential. Restore from your latest JSON backup via Settings → Import Data.</div>
+  </div>
+  <div class="faq-item">
+    <div class="faq-q" onclick="toggleFaq(this)">▶ I forgot my password. How do I reset it?</div>
+    <div class="faq-a">Ask the admin to log in, go to Users &amp; Access, click Edit on your account, and set a new password. If the admin account is also locked out, open the file in a text editor, find the user in the <code>diamondCRM_v2</code> localStorage key and reset the hash manually (or reload demo data from Settings, which resets all passwords to defaults).</div>
+  </div>
+  <div class="faq-item">
+    <div class="faq-q" onclick="toggleFaq(this)">▶ My Excel file imported 0 records. What happened?</div>
+    <div class="faq-a">The most common cause is that column headers in your file don't match any of the recognised variants. Download the template from the Import modal for the exact headers. Also check that the file is saved as .xlsx or .csv (not .xls or .ods).</div>
+  </div>
+  <div class="faq-item">
+    <div class="faq-q" onclick="toggleFaq(this)">▶ All my imported records show as duplicates.</div>
+    <div class="faq-a">The CRM matches on email AND phone. If your spreadsheet uses the same placeholder email or phone for all rows (e.g. "N/A"), they will all match the first record and be flagged. Use unique values, or leave the field blank rather than using a placeholder.</div>
+  </div>
+  <div class="faq-item">
+    <div class="faq-q" onclick="toggleFaq(this)">▶ I don't see the Users &amp; Access section in the sidebar.</div>
+    <div class="faq-a">This section is only visible to Admin-role accounts. Sign out and log back in as <code>admin</code> (or any other account with the Admin role) to see and use it.</div>
+  </div>
+  <div class="faq-item">
+    <div class="faq-q" onclick="toggleFaq(this)">▶ The Edit button is missing on some customer cards.</div>
+    <div class="faq-a">You're logged in as a standard user and those customers are assigned to a different salesperson. You can view them but not edit them. The admin can reassign the customer to you, or log in as admin to edit directly.</div>
+  </div>
+  <div class="faq-item">
+    <div class="faq-q" onclick="toggleFaq(this)">▶ The CRM looks broken / blank on one section.</div>
+    <div class="faq-a">Open the browser console (F12 → Console) and look for a red error message. Common fix: go to Settings → Reload Demo Data to reset the database to defaults. If data matters, export it first. Report the error message to your CRM admin.</div>
+  </div>
+  <div class="faq-item">
+    <div class="faq-q" onclick="toggleFaq(this)">▶ Can two people use the CRM at the same time?</div>
+    <div class="faq-a">Yes, but each person's browser has its own independent localStorage — changes one person makes are not automatically seen by another. To sync data, use Settings → Export Data / Import Data to exchange JSON snapshots. This is a single-device offline tool by design.</div>
+  </div>
+  <div class="faq-item">
+    <div class="faq-q" onclick="toggleFaq(this)">▶ How do I print a business card or report?</div>
+    <div class="faq-a">Navigate to the Business Cards or Reports section, then use your browser's built-in print function: press Ctrl+P (Windows) or Cmd+P (Mac), or File → Print. The CRM pages are styled for print output.</div>
+  </div>
+</div>
+
+</div>
+
+<style>
+.help-section{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:24px 28px;margin-bottom:20px}
+.help-h1{font-size:18px;font-weight:700;color:var(--text);margin-bottom:14px;padding-bottom:10px;border-bottom:2px solid var(--gold)}
+.help-h2{font-size:14px;font-weight:700;color:var(--text);margin:16px 0 6px}
+.help-p{font-size:13px;color:var(--text2);line-height:1.7;margin:0 0 8px}
+.help-note{background:var(--hover);border-left:4px solid var(--gold);padding:10px 14px;border-radius:0 8px 8px 0;font-size:12px;color:var(--text2);margin-top:12px;line-height:1.6}
+.help-new{background:var(--gold);color:#1a1a1a;font-size:10px;font-weight:700;padding:2px 7px;border-radius:10px;vertical-align:middle;margin-left:8px}
+.help-steps{display:flex;flex-direction:column;gap:8px;margin:12px 0}
+.help-step{display:flex;align-items:flex-start;gap:12px;font-size:13px;color:var(--text2);line-height:1.5}
+.help-step-n{background:var(--gold);color:#1a1a1a;font-size:11px;font-weight:700;width:22px;height:22px;border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:1px}
+.help-table{width:100%;border-collapse:collapse;font-size:13px;margin-top:8px}
+.help-table th{background:var(--sidebar-bg);color:#fff;padding:8px 12px;text-align:left;font-weight:600;font-size:12px}
+.help-table td{padding:8px 12px;border-bottom:1px solid var(--border);color:var(--text2);vertical-align:top}
+.help-table tr:last-child td{border-bottom:none}
+.help-table tr:hover td{background:var(--hover)}
+.help-table code{background:var(--hover);padding:1px 5px;border-radius:4px;font-family:monospace;font-size:12px}
+.faq-item{border:1px solid var(--border);border-radius:10px;margin-bottom:8px;overflow:hidden}
+.faq-q{padding:12px 16px;font-size:13px;font-weight:600;color:var(--text);cursor:pointer;user-select:none;transition:background .15s}
+.faq-q:hover{background:var(--hover)}
+.faq-a{padding:0 16px;font-size:13px;color:var(--text2);line-height:1.7;max-height:0;overflow:hidden;transition:max-height .3s ease,padding .3s ease}
+.faq-a.open{max-height:200px;padding:0 16px 14px}
+</style>
+
+`;
+}
+
+function toggleFaq(el){
+  const a=el.nextElementSibling;
+  const open=a.classList.toggle('open');
+  el.textContent=(open?'▼':'▶')+el.textContent.slice(1);
+}
+function helpSearch(q){
+  const term=q.trim().toLowerCase();
+  document.querySelectorAll('.help-section').forEach(sec=>{
+    sec.style.display=(!term||sec.textContent.toLowerCase().includes(term))?'':'none';
+  });
+  const toc=document.getElementById('help-toc');
+  if(toc) toc.style.display=term?'none':'flex';
+}
 
 // ══════════════════════════════════════════════
 // SETTINGS
