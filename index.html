@@ -425,6 +425,17 @@ th[data-tip]{cursor:pointer}
 .login-btn:hover{background:var(--gold2);transform:translateY(-1px)}
 .login-error{background:#FEF0EE;border:1px solid #E8A090;border-radius:8px;padding:10px 14px;font-size:13px;color:#B03020;margin-top:12px;display:none}
 .login-footer{text-align:center;margin-top:22px;font-size:11px;color:var(--text3)}
+/* ── Login page market ticker ──────────────────── */
+.login-ticker{margin-top:20px;background:rgba(0,0,0,.35);border-radius:10px;padding:8px 12px;display:flex;align-items:center;gap:10px;overflow:hidden;border:1px solid rgba(180,138,80,.25)}
+.ticker-badge{background:var(--gold);color:#1a1a1a;font-size:9px;font-weight:800;padding:2px 7px;border-radius:4px;letter-spacing:1.2px;flex-shrink:0}
+.ticker-scroll-wrap{overflow:hidden;flex:1;position:relative}
+.ticker-anim{display:inline-flex;align-items:center;white-space:nowrap;animation:tickerMove 40s linear infinite}
+.ticker-anim:hover{animation-play-state:paused}
+@keyframes tickerMove{0%{transform:translateX(0)}100%{transform:translateX(-50%)}}
+.t-item{font-size:11.5px;color:rgba(255,255,255,.88);padding:0 18px;letter-spacing:.3px}
+.t-item b{color:var(--gold);font-weight:600}
+.ticker-time{font-size:9px;color:rgba(255,255,255,.35);flex-shrink:0;white-space:nowrap}
+
 /* ── USER BADGE (topbar) ── */
 .user-badge{display:flex;align-items:center;gap:8px;padding:5px 12px;background:var(--bg2);border:1px solid var(--border);border-radius:20px;cursor:pointer;transition:all .15s;font-size:12px;color:var(--text2);white-space:nowrap}
 .user-badge:hover{border-color:var(--gold);color:var(--gold)}
@@ -483,6 +494,13 @@ th[data-tip]{cursor:pointer}
     <button class="login-btn" onclick="doLogin()">Sign In</button>
     <div class="login-error" id="login-error">Incorrect username or password. Please try again.</div>
     <div class="login-footer">🔒 Access restricted to authorised personnel only</div>
+    <div class="login-ticker">
+      <div class="ticker-badge">LIVE</div>
+      <div class="ticker-scroll-wrap">
+        <div class="ticker-anim" id="ticker-inner"><span class="t-item">Loading market data…</span></div>
+      </div>
+      <div class="ticker-time" id="ticker-time"></div>
+    </div>
   </div>
 </div>
 
@@ -3884,6 +3902,64 @@ document.querySelectorAll('.modal-overlay').forEach(m=>m.addEventListener('click
 // ══════════════════════════════════════════════
 // INIT
 // ══════════════════════════════════════════════
+// ══════════════════════════════════════════════
+// LOGIN PAGE MARKET TICKER
+// ══════════════════════════════════════════════
+async function loadTickerData(){
+  const el=document.getElementById('ticker-inner');
+  if(!el) return;
+  try{
+    const [fxR, mR] = await Promise.allSettled([
+      fetch('https://open.er-api.com/v6/latest/USD'),
+      fetch('https://api.metals.live/v1/spot')
+    ]);
+
+    // Fallback values (approximate market rates)
+    let thb=35.5, aed=3.673, hkd=7.782, sgd=1.352, inr=83.5, goldUsd=2350, platUsd=985;
+
+    if(fxR.status==='fulfilled' && fxR.value.ok){
+      const fx=await fxR.value.json();
+      if(fx.rates){
+        thb=fx.rates.THB||thb; aed=fx.rates.AED||aed;
+        hkd=fx.rates.HKD||hkd; sgd=fx.rates.SGD||sgd; inr=fx.rates.INR||inr;
+      }
+    }
+    if(mR.status==='fulfilled' && mR.value.ok){
+      const m=await mR.value.json();
+      goldUsd=m.gold||goldUsd; platUsd=m.platinum||platUsd;
+    }
+
+    const f2=(n,d=2)=>Number(n).toFixed(d);
+    const fc=n=>Math.round(n).toLocaleString('en-US');
+    const sep='<span style="opacity:.25;padding:0 6px;color:#fff">⬥</span>';
+
+    const items=[
+      `💵 USD/THB &nbsp;<b>฿${f2(thb,2)}</b>`,
+      `🥇 Gold &nbsp;<b>$${fc(goldUsd)}</b>/oz &nbsp;<span style="color:rgba(255,255,255,.5)">฿${fc(goldUsd*thb)}</span>`,
+      `⬜ Platinum &nbsp;<b>$${fc(platUsd)}</b>/oz &nbsp;<span style="color:rgba(255,255,255,.5)">฿${fc(platUsd*thb)}</span>`,
+      `🇦🇪 AED/THB &nbsp;<b>฿${f2(thb/aed,3)}</b>`,
+      `🇭🇰 HKD/THB &nbsp;<b>฿${f2(thb/hkd,3)}</b>`,
+      `🇸🇬 SGD/THB &nbsp;<b>฿${f2(thb/sgd,2)}</b>`,
+      `🇮🇳 INR/THB &nbsp;<b>฿${f2(thb/inr,4)}</b>`,
+    ];
+
+    const html=items.map(i=>`<span class="t-item">${i}</span>${sep}`).join('');
+    el.innerHTML=html+html; // duplicate for seamless loop
+    // Adjust speed to content width
+    el.style.animationDuration=(items.length*6)+'s';
+
+    const te=document.getElementById('ticker-time');
+    if(te) te.textContent=new Date().toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'});
+  }catch(e){
+    if(el) el.innerHTML='<span class="t-item" style="opacity:.45">Market data unavailable</span>';
+  }
+}
+
+// Load ticker and refresh every 5 minutes
+loadTickerData();
+setInterval(loadTickerData,5*60*1000);
+
+
 loadDB();
 // Recalculate VIP from invoice data; if db is empty just update badges
 if(db.customers && db.customers.length > 0){ recalcAllVip(); } else { updateBadges(); }
