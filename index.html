@@ -587,6 +587,7 @@ function loadDB(){
   if(!db.campaigns)     db.campaigns     = JSON.parse(JSON.stringify(DEMO_DB.campaigns));
   if(!db.businessCards) db.businessCards = JSON.parse(JSON.stringify(DEMO_DB.businessCards));
   if(!db.invoices)      db.invoices      = JSON.parse(JSON.stringify(DEMO_DB.invoices));
+  if(!db.savedReports)  db.savedReports  = [];
   if(!db.settings)      db.settings      = {};
   if(!db.users || !db.users.length) db.users = JSON.parse(JSON.stringify(DEMO_DB.users||[]));
 }
@@ -1026,8 +1027,8 @@ function confirmImport(){
 
 function downloadImportTemplate(){
   if(!window.XLSX){ alert('SheetJS not loaded.'); return; }
-  const headers=['First Name','Last Name','Salutation','Email','Phone','WhatsApp','Nationality','Language','DOB','City','Country','Company','Designation','Lead Source','Lead Status','Pipeline Stage','Assigned To','Budget Min','Budget Max','Deal Value','Diamond Type','Purpose','Currency','VIP Level','Notes','Tags'];
-  const sample=[['Priya','Nair','Ms','priya.nair@email.com','+66 81 000 0000','+66 81 000 0000','Indian','English, Hindi','1990-03-15','Bangkok','Thailand','','','Walk-in','New','Awareness','Arjun Mehta','500000','800000','0','Natural','Engagement Ring','THB','None','Met at Silom store','Engagement,Walk-in']];
+  const headers=['First Name','Last Name','Salutation','Email','Phone','WhatsApp','Nationality','Language','DOB','City','Country','Company','Designation','Lead Source','Referred By','Lead Status','Pipeline Stage','Assigned To','Budget Min','Budget Max','Deal Value','Diamond Type','Purpose','Currency','VIP Level','Last Contacted Date','Notes','Tags'];
+  const sample=[['Priya','Nair','Ms','priya.nair@email.com','+66 81 000 0000','+66 81 000 0000','Indian','English, Hindi','1990-03-15','Bangkok','Thailand','','','Walk-in','Kanokwan Thana','New','Awareness','Arjun Mehta','500000','800000','0','Natural','Engagement Ring','THB','None','2026-05-20','Met at Silom store','Engagement,Walk-in']];
   const ws=XLSX.utils.aoa_to_sheet([headers,...sample]);
   const wb=XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb,ws,'Customers');
@@ -1455,6 +1456,14 @@ function renderCustomers(){
   <select class="filter-select" onchange="custFilter.sp=this.value;renderCustomers()">
     <option value="All">All Salespeople</option>${spOptions}
   </select>
+  <select class="filter-select" onchange="custFilter.overdue=this.value;renderCustomers()">
+    <option value="">📞 All (last contact)</option>
+    <option value="7" ${custFilter.overdue==='7'?'selected':''}>Overdue &gt;7 days</option>
+    <option value="14" ${custFilter.overdue==='14'?'selected':''}>Overdue &gt;14 days</option>
+    <option value="30" ${custFilter.overdue==='30'?'selected':''}>Overdue &gt;30 days</option>
+    <option value="60" ${custFilter.overdue==='60'?'selected':''}>Overdue &gt;60 days</option>
+    <option value="never" ${custFilter.overdue==='never'?'selected':''}>Never Contacted</option>
+  </select>
   ${sortCardSelect}
   <div style="flex:1"></div>
   <div class="view-toggle" title="Toggle view">
@@ -1487,7 +1496,7 @@ ${list.map(c=>`
     <div class="flex gap-2 mt-1" style="font-size:12px;color:var(--text3)">
       <span>💰 ${fmt(c.dealValue)}</span>
       <span>📊 ${c.pipelineStage||'Awareness'}</span>
-      <span style="margin-left:auto">${ago(c.updatedAt||c.createdAt)}</span>
+      <span style="margin-left:auto">${freshnessBadge(c)}</span>
     </div>
     ${c.tags&&c.tags.length?`<div class="cust-tags">${c.tags.slice(0,4).map(t=>`<span class="tag">${t}</span>`).join('')}</div>`:''}
     <div class="flex gap-2 mt-1">
@@ -1752,6 +1761,7 @@ function buildCustForm(c){
     <div class="field"><label>Close Probability (%)</label><input type="number" id="f-prob" min="0" max="100" value="${v(c,'probability')}" placeholder="0–100"></div>
     <div class="field"><label>Expected Close Date</label><input type="date" id="f-ecd" value="${v(c,'expectedCloseDate','').slice(0,10)}"></div>
     <div class="field"><label>Date of First Contact</label><input type="date" id="f-fcd" value="${v(c,'firstContactDate','').slice(0,10)}"></div>
+    <div class="field"><label>Last Contacted Date</label><input type="date" id="f-lcd" value="${v(c,'lastContactedDate','').slice(0,10)}"><div style="font-size:10px;color:var(--text3);margin-top:3px">Auto-updates to today on every save</div></div>
     <div class="field"><label>Tags (comma separated)</label><input id="f-tags" value="${(v(c,'tags',[])||[]).join(', ')}" placeholder="VIP, Collector, Urgent…"></div>
   </div>
 </div>
@@ -2012,6 +2022,7 @@ function saveCust(){
     leadStatus:g('f-stat'), pipelineStage:g('f-stage'),
     dealValue:gn('f-deal'), probability:gn('f-prob'),
     expectedCloseDate:g('f-ecd'), firstContactDate:g('f-fcd'),
+    lastContactedDate:new Date().toISOString().slice(0,10),
     bestTime:g('f-btc'),
     diamondType:formData.diamondType||'', jewelleryInterest:formData.jewelleryInterest||'',
     purpose:formData.purpose||'',
@@ -2282,19 +2293,45 @@ function deleteSP(id){ if(confirm('Remove salesperson?')){ db.salespeople=db.sal
 // REPORTS
 // ══════════════════════════════════════════════
 function renderReports(){
+  const tab = window._reportTab || 'overview';
+  const tabBtn = (id,label,icon) => `<button onclick="window._reportTab='${id}';renderReports()" style="padding:8px 18px;border-radius:8px;border:none;cursor:pointer;font-size:13px;font-weight:600;background:${tab===id?'var(--gold)':'var(--hover)'};color:${tab===id?'#1a1a1a':'var(--text2)'};transition:all .2s">${icon} ${label}</button>`;
+
+  document.getElementById('content').innerHTML = `
+<div style="display:flex;gap:8px;margin-bottom:20px;flex-wrap:wrap">
+  ${tabBtn('overview','Overview','📊')}
+  ${tabBtn('pdfreports','PDF Reports','🖨️')}
+  ${tabBtn('builder','Report Builder','🔧')}
+</div>
+<div id="report-tab-content"></div>`;
+
+  if(tab==='overview') renderReportOverview();
+  else if(tab==='pdfreports') renderPdfReportsTab();
+  else renderReportBuilder();
+}
+
+function renderReportOverview(){
   const total=db.customers.length;
   const byStatus={};STATUSES.forEach(s=>byStatus[s]=0);
   db.customers.forEach(c=>{ byStatus[c.leadStatus||'New']=(byStatus[c.leadStatus||'New']||0)+1; });
   const bySource={};
   db.customers.forEach(c=>{ bySource[c.leadSource||'Unknown']=(bySource[c.leadSource||'Unknown']||0)+1; });
+  const byRef={};
+  db.customers.filter(c=>c.referredBy).forEach(c=>{ byRef[c.referredBy]=(byRef[c.referredBy]||0)+1; });
   const topCust=[...db.customers].sort((a,b)=>(b.dealValue||0)-(a.dealValue||0)).slice(0,8);
   const spStats=db.salespeople.map(sp=>{
-    const cc=db.customers.filter(c=>c.assignedTo===sp.name||c.assignedTo===sp.id);
+    const cc=db.customers.filter(c=>c.assignedTo===sp.name);
     return {name:sp.name,count:cc.length,val:cc.reduce((s,c)=>s+(c.dealValue||0),0),won:cc.filter(c=>c.leadStatus==='Won').length};
   }).sort((a,b)=>b.val-a.val);
   const maxStatus=Math.max(1,...Object.values(byStatus));
 
-  document.getElementById('content').innerHTML=`
+  // Overdue follow-ups
+  const now=Date.now();
+  const overdue=db.customers.filter(c=>!['Won','Lost'].includes(c.leadStatus)).map(c=>{
+    const d=daysSince(c.lastContactedDate);
+    return {...c, _days: d===null?999:d};
+  }).filter(c=>c._days>14).sort((a,b)=>b._days-a._days).slice(0,8);
+
+  document.getElementById('report-tab-content').innerHTML=`
 <div class="grid-2">
   <div class="card">
     <div class="section-title" style="margin-bottom:12px">Lead Status Breakdown</div>
@@ -2331,16 +2368,414 @@ function renderReports(){
     </table>
   </div>
 </div>
+${Object.keys(byRef).length?`
 <div class="card mt-2">
-  <div class="section-title" style="margin-bottom:12px">Data Management</div>
-  <div class="flex gap-2" style="flex-wrap:wrap">
-    <button class="btn btn-gold" onclick="exportData()">📥 Export JSON Backup</button>
-    <button class="btn btn-outline" onclick="document.getElementById('import-file').click()">📤 Import JSON</button>
-    <input type="file" id="import-file" accept=".json" style="display:none" onchange="importData(this)">
-    <button class="btn btn-red" onclick="clearData()">🗑 Clear All Data</button>
+  <div class="section-title" style="margin-bottom:10px">Referral Source Breakdown</div>
+  <div class="bar-wrap">${Object.entries(byRef).sort((a,b)=>b[1]-a[1]).slice(0,10).map(([k,v])=>`
+    <div class="bar-row"><div class="bar-label">${k}</div>
+      <div class="bar-track"><div class="bar-fill" style="width:${v/Math.max(1,...Object.values(byRef))*100}%;background:var(--gold)"></div></div>
+      <div class="bar-val">${v}</div>
+    </div>`).join('')}
   </div>
-  <div class="text-xs mt-2" style="color:var(--text3)">Import will overwrite all current data. Export a backup first.</div>
+</div>`:''}
+${overdue.length?`
+<div class="card mt-2">
+  <div class="section-title" style="margin-bottom:4px">⚠️ Follow-Up Overdue <span style="font-size:12px;font-weight:400;color:var(--text3)">(active leads not contacted in 14+ days)</span></div>
+  <table class="report-table" style="margin-top:10px">
+    <tr><th>Name</th><th>Status</th><th>Salesperson</th><th>Last Contacted</th><th>Days Overdue</th></tr>
+    ${overdue.map(c=>{
+      const color=c._days>30?'#ef4444':c._days>14?'#f59e0b':'#22c55e';
+      return `<tr>
+        <td><b>${c.firstName} ${c.lastName}</b></td>
+        <td><span class="badge badge-${(c.leadStatus||'new').toLowerCase().replace(' ','-')}">${c.leadStatus||'New'}</span></td>
+        <td>${c.assignedTo||'—'}</td>
+        <td>${c.lastContactedDate?fmtDate(c.lastContactedDate):'<span style="color:#ef4444">Never</span>'}</td>
+        <td style="font-weight:700;color:${color}">${c._days===999?'Never':c._days+'d'}</td>
+      </tr>`;
+    }).join('')}
+  </table>
+</div>`:''}`;
+}
+
+function renderPdfReportsTab(){
+  const reports=[
+    {id:'followup',icon:'📵',title:'Follow-Up Overdue Report',desc:'All active leads not contacted in 14+ days, sorted by urgency'},
+    {id:'source',icon:'📣',title:'Lead Source & Referral Report',desc:'Where leads come from and who is referring them'},
+    {id:'pipeline',icon:'🚀',title:'Pipeline Stage Summary',desc:'Deal count and value at each pipeline stage'},
+    {id:'salesperson',icon:'🤝',title:'Salesperson Performance Report',desc:'Leads, conversions, pipeline value and win rate per salesperson'},
+    {id:'vip',icon:'💎',title:'VIP Customer Profile Report',desc:'Customer tier distribution and top accounts by lifetime value'},
+    {id:'campaign',icon:'📣',title:'Campaign ROI Report',desc:'All campaign performance metrics with engagement and ROI analysis'},
+  ];
+  document.getElementById('report-tab-content').innerHTML=`
+<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:14px">
+  ${reports.map(r=>`
+  <div class="card" style="display:flex;flex-direction:column;gap:10px">
+    <div style="font-size:28px">${r.icon}</div>
+    <div style="font-size:14px;font-weight:700;color:var(--text)">${r.title}</div>
+    <div style="font-size:12px;color:var(--text3);flex:1">${r.desc}</div>
+    <button class="btn btn-gold" onclick="openPdfReport('${r.id}')" style="width:100%">🖨️ Generate PDF</button>
+  </div>`).join('')}
 </div>`;
+}
+
+function openPdfReport(type){
+  const today=new Date().toLocaleDateString('en-GB',{day:'2-digit',month:'long',year:'numeric'});
+  const co=(db.settings&&db.settings.companyName)||'Jay Vijay Diamond Co., Ltd.';
+  let title='',tableHtml='';
+
+  if(type==='followup'){
+    title='Follow-Up Overdue Report';
+    const rows=db.customers.filter(c=>!['Won','Lost'].includes(c.leadStatus)).map(c=>{
+      const d=daysSince(c.lastContactedDate); return {...c,_d:d===null?9999:d};
+    }).filter(c=>c._d>0).sort((a,b)=>b._d-a._d);
+    tableHtml=`<table><thead><tr><th>#</th><th>Name</th><th>Status</th><th>Stage</th><th>Salesperson</th><th>Referred By</th><th>Last Contacted</th><th>Days Since</th></tr></thead><tbody>
+      ${rows.map((c,i)=>{const color=c._d>30?'#c0392b':c._d>14?'#e67e22':'#27ae60';return`<tr><td>${i+1}</td><td><b>${c.firstName} ${c.lastName}</b></td><td>${c.leadStatus||'New'}</td><td>${c.pipelineStage||'—'}</td><td>${c.assignedTo||'—'}</td><td>${c.referredBy||'—'}</td><td>${c.lastContactedDate?new Date(c.lastContactedDate).toLocaleDateString('en-GB'):'<span style="color:#c0392b">Never</span>'}</td><td style="color:${color};font-weight:700">${c._d===9999?'Never':c._d+'d'}</td></tr>`;}).join('')||'<tr><td colspan="8" style="text-align:center;color:#888">No overdue follow-ups 🎉</td></tr>'}
+    </tbody></table>`;
+  } else if(type==='source'){
+    title='Lead Source & Referral Report';
+    const bySource={},byRef={};
+    db.customers.forEach(c=>{
+      bySource[c.leadSource||'Unknown']=(bySource[c.leadSource||'Unknown']||0)+1;
+      if(c.referredBy) byRef[c.referredBy]=(byRef[c.referredBy]||0)+1;
+    });
+    tableHtml=`<h3>Lead Source Breakdown</h3><table><thead><tr><th>Source</th><th>Count</th><th>%</th></tr></thead><tbody>
+      ${Object.entries(bySource).sort((a,b)=>b[1]-a[1]).map(([k,v])=>`<tr><td>${k}</td><td>${v}</td><td>${Math.round(v/db.customers.length*100)}%</td></tr>`).join('')}
+    </tbody></table>
+    <h3 style="margin-top:24px">Top Referrers</h3><table><thead><tr><th>Referred By</th><th>Leads Generated</th></tr></thead><tbody>
+      ${Object.keys(byRef).length?Object.entries(byRef).sort((a,b)=>b[1]-a[1]).map(([k,v])=>`<tr><td>${k}</td><td><b>${v}</b></td></tr>`).join(''):'<tr><td colspan="2" style="color:#888">No referral data yet</td></tr>'}
+    </tbody></table>`;
+  } else if(type==='pipeline'){
+    title='Pipeline Stage Summary';
+    const byStage={};STAGES.forEach(s=>byStage[s]={count:0,value:0});
+    db.customers.forEach(c=>{const s=c.pipelineStage||'Awareness';if(byStage[s]){byStage[s].count++;byStage[s].value+=(c.dealValue||0);}});
+    tableHtml=`<table><thead><tr><th>Stage</th><th>Leads</th><th>Total Deal Value (฿)</th><th>Avg Deal Value (฿)</th></tr></thead><tbody>
+      ${STAGES.map(s=>{const r=byStage[s];return`<tr><td><b>${s}</b></td><td>${r.count}</td><td>${r.value.toLocaleString()}</td><td>${r.count?Math.round(r.value/r.count).toLocaleString():'—'}</td></tr>`;}).join('')}
+    </tbody></table>`;
+  } else if(type==='salesperson'){
+    title='Salesperson Performance Report';
+    tableHtml=`<table><thead><tr><th>Salesperson</th><th>Total Leads</th><th>Won</th><th>Lost</th><th>Active</th><th>Win Rate</th><th>Pipeline Value (฿)</th></tr></thead><tbody>
+      ${db.salespeople.map(sp=>{
+        const cc=db.customers.filter(c=>c.assignedTo===sp.name);
+        const won=cc.filter(c=>c.leadStatus==='Won').length;
+        const lost=cc.filter(c=>c.leadStatus==='Lost').length;
+        const active=cc.filter(c=>!['Won','Lost'].includes(c.leadStatus)).length;
+        const val=cc.reduce((s,c)=>s+(c.dealValue||0),0);
+        const rate=cc.length?Math.round(won/cc.length*100):0;
+        return`<tr><td><b>${sp.name}</b></td><td>${cc.length}</td><td style="color:#27ae60">${won}</td><td style="color:#c0392b">${lost}</td><td>${active}</td><td>${rate}%</td><td><b>${val.toLocaleString()}</b></td></tr>`;
+      }).join('')}
+    </tbody></table>`;
+  } else if(type==='vip'){
+    title='VIP Customer Profile Report';
+    const tiers=['Platinum','Gold','Silver','Bronze','None'];
+    tableHtml=`<h3>VIP Tier Distribution</h3><table><thead><tr><th>Tier</th><th>Count</th><th>%</th></tr></thead><tbody>
+      ${tiers.map(t=>{const n=db.customers.filter(c=>(c.vipLevel||'None')===t).length;return`<tr><td><b>${t}</b></td><td>${n}</td><td>${db.customers.length?Math.round(n/db.customers.length*100):0}%</td></tr>`;}).join('')}
+    </tbody></table>
+    <h3 style="margin-top:24px">Top 10 Customers by Lifetime Value</h3><table><thead><tr><th>#</th><th>Name</th><th>VIP</th><th>Assigned To</th><th>Lifetime Value (฿)</th></tr></thead><tbody>
+      ${[...db.customers].sort((a,b)=>(b.totalLifetimeValue||b.dealValue||0)-(a.totalLifetimeValue||a.dealValue||0)).slice(0,10).map((c,i)=>`<tr><td>${i+1}</td><td><b>${c.firstName} ${c.lastName}</b></td><td>${c.vipLevel||'None'}</td><td>${c.assignedTo||'—'}</td><td><b>${(c.totalLifetimeValue||c.dealValue||0).toLocaleString()}</b></td></tr>`).join('')}
+    </tbody></table>`;
+  } else if(type==='campaign'){
+    title='Campaign ROI Report';
+    tableHtml=`<table><thead><tr><th>Campaign</th><th>Type</th><th>Status</th><th>Budget (฿)</th><th>Spent (฿)</th><th>Sent</th><th>Opened</th><th>Replied</th><th>Open %</th><th>Reply %</th></tr></thead><tbody>
+      ${db.campaigns.map(c=>`<tr><td><b>${c.name}</b></td><td>${c.type||'—'}</td><td>${c.status||'—'}</td><td>${(c.budget||0).toLocaleString()}</td><td>${(c.spent||0).toLocaleString()}</td><td>${c.sentCount||0}</td><td>${c.openCount||0}</td><td>${c.replyCount||0}</td><td>${c.sentCount?Math.round((c.openCount||0)/c.sentCount*100):0}%</td><td>${c.sentCount?Math.round((c.replyCount||0)/c.sentCount*100):0}%</td></tr>`).join('')||'<tr><td colspan="10" style="text-align:center;color:#888">No campaigns</td></tr>'}
+    </tbody></table>`;
+  }
+
+  const win=window.open('','_blank');
+  win.document.write(`<!DOCTYPE html><html><head><meta charset="utf-8"><title>${title}</title>
+  <style>
+    *{box-sizing:border-box;margin:0;padding:0}
+    body{font-family:'Segoe UI',Arial,sans-serif;font-size:13px;color:#1a1a1a;padding:32px;background:#fff}
+    .header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:28px;padding-bottom:16px;border-bottom:3px solid #B48A50}
+    .company{font-size:11px;color:#666;margin-top:4px}
+    h1{font-size:22px;font-weight:800;color:#1a1a1a}
+    h3{font-size:14px;font-weight:700;color:#1a1a1a;margin-bottom:8px}
+    .meta{text-align:right;font-size:11px;color:#888}
+    .diamond{font-size:28px;color:#B48A50;margin-bottom:4px}
+    table{width:100%;border-collapse:collapse;margin-top:4px}
+    thead{background:#1a1a1a;color:#fff}
+    th{padding:9px 12px;text-align:left;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.6px}
+    td{padding:8px 12px;border-bottom:1px solid #eee;font-size:12px;vertical-align:top}
+    tr:nth-child(even) td{background:#fafafa}
+    tr:hover td{background:#fff9ed}
+    .footer{margin-top:32px;padding-top:12px;border-top:1px solid #ddd;font-size:10px;color:#aaa;display:flex;justify-content:space-between}
+    @media print{body{padding:16px}.no-print{display:none}button{display:none}}
+  </style></head><body>
+  <div class="header">
+    <div>
+      <div class="diamond">💎</div>
+      <h1>${title}</h1>
+      <div class="company">${co}</div>
+    </div>
+    <div class="meta">
+      Generated: ${today}<br>
+      Total records: ${db.customers.length}
+    </div>
+  </div>
+  ${tableHtml}
+  <div class="footer">
+    <span>💎 Diamond CRM — Confidential</span>
+    <span>Generated ${today}</span>
+  </div>
+  <div class="no-print" style="margin-top:24px;text-align:center">
+    <button onclick="window.print()" style="padding:10px 28px;background:#B48A50;color:#fff;border:none;border-radius:8px;font-size:14px;font-weight:700;cursor:pointer">🖨️ Print / Save as PDF</button>
+  </div>
+  </body></html>`);
+  win.document.close();
+  setTimeout(()=>win.focus(),300);
+}
+
+// ── REPORT BUILDER ────────────────────────────────────────────────────────────
+const RB_FIELDS=[
+  {key:'name',label:'Full Name',get:c=>`${c.firstName||''} ${c.lastName||''}`.trim()},
+  {key:'email',label:'Email',get:c=>c.email||''},
+  {key:'phone',label:'Phone',get:c=>c.phone||''},
+  {key:'company',label:'Company',get:c=>c.company||''},
+  {key:'nationality',label:'Nationality',get:c=>c.nationality||''},
+  {key:'city',label:'City',get:c=>c.city||''},
+  {key:'country',label:'Country',get:c=>c.country||''},
+  {key:'leadSource',label:'Lead Source',get:c=>c.leadSource||''},
+  {key:'referredBy',label:'Referred By',get:c=>c.referredBy||''},
+  {key:'assignedTo',label:'Assigned To',get:c=>c.assignedTo||''},
+  {key:'leadStatus',label:'Lead Status',get:c=>c.leadStatus||''},
+  {key:'pipelineStage',label:'Pipeline Stage',get:c=>c.pipelineStage||''},
+  {key:'vipLevel',label:'VIP Level',get:c=>c.vipLevel||'None'},
+  {key:'dealValue',label:'Deal Value (฿)',get:c=>c.dealValue||0},
+  {key:'probability',label:'Probability (%)',get:c=>c.probability||0},
+  {key:'diamondType',label:'Diamond Type',get:c=>c.diamondType||''},
+  {key:'purpose',label:'Purpose',get:c=>c.purpose||''},
+  {key:'firstContactDate',label:'First Contact Date',get:c=>c.firstContactDate||''},
+  {key:'lastContactedDate',label:'Last Contacted Date',get:c=>c.lastContactedDate||''},
+  {key:'expectedCloseDate',label:'Expected Close Date',get:c=>c.expectedCloseDate||''},
+  {key:'notes',label:'Notes',get:c=>c.notes||''},
+  {key:'tags',label:'Tags',get:c=>(c.tags||[]).join(', ')},
+];
+const RB_OPS=['contains','equals','is empty','is not empty','greater than','less than'];
+let _rbState={cols:['name','email','phone','leadStatus','referredBy','lastContactedDate','assignedTo'],filters:[],sortBy:'name',sortDir:'asc',groupBy:'',savedName:''};
+
+function renderReportBuilder(){
+  if(!db.savedReports) db.savedReports=[];
+  document.getElementById('report-tab-content').innerHTML=`
+<div style="display:grid;grid-template-columns:280px 1fr;gap:16px;align-items:start">
+
+  <!-- LEFT: Config panel -->
+  <div style="display:flex;flex-direction:column;gap:12px">
+
+    <!-- Saved Reports -->
+    <div class="card" style="padding:14px">
+      <div style="font-size:13px;font-weight:700;margin-bottom:10px">💾 Saved Reports</div>
+      ${db.savedReports.length?`<select id="rb-load-sel" style="width:100%;margin-bottom:8px;padding:6px 10px;border:1px solid var(--border);border-radius:6px;background:var(--card);color:var(--text);font-size:12px">
+        <option value="">— Select saved report —</option>
+        ${db.savedReports.map((r,i)=>`<option value="${i}">${r.name}</option>`).join('')}
+      </select>
+      <div style="display:flex;gap:6px">
+        <button class="btn btn-outline btn-sm" style="flex:1" onclick="rbLoadSaved()">Load</button>
+        <button class="btn btn-red btn-sm" onclick="rbDeleteSaved()">🗑</button>
+      </div>`:'<div style="font-size:12px;color:var(--text3)">No saved reports yet</div>'}
+      <div style="margin-top:10px;border-top:1px solid var(--border);padding-top:10px">
+        <input id="rb-save-name" placeholder="Report name…" style="width:100%;padding:6px 10px;border:1px solid var(--border);border-radius:6px;background:var(--card);color:var(--text);font-size:12px;margin-bottom:6px">
+        <button class="btn btn-gold btn-sm" style="width:100%" onclick="rbSaveReport()">💾 Save Current Config</button>
+      </div>
+    </div>
+
+    <!-- Columns -->
+    <div class="card" style="padding:14px">
+      <div style="font-size:13px;font-weight:700;margin-bottom:10px">📋 Columns</div>
+      <div style="display:flex;flex-direction:column;gap:5px;max-height:280px;overflow-y:auto">
+        ${RB_FIELDS.map(f=>`<label style="display:flex;align-items:center;gap:8px;font-size:12px;cursor:pointer">
+          <input type="checkbox" ${_rbState.cols.includes(f.key)?'checked':''} onchange="rbToggleCol('${f.key}',this.checked)">
+          ${f.label}
+        </label>`).join('')}
+      </div>
+    </div>
+
+    <!-- Filters -->
+    <div class="card" style="padding:14px">
+      <div style="font-size:13px;font-weight:700;margin-bottom:10px">🔍 Filters</div>
+      <div id="rb-filters">
+        ${_rbState.filters.map((fl,i)=>rbFilterRow(fl,i)).join('')}
+      </div>
+      ${_rbState.filters.length<4?`<button class="btn btn-outline btn-sm" style="width:100%;margin-top:6px" onclick="rbAddFilter()">+ Add Filter</button>`:''}
+    </div>
+
+    <!-- Sort & Group -->
+    <div class="card" style="padding:14px">
+      <div style="font-size:13px;font-weight:700;margin-bottom:10px">⬆️ Sort & Group</div>
+      <label style="font-size:11px;color:var(--text3);display:block;margin-bottom:3px">Sort By</label>
+      <div style="display:flex;gap:6px;margin-bottom:10px">
+        <select id="rb-sort-field" onchange="_rbState.sortBy=this.value;rbPreview()" style="flex:1;padding:6px;border:1px solid var(--border);border-radius:6px;background:var(--card);color:var(--text);font-size:12px">
+          ${RB_FIELDS.map(f=>`<option value="${f.key}" ${_rbState.sortBy===f.key?'selected':''}>${f.label}</option>`).join('')}
+        </select>
+        <select id="rb-sort-dir" onchange="_rbState.sortDir=this.value;rbPreview()" style="padding:6px;border:1px solid var(--border);border-radius:6px;background:var(--card);color:var(--text);font-size:12px">
+          <option value="asc" ${_rbState.sortDir==='asc'?'selected':''}>↑ Asc</option>
+          <option value="desc" ${_rbState.sortDir==='desc'?'selected':''}>↓ Desc</option>
+        </select>
+      </div>
+      <label style="font-size:11px;color:var(--text3);display:block;margin-bottom:3px">Group By (optional)</label>
+      <select id="rb-group" onchange="_rbState.groupBy=this.value;rbPreview()" style="width:100%;padding:6px;border:1px solid var(--border);border-radius:6px;background:var(--card);color:var(--text);font-size:12px">
+        <option value="">— No grouping —</option>
+        ${RB_FIELDS.map(f=>`<option value="${f.key}" ${_rbState.groupBy===f.key?'selected':''}>${f.label}</option>`).join('')}
+      </select>
+    </div>
+
+    <!-- Export -->
+    <div style="display:flex;gap:8px">
+      <button class="btn btn-gold" style="flex:1" onclick="rbPrintPdf()">🖨️ PDF</button>
+      <button class="btn btn-outline" style="flex:1" onclick="rbExportCsv()">📥 CSV</button>
+    </div>
+  </div>
+
+  <!-- RIGHT: Live preview -->
+  <div class="card" style="padding:16px;min-width:0;overflow:hidden">
+    <div style="font-size:13px;font-weight:700;margin-bottom:12px">👁 Live Preview</div>
+    <div id="rb-preview" style="overflow-x:auto"></div>
+  </div>
+</div>`;
+  rbPreview();
+}
+
+function rbFilterRow(fl,i){
+  return `<div style="display:flex;gap:4px;margin-bottom:6px;align-items:center">
+    <select onchange="_rbState.filters[${i}].field=this.value;rbPreview()" style="flex:1;min-width:0;padding:5px;border:1px solid var(--border);border-radius:6px;background:var(--card);color:var(--text);font-size:11px">
+      ${RB_FIELDS.map(f=>`<option value="${f.key}" ${fl.field===f.key?'selected':''}>${f.label}</option>`).join('')}
+    </select>
+    <select onchange="_rbState.filters[${i}].op=this.value;rbPreview()" style="width:90px;padding:5px;border:1px solid var(--border);border-radius:6px;background:var(--card);color:var(--text);font-size:11px">
+      ${RB_OPS.map(op=>`<option ${fl.op===op?'selected':''}>${op}</option>`).join('')}
+    </select>
+    <input value="${fl.val||''}" placeholder="value" onchange="_rbState.filters[${i}].val=this.value;rbPreview()" style="width:80px;padding:5px;border:1px solid var(--border);border-radius:6px;background:var(--card);color:var(--text);font-size:11px">
+    <button class="btn btn-red btn-sm" onclick="_rbState.filters.splice(${i},1);renderReportBuilder()">✕</button>
+  </div>`;
+}
+
+function rbAddFilter(){
+  _rbState.filters.push({field:'leadStatus',op:'equals',val:''});
+  renderReportBuilder();
+}
+
+function rbToggleCol(key,checked){
+  if(checked){ if(!_rbState.cols.includes(key)) _rbState.cols.push(key); }
+  else { _rbState.cols=_rbState.cols.filter(k=>k!==key); }
+  rbPreview();
+}
+
+function rbGetRows(){
+  let rows=[...db.customers];
+  // Apply filters
+  _rbState.filters.forEach(fl=>{
+    const fieldDef=RB_FIELDS.find(f=>f.key===fl.field);
+    if(!fieldDef) return;
+    rows=rows.filter(c=>{
+      const val=String(fieldDef.get(c)).toLowerCase();
+      const fval=(fl.val||'').toLowerCase();
+      if(fl.op==='contains') return val.includes(fval);
+      if(fl.op==='equals') return val===fval;
+      if(fl.op==='is empty') return !val;
+      if(fl.op==='is not empty') return !!val;
+      if(fl.op==='greater than') return parseFloat(val)>parseFloat(fval||0);
+      if(fl.op==='less than') return parseFloat(val)<parseFloat(fval||0);
+      return true;
+    });
+  });
+  // Sort
+  const sortDef=RB_FIELDS.find(f=>f.key===_rbState.sortBy);
+  if(sortDef){
+    rows.sort((a,b)=>{
+      const va=sortDef.get(a), vb=sortDef.get(b);
+      const n=typeof va==='number'?va-vb:String(va).localeCompare(String(vb));
+      return _rbState.sortDir==='desc'?-n:n;
+    });
+  }
+  return rows;
+}
+
+function rbPreview(){
+  const cols=RB_FIELDS.filter(f=>_rbState.cols.includes(f.key));
+  if(!cols.length){ document.getElementById('rb-preview').innerHTML='<p style="color:var(--text3);font-size:12px">Select at least one column.</p>'; return; }
+  let rows=rbGetRows();
+  const preview=rows.slice(0,50);
+  let html='';
+  if(_rbState.groupBy){
+    const gDef=RB_FIELDS.find(f=>f.key===_rbState.groupBy);
+    const groups={};
+    rows.forEach(r=>{ const g=gDef?String(gDef.get(r)):'—'; (groups[g]=groups[g]||[]).push(r); });
+    Object.entries(groups).forEach(([g,gRows])=>{
+      html+=`<div style="font-size:11px;font-weight:700;color:var(--gold);padding:6px 0;border-bottom:1px solid var(--border);margin-bottom:4px">${gDef.label}: ${g} (${gRows.length})</div>`;
+      html+=rbTableHtml(cols,gRows.slice(0,20));
+    });
+  } else {
+    html=rbTableHtml(cols,preview);
+    if(rows.length>50) html+=`<p style="font-size:11px;color:var(--text3);margin-top:6px">Showing first 50 of ${rows.length} records. Export to see all.</p>`;
+  }
+  document.getElementById('rb-preview').innerHTML=html;
+}
+
+function rbTableHtml(cols,rows){
+  return `<table class="report-table" style="font-size:11px;min-width:100%">
+    <tr>${cols.map(f=>`<th>${f.label}</th>`).join('')}</tr>
+    ${rows.map(r=>`<tr>${cols.map(f=>`<td style="max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${f.get(r)}</td>`).join('')}</tr>`).join('')||'<tr><td colspan="'+cols.length+'" style="text-align:center;color:#888">No records match filters</td></tr>'}
+  </table>`;
+}
+
+function rbExportCsv(){
+  const cols=RB_FIELDS.filter(f=>_rbState.cols.includes(f.key));
+  const rows=rbGetRows();
+  const escape=v=>'"'+String(v).replace(/"/g,'""')+'"';
+  const lines=[cols.map(f=>escape(f.label)).join(','),...rows.map(r=>cols.map(f=>escape(f.get(r))).join(','))];
+  const blob=new Blob([lines.join('\n')],{type:'text/csv'});
+  const a=document.createElement('a'); a.href=URL.createObjectURL(blob);
+  a.download=`DiamondCRM_Report_${new Date().toISOString().slice(0,10)}.csv`; a.click();
+}
+
+function rbPrintPdf(){
+  const cols=RB_FIELDS.filter(f=>_rbState.cols.includes(f.key));
+  const rows=rbGetRows();
+  const today=new Date().toLocaleDateString('en-GB',{day:'2-digit',month:'long',year:'numeric'});
+  const co=(db.settings&&db.settings.companyName)||'Jay Vijay Diamond Co., Ltd.';
+  const win=window.open('','_blank');
+  win.document.write(`<!DOCTYPE html><html><head><meta charset="utf-8"><title>Custom Report</title>
+  <style>*{box-sizing:border-box;margin:0;padding:0}body{font-family:'Segoe UI',Arial,sans-serif;font-size:11px;color:#1a1a1a;padding:24px;background:#fff}
+  .header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:20px;padding-bottom:12px;border-bottom:3px solid #B48A50}
+  h1{font-size:18px;font-weight:800}table{width:100%;border-collapse:collapse;margin-top:4px}
+  thead{background:#1a1a1a;color:#fff}th{padding:7px 10px;text-align:left;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px}
+  td{padding:6px 10px;border-bottom:1px solid #eee;font-size:11px;max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;vertical-align:top}
+  tr:nth-child(even) td{background:#fafafa}.footer{margin-top:20px;font-size:9px;color:#aaa;display:flex;justify-content:space-between}
+  @media print{button{display:none}}</style></head><body>
+  <div class="header"><div><div style="font-size:22px;color:#B48A50">💎</div><h1>Custom Report</h1><div style="font-size:10px;color:#666">${co}</div></div>
+  <div style="text-align:right;font-size:10px;color:#888">Generated: ${today}<br>${rows.length} records</div></div>
+  <table><thead><tr>${cols.map(f=>`<th>${f.label}</th>`).join('')}</tr></thead><tbody>
+  ${rows.map(r=>`<tr>${cols.map(f=>`<td title="${f.get(r)}">${f.get(r)}</td>`).join('')}</tr>`).join('')}
+  </tbody></table>
+  <div class="footer"><span>💎 Diamond CRM — Confidential</span><span>${today}</span></div>
+  <div style="margin-top:16px;text-align:center"><button onclick="window.print()" style="padding:8px 24px;background:#B48A50;color:#fff;border:none;border-radius:6px;font-size:13px;font-weight:700;cursor:pointer">🖨️ Print / Save as PDF</button></div>
+  </body></html>`);
+  win.document.close(); setTimeout(()=>win.focus(),300);
+}
+
+function rbSaveReport(){
+  const name=(document.getElementById('rb-save-name')||{}).value?.trim();
+  if(!name){alert('Enter a report name first.');return;}
+  if(!db.savedReports) db.savedReports=[];
+  const existing=db.savedReports.findIndex(r=>r.name===name);
+  const config={name,cols:[..._rbState.cols],filters:JSON.parse(JSON.stringify(_rbState.filters)),sortBy:_rbState.sortBy,sortDir:_rbState.sortDir,groupBy:_rbState.groupBy};
+  if(existing>-1) db.savedReports[existing]=config;
+  else db.savedReports.push(config);
+  saveDB(); renderReportBuilder();
+}
+
+function rbLoadSaved(){
+  const sel=document.getElementById('rb-load-sel');
+  if(!sel||!sel.value) return;
+  const cfg=db.savedReports[parseInt(sel.value)];
+  if(!cfg) return;
+  _rbState={..._rbState,...cfg,filters:JSON.parse(JSON.stringify(cfg.filters||[]))};
+  renderReportBuilder();
+}
+
+function rbDeleteSaved(){
+  const sel=document.getElementById('rb-load-sel');
+  if(!sel||!sel.value) return;
+  if(!confirm('Delete this saved report?')) return;
+  db.savedReports.splice(parseInt(sel.value),1);
+  saveDB(); renderReportBuilder();
 }
 
 function exportData(){
@@ -3776,6 +4211,21 @@ function renderHelp(){
 </style>
 
 `;
+}
+
+
+// ── Last-Contacted freshness badge ───────────────────────────────────────────
+function daysSince(dateStr){
+  if(!dateStr) return null;
+  const d=new Date(dateStr); if(isNaN(d)) return null;
+  return Math.floor((Date.now()-d.getTime())/86400000);
+}
+function freshnessBadge(c, style=''){
+  const d=daysSince(c.lastContactedDate);
+  if(d===null) return `<span style="font-size:10px;color:var(--text3);${style}">📵 Never</span>`;
+  const color=d<=7?'#22c55e':d<=30?'#f59e0b':'#ef4444';
+  const label=d===0?'Today':d===1?'Yesterday':`${d}d ago`;
+  return `<span style="font-size:10px;font-weight:600;color:${color};${style}">📞 ${label}</span>`;
 }
 
 function toggleFaq(el){
