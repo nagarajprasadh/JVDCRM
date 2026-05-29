@@ -2396,6 +2396,8 @@ let bcWorker=null;
 let parsedCards   = [];   // [{imgDataUrl, fields, selected, expanded}, ...]
 let _ocrWorker    = null; // reused Tesseract worker (one for the whole session)
 let _ocrProgCb    = null; // current progress callback
+let _lastImgUrl   = null; // stored for re-split without re-upload
+let _lastImgIsPDF = false;
 
 function renderBizcard(){
   document.getElementById('content').innerHTML=`
@@ -2427,12 +2429,25 @@ function renderBizcard(){
 
     <!-- Multi-card parsed gallery -->
     <div id="mc-gallery-wrap" style="display:none">
-      <div class="flex items-center gap-2" style="margin-bottom:12px;flex-wrap:wrap">
+      <div class="flex items-center gap-2" style="margin-bottom:8px;flex-wrap:wrap">
         <div class="section-title flex-1">Extracted Cards</div>
         <button class="btn btn-xs btn-outline" onclick="selectAllCards(true)">Select All</button>
         <button class="btn btn-xs btn-outline" onclick="selectAllCards(false)">Deselect All</button>
         <button class="btn btn-sm btn-gold" onclick="saveSelectedCards()">💾 Save Selected</button>
         <button class="btn btn-sm btn-outline" onclick="convertSelectedToLeads()">➕ Convert Selected to Leads</button>
+      </div>
+      <!-- Re-split control: only shown for single images, not PDFs -->
+      <div id="resplit-bar" style="display:none;background:var(--hover);border:1px solid var(--border);border-radius:8px;padding:8px 12px;margin-bottom:12px;font-size:12px;color:var(--text2);align-items:center;gap:8px;flex-wrap:wrap">
+        <span>📷 Photo with multiple cards?</span>
+        <span style="color:var(--text3)">Split into:</span>
+        <div style="display:flex;gap:4px">
+          <button class="btn btn-xs btn-outline" onclick="resplitImage(1)">1</button>
+          <button class="btn btn-xs btn-outline" onclick="resplitImage(2)">2</button>
+          <button class="btn btn-xs btn-outline" onclick="resplitImage(3)">3</button>
+          <button class="btn btn-xs btn-outline" onclick="resplitImage(4)">4</button>
+          <button class="btn btn-xs btn-outline" onclick="resplitImage(5)">5</button>
+        </div>
+        <span style="color:var(--text3)">cards</span>
       </div>
       <div class="mc-gallery" id="mc-gallery"></div>
     </div>
@@ -2476,11 +2491,13 @@ function handleBCDrop(e){
 async function handleBCFile(file){
   if(!file) return;
   parsedCards=[];
+  _lastImgIsPDF = file.type==='application/pdf';
   document.getElementById('mc-gallery-wrap').style.display='none';
   showOCRProgress(true);
   setOCRStatus('Reading file…', 5);
   try{
-    if(file.type==='application/pdf'){
+    if(_lastImgIsPDF){
+      _lastImgUrl=null;
       await processPDFMultiCard(file);
     } else {
       await processSingleImage(file);
@@ -2494,10 +2511,94 @@ async function handleBCFile(file){
 }
 
 async function processSingleImage(file){
-  setOCRStatus('Processing image…', 20);
+  setOCRStatus('Processing image…', 10);
   const imgUrl = await fileToDataURL(file);
-  const fields = await runOCROnImage(imgUrl, (p)=>setOCRStatus('Recognising text… '+Math.round(p*100)+'%', 20+Math.round(p*75)));
-  parsedCards=[{imgDataUrl:imgUrl, fields, selected:true, expanded:false}];
+  _lastImgUrl   = imgUrl;
+  _lastImgIsPDF = false;
+
+  // --- Step 1: Quick full-image OCR to detect card count ---
+  setOCRStatus('Scanning image for cards…', 15);
+  const worker = await getOCRWorker();
+  _ocrProgCb = (p)=>setOCRStatus('Detecting cards… '+Math.round(p*100)+'%', 15+Math.round(p*30));
+  const {data:{text: fullText}} = await worker.recognize(imgUrl);
+  _ocrProgCb = null;
+
+  const cardCount = detectCardCountFromOCR(fullText);
+
+  if(cardCount <= 1){
+    // Single card — parse the text we already have
+    setOCRStatus('Parsing card…', 90);
+    parsedCards=[{imgDataUrl:imgUrl, fields:parseBusinessCardText(fullText), selected:true, expanded:false}];
+    setOCRStatus('Done', 100);
+  } else {
+    // Multiple cards detected — split image and re-OCR each strip
+    setOCRStatus(`Detected ${cardCount} cards — splitting…`, 50);
+    await _splitAndOCR(imgUrl, cardCount, 50);
+  }
+}
+
+// Detect how many cards are likely in an OCR text block
+function detectCardCountFromOCR(text){
+  const emails  = (text.match(/[\w.+%-]+@[\w.-]+\.[a-z]{2,}/gi)||[]).length;
+  if(emails >= 2) return emails;
+  // Fallback: count clusters of phone-like sequences separated by large gaps
+  const phoneBlocks = text.split(/\n{3,}/).filter(b=>(/[\d\s\-+().]{7,}/).test(b)).length;
+  if(phoneBlocks >= 2) return phoneBlocks;
+  return 1;
+}
+
+// Split imgUrl into n equal horizontal strips, OCR each one
+async function _splitAndOCR(imgUrl, n, startPct){
+  const strips = await splitImageHorizontally(imgUrl, n);
+  for(let i=0; i<strips.length; i++){
+    setOCRStatus(`Extracting card ${i+1} of ${n}…`, startPct + Math.round(((i)/n)*(95-startPct)));
+    const fields = await runOCROnImage(strips[i], ()=>{});
+    parsedCards.push({imgDataUrl:strips[i], fields, selected:true, expanded:false});
+  }
+  setOCRStatus(`Extracted ${n} card${n>1?'s':''}`, 100);
+}
+
+// Split a data-URL image into n equal horizontal strips via canvas
+function splitImageHorizontally(imgUrl, n){
+  return new Promise((resolve, reject)=>{
+    const img = new Image();
+    img.onerror = ()=>reject(new Error('Could not load image for splitting'));
+    img.onload = ()=>{
+      const strips=[];
+      const h = Math.floor(img.height / n);
+      for(let i=0; i<n; i++){
+        const canvas = document.createElement('canvas');
+        canvas.width  = img.width;
+        canvas.height = (i===n-1) ? img.height - i*h : h;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, -i*h);
+        strips.push(canvas.toDataURL('image/jpeg', 0.92));
+      }
+      resolve(strips);
+    };
+    img.src = imgUrl;
+  });
+}
+
+// Manual re-split: user picks a different card count
+async function resplitImage(n){
+  if(!_lastImgUrl || _lastImgIsPDF) return;
+  parsedCards=[];
+  document.getElementById('resplit-bar').style.display='none';
+  showOCRProgress(true);
+  try{
+    if(n===1){
+      setOCRStatus('Processing as single card…', 20);
+      const fields = await runOCROnImage(_lastImgUrl, (p)=>setOCRStatus('Recognising… '+Math.round(p*100)+'%', 20+Math.round(p*75)));
+      parsedCards=[{imgDataUrl:_lastImgUrl, fields, selected:true, expanded:false}];
+      setOCRStatus('Done', 100);
+    } else {
+      setOCRStatus(`Splitting into ${n} cards…`, 10);
+      await _splitAndOCR(_lastImgUrl, n, 10);
+    }
+  } catch(err){ setOCRStatus('Error: '+err.message, 0); console.error(err); }
+  showOCRProgress(false);
+  renderMCGallery();
 }
 
 async function processPDFMultiCard(file){
@@ -2606,6 +2707,22 @@ function renderMCGallery(){
   const gallery=document.getElementById('mc-gallery');
   if(!parsedCards.length){ wrap.style.display='none'; return; }
   wrap.style.display='block';
+  // Show re-split bar only for single images (not PDFs)
+  const resplitBar=document.getElementById('resplit-bar');
+  if(resplitBar){
+    if(!_lastImgIsPDF && _lastImgUrl){
+      resplitBar.style.display='flex';
+      // Highlight the currently active split count button
+      resplitBar.querySelectorAll('button').forEach(btn=>{
+        const n=parseInt(btn.textContent);
+        btn.style.fontWeight=(n===parsedCards.length)?'700':'400';
+        btn.style.borderColor=(n===parsedCards.length)?'var(--gold)':'';
+        btn.style.color=(n===parsedCards.length)?'var(--gold)':'';
+      });
+    } else {
+      resplitBar.style.display='none';
+    }
+  }
   gallery.innerHTML=parsedCards.map((card,i)=>`
     <div class="mc-card ${card.selected?'selected':''}" id="mc-card-${i}">
       <div class="mc-check ${card.selected?'checked':''}" onclick="toggleMCSelect(${i})" title="Select">${card.selected?'✓':''}</div>
