@@ -196,6 +196,7 @@ body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);displ
 /* ── CUSTOMER CARDS ── */
 .cust-card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:16px;cursor:pointer;transition:all .2s;position:relative}
 .cust-card:hover{border-color:var(--border2);box-shadow:0 4px 16px rgba(0,0,0,.08);transform:translateY(-1px)}
+.cust-card.selected{border-color:var(--gold);box-shadow:0 0 0 2px rgba(180,138,80,.2)}
 .cust-name{font-size:14px;font-weight:600;color:var(--text)}
 .cust-meta{font-size:12px;color:var(--text3);margin-top:3px}
 .cust-tags{display:flex;flex-wrap:wrap;gap:4px;margin-top:8px}
@@ -270,6 +271,20 @@ body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);displ
 /* Multi-card gallery */
 .mc-gallery{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:14px;margin-top:16px}
 .mc-card{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:14px;transition:all .2s;position:relative;min-width:0;overflow:hidden}
+/* ── Infotip tooltip ─────────────────── */
+[data-tip]{position:relative;cursor:default}
+[data-tip]::after{content:attr(data-tip);position:absolute;bottom:calc(100% + 6px);left:50%;transform:translateX(-50%);background:#1a1a1a;color:#fff;font-size:11px;font-weight:400;padding:5px 9px;border-radius:6px;white-space:nowrap;pointer-events:none;opacity:0;transition:opacity .15s;z-index:9999;max-width:220px;white-space:normal;text-align:center;line-height:1.4}
+[data-tip]::before{content:'';position:absolute;bottom:calc(100% + 1px);left:50%;transform:translateX(-50%);border:5px solid transparent;border-top-color:#1a1a1a;pointer-events:none;opacity:0;transition:opacity .15s;z-index:9999}
+[data-tip]:hover::after,[data-tip]:hover::before{opacity:1}
+th[data-tip]{cursor:pointer}
+/* bulk action bar */
+.bulk-bar{display:none;position:sticky;top:0;z-index:20;background:var(--gold);color:#1a1a1a;padding:8px 14px;border-radius:8px;margin-bottom:10px;align-items:center;gap:10px;font-size:13px;font-weight:600}
+.bulk-bar.show{display:flex}
+/* row checkbox */
+.row-cb{width:16px;height:16px;cursor:pointer;accent-color:var(--gold)}
+/* card select overlay */
+.cust-card-sel{position:absolute;top:10px;left:10px;z-index:5}
+
 .mc-card.selected{border-color:var(--gold);box-shadow:0 0 0 2px rgba(180,138,80,.15)}
 .mc-card-img{width:100%;height:120px;object-fit:cover;border-radius:8px;border:1px solid var(--border);margin-bottom:10px}
 .mc-check{position:absolute;top:10px;right:10px;width:20px;height:20px;border-radius:5px;border:2px solid var(--border2);background:var(--bg2);cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:12px;transition:all .15s}
@@ -1394,6 +1409,30 @@ let custPhoto=null; // base64 string or null during form editing
 let selectedCustId=null;
 let custViewMode='card';
 let custTableSort={col:'createdAt',dir:'desc'};
+let selectedCusts=new Set(); // ids of checked rows/cards
+let custTableCols=['firstName','leadStatus','pipelineStage','vipLevel','dealValue','lastContactedDate','referredBy','assignedTo','leadSource','diamondType','purpose','nationality','updatedAt'];
+// all available columns definition
+const ALL_TABLE_COLS=[
+  {key:'firstName',      label:'Name',           tip:'Full name + email'},
+  {key:'leadStatus',     label:'Status',         tip:'Current lead status (New, Contacted, Qualified…)'},
+  {key:'pipelineStage',  label:'Stage',          tip:'Sales pipeline stage'},
+  {key:'vipLevel',       label:'VIP',            tip:'VIP tier based on total paid invoices'},
+  {key:'dealValue',      label:'Deal Value',     tip:'Estimated deal value in THB'},
+  {key:'lastContactedDate',label:'Last Contact', tip:'Date this contact was last reached out to'},
+  {key:'referredBy',     label:'Referred By',    tip:'Person or source who referred this lead'},
+  {key:'assignedTo',     label:'Salesperson',    tip:'Assigned sales team member'},
+  {key:'leadSource',     label:'Source',         tip:'How this lead was acquired'},
+  {key:'diamondType',    label:'Diamond',        tip:'Natural, Lab-Grown, Both or Undecided'},
+  {key:'jewelleryInterest',label:'Jewellery Int.',tip:'Interest in finished jewellery pieces'},
+  {key:'purpose',        label:'Purpose',        tip:'Reason for purchase (Investment, Engagement…)'},
+  {key:'preferredShapes',label:'Shape',          tip:'Preferred diamond shapes'},
+  {key:'caratMin',       label:'Carat',          tip:'Carat range (min – max)'},
+  {key:'nationality',    label:'Nationality',    tip:'Client nationality'},
+  {key:'paymentPreference',label:'Payment',      tip:'Preferred payment method'},
+  {key:'probability',    label:'Prob %',         tip:'Estimated close probability (0–100%)'},
+  {key:'budgetMin',      label:'Budget',         tip:'Stated budget range (min – max THB)'},
+  {key:'updatedAt',      label:'Last Updated',   tip:'Date record was last modified'},
+];
 function renderCustomers(){
   // Debug: immediately mark that we entered the function
   console.log('[CRM] renderCustomers called — db.customers:', (db.customers||[]).length, 'db.salespeople:', (db.salespeople||[]).length);
@@ -1431,6 +1470,7 @@ function renderCustomers(){
   const cardSvg=`<svg viewBox="0 0 16 16" fill="currentColor"><rect x="1" y="1" width="6" height="6" rx="1"/><rect x="9" y="1" width="6" height="6" rx="1"/><rect x="1" y="9" width="6" height="6" rx="1"/><rect x="9" y="9" width="6" height="6" rx="1"/></svg>`;
   const tableSvg=`<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="1" y="1" width="14" height="14" rx="1.5"/><line x1="1" y1="5.5" x2="15" y2="5.5"/><line x1="1" y1="10" x2="15" y2="10"/><line x1="5.5" y1="5.5" x2="5.5" y2="15"/></svg>`;
 
+  const selectAllCardBtn = custViewMode==='card' ? `<button class="btn btn-outline btn-sm" data-tip="Select all visible cards for bulk actions" onclick="selectAllVisibleCards()" style="white-space:nowrap">☑ Select All</button>${selectedCusts.size>0?` <button class="btn btn-outline btn-sm" onclick="selectedCusts.clear();renderCustomers()">✕ Clear</button>`:''}` : '';
   const sortCardSelect = custViewMode==='card' ? `
   <select class="filter-select" onchange="custFilter.sort=this.value;renderCustomers()">
     <option value="newest" ${custFilter.sort==='newest'?'selected':''}>Newest</option>
@@ -1464,16 +1504,23 @@ function renderCustomers(){
     <option value="60" ${custFilter.overdue==='60'?'selected':''}>Overdue &gt;60 days</option>
     <option value="never" ${custFilter.overdue==='never'?'selected':''}>Never Contacted</option>
   </select>
+  ${selectAllCardBtn}
   ${sortCardSelect}
   <div style="flex:1"></div>
   <div class="view-toggle" title="Toggle view">
     <button class="view-btn ${custViewMode==='card'?'active':''}" onclick="custViewMode='card';renderCustomers()" title="Card view">${cardSvg}</button>
     <button class="view-btn ${custViewMode==='table'?'active':''}" onclick="custViewMode='table';renderCustomers()" title="Table view">${tableSvg}</button>
   </div>
+  ${custViewMode==='table'?`<button class="btn btn-outline btn-sm" onclick="openColChooser()" data-tip="Choose which columns to show in table view" style="white-space:nowrap">⚙ Columns</button>`:''}
   <button class="btn btn-outline btn-sm" onclick="showImportModal()">📥 Import Excel</button>
   <button class="btn btn-gold" onclick="openCustModal(null)">+ Add Customer</button>
 </div>
 <div style="margin-bottom:6px;font-size:12px;color:var(--text3)">${list.length} client${list.length!==1?'s':''} found</div>
+<div class="bulk-bar ${selectedCusts.size>0?'show':''}" id="bulk-bar">
+  <span>${selectedCusts.size} selected</span>
+  <button class="btn btn-sm" style="background:#c0392b;color:#fff;border:none" onclick="bulkDeleteCusts()">🗑 Delete Selected</button>
+  <button class="btn btn-sm btn-outline" style="border-color:#1a1a1a;color:#1a1a1a" onclick="selectedCusts.clear();renderCustomers()">✕ Clear</button>
+</div>
 ${(()=>{ try{ return custViewMode==='card' ? renderCustCards(list) : renderCustTableHTML(list); } catch(e){ console.error('[CRM] card/table render error:',e); return `<div style="background:#fff0f0;border:1px solid #e74c3c;border-radius:10px;padding:20px;font-family:monospace;font-size:13px"><b>⚠️ Card render error:</b> ${e.message}<br><pre style="font-size:11px;margin-top:8px;white-space:pre-wrap">${e.stack}</pre></div>`; } })()}
 </div>
 ${selectedCustId?`<div class="detail-panel">${detailHtml}</div>`:''}
@@ -1484,7 +1531,10 @@ function renderCustCards(list){
   if(!list.length) return `<div class="empty-state"><div class="empty-icon">👥</div><p>No customers found</p><button class="btn btn-gold mt-2" onclick="openCustModal(null)">+ Add First Customer</button></div>`;
   return `<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:10px">
 ${list.map(c=>`
-  <div class="cust-card" onclick="selectedCustId='${c.id}';renderCustomers()">
+  <div class="cust-card ${selectedCusts.has(c.id)?'selected':''}" style="padding-top:${selectedCusts.size>0?'36':'16'}px" onclick="selectedCustId='${c.id}';renderCustomers()">
+    <div class="cust-card-sel" onclick="event.stopPropagation()">
+      <input type="checkbox" class="row-cb" ${selectedCusts.has(c.id)?'checked':''} onchange="toggleCustSel('${c.id}',this.checked)">
+    </div>
     <div class="flex items-center gap-2">
       ${avatarHtml(c,40,14)}
       <div style="flex:1;min-width:0">
@@ -1522,62 +1572,103 @@ function sortCustTable(col){
 
 function renderCustTableHTML(list){
   if(!list.length) return `<div class="empty-state"><div class="empty-icon">👥</div><p>No customers found</p><button class="btn btn-gold mt-2" onclick="openCustModal(null)">+ Add First Customer</button></div>`;
-  const vipBadge=(v)=>v&&v!=='None'?`<span class="badge badge-vip-${v.toLowerCase()}" style="font-size:10px">${v}</span>`:'—';
-  const rows = list.map(c=>`
-    <tr class="${selectedCustId===c.id?'row-sel':''}" onclick="selectedCustId='${c.id}';renderCustomers()">
-      <td>
-        <div class="flex items-center gap-2">
-          ${avatarHtml(c,28,11)}
-          <div>
-            <div class="ct-name">${c.firstName} ${c.lastName}</div>
-            <div class="ct-sub">${c.email||''}</div>
-          </div>
-        </div>
+  const allChecked=list.length>0&&list.every(c=>selectedCusts.has(c.id));
+  const vipBadge=(v)=>v&&v!=='None'?`<span class="badge badge-vip-${v.toLowerCase()}" style="font-size:10px" data-tip="${v} VIP tier">${v}</span>`:'—';
+  const activeCols=ALL_TABLE_COLS.filter(col=>custTableCols.includes(col.key));
+
+  const cellVal=(c,key)=>{
+    if(key==='firstName') return `<div class="flex items-center gap-2">${avatarHtml(c,28,11)}<div><div class="ct-name">${c.firstName} ${c.lastName}</div><div class="ct-sub">${c.email||''}</div></div></div>`;
+    if(key==='leadStatus') return `<span class="badge badge-${(c.leadStatus||'new').toLowerCase().replace(' ','-')}" data-tip="${c.leadStatus||'New'}">${c.leadStatus||'New'}</span>`;
+    if(key==='vipLevel') return vipBadge(c.vipLevel);
+    if(key==='dealValue') return `<span style="font-weight:600;color:var(--text)">${fmt(c.dealValue)}</span>`;
+    if(key==='lastContactedDate') return freshnessBadge(c);
+    if(key==='caratMin') return c.caratMin?(c.caratMin+(c.caratMax?' – '+c.caratMax:'')):'—';
+    if(key==='budgetMin') return c.budgetMin?(fmt(c.budgetMin)+(c.budgetMax?' – '+fmt(c.budgetMax)):''):'—';
+    if(key==='preferredShapes') return (c.preferredShapes||[]).slice(0,2).join(', ')||'—';
+    if(key==='updatedAt') return fmtDate(c.updatedAt||c.createdAt);
+    return c[key]||'—';
+  };
+
+  const rows=list.map(c=>`
+    <tr class="${selectedCustId===c.id?'row-sel':''} ${selectedCusts.has(c.id)?'row-checked':''}" onclick="selectedCustId='${c.id}';renderCustomers()">
+      <td onclick="event.stopPropagation()" style="width:36px;text-align:center">
+        <input type="checkbox" class="row-cb" ${selectedCusts.has(c.id)?'checked':''} onchange="toggleCustSel('${c.id}',this.checked)">
       </td>
-      <td><span class="badge badge-${(c.leadStatus||'new').toLowerCase().replace(' ','-')}">${c.leadStatus||'New'}</span></td>
-      <td>${c.pipelineStage||'—'}</td>
-      <td>${vipBadge(c.vipLevel)}</td>
-      <td style="font-weight:600;color:var(--text)">${fmt(c.dealValue)}</td>
-      <td>${c.diamondType||'—'}</td>
-      <td>${c.jewelleryInterest||'—'}</td>
-      <td>${c.purpose||'—'}</td>
-      <td>${(c.preferredShapes||[]).slice(0,2).join(', ')||'—'}</td>
-      <td>${c.caratMin||'—'}${c.caratMax?' – '+c.caratMax:''}</td>
-      <td>${c.nationality||'—'}</td>
-      <td>${c.assignedTo||'—'}</td>
-      <td>${c.leadSource||'—'}</td>
-      <td>${c.paymentPreference||'—'}</td>
-      <td style="color:var(--text3)">${fmtDate(c.updatedAt||c.createdAt)}</td>
+      ${activeCols.map(col=>`<td>${cellVal(c,col.key)}</td>`).join('')}
       <td onclick="event.stopPropagation()">
         <div class="flex gap-1">
-          ${canEdit(c)?`<button class="btn btn-outline btn-sm" style="padding:3px 7px" onclick="openCustModal('${c.id}')">✏️</button>`:''}
-          ${canEdit(c)?`<button class="btn btn-outline btn-sm" style="padding:3px 7px" onclick="deleteCust('${c.id}')">🗑</button>`:`<span style="font-size:10px;color:var(--text3)">👁</span>`}
+          ${canEdit(c)?`<button class="btn btn-outline btn-sm" style="padding:3px 7px" data-tip="Edit ${c.firstName}" onclick="openCustModal('${c.id}')">✏️</button>`:''}
+          ${canEdit(c)?`<button class="btn btn-outline btn-sm" style="padding:3px 7px" data-tip="Delete ${c.firstName}" onclick="deleteCust('${c.id}')">🗑</button>`:`<span style="font-size:10px;color:var(--text3)" data-tip="View only — not your assigned lead">👁</span>`}
         </div>
       </td>
     </tr>`).join('');
+
   return `<div class="cust-table-wrap">
   <table class="cust-table">
     <thead><tr>
-      ${thSort('firstName','Name')}
-      ${thSort('leadStatus','Status')}
-      ${thSort('pipelineStage','Stage')}
-      ${thSort('vipLevel','VIP')}
-      ${thSort('dealValue','Deal Value')}
-      ${thSort('diamondType','Diamond')}
-      ${thSort('jewelleryInterest','Jewellery Int.')}
-      ${thSort('purpose','Purpose')}
-      ${thSort('preferredShapes','Shape')}
-      ${thSort('caratMin','Carat')}
-      ${thSort('nationality','Nationality')}
-      ${thSort('assignedTo','Salesperson')}
-      ${thSort('leadSource','Source')}
-      ${thSort('paymentPreference','Payment')}
-      ${thSort('updatedAt','Last Updated')}
-      <th>Actions</th>
+      <th style="width:36px;text-align:center" data-tip="Select all rows">
+        <input type="checkbox" class="row-cb" ${allChecked?'checked':''} onchange="toggleAllCusts(this.checked,${JSON.stringify(list.map(c=>c.id)).replace(/"/g,"'")})">
+      </th>
+      ${activeCols.map(col=>`<th class="${custTableSort.col===col.key?'sorted':''}" onclick="sortCustTable('${col.key}')" data-tip="${col.tip} — click to sort">${col.label} <span class="sort-ic ${custTableSort.col===col.key?'on':''}">${custTableSort.col===col.key?(custTableSort.dir==='asc'?'▲':'▼'):'⇅'}</span></th>`).join('')}
+      <th data-tip="Edit or delete this record">Actions</th>
     </tr></thead>
     <tbody>${rows}</tbody>
   </table>
 </div>`;
+}
+
+function selectAllVisibleCards(){
+  // select all currently filtered list — re-filter same way renderCustomers does
+  let list=[...db.customers];
+  if(custFilter.search){const s=custFilter.search.toLowerCase();list=list.filter(c=>((c.firstName||'')+' '+(c.lastName||'')+' '+(c.email||'')+' '+(c.phone||'')).toLowerCase().includes(s));}
+  if(custFilter.status&&custFilter.status!=='All')list=list.filter(c=>(c.leadStatus||'New')===custFilter.status);
+  if(custFilter.stage&&custFilter.stage!=='All')list=list.filter(c=>(c.pipelineStage||'Awareness')===custFilter.stage);
+  if(custFilter.vip&&custFilter.vip!=='All')list=list.filter(c=>(c.vipLevel||'None')===custFilter.vip);
+  if(custFilter.sp&&custFilter.sp!=='All')list=list.filter(c=>(c.assignedTo||'')===custFilter.sp);
+  list.forEach(c=>selectedCusts.add(c.id));
+  renderCustomers();
+}
+function toggleCustSel(id,checked){
+  if(checked) selectedCusts.add(id); else selectedCusts.delete(id);
+  renderCustomers();
+}
+function toggleAllCusts(checked,ids){
+  ids.forEach(id=>checked?selectedCusts.add(id):selectedCusts.delete(id));
+  renderCustomers();
+}
+function bulkDeleteCusts(){
+  if(!selectedCusts.size) return;
+  if(!confirm(`Delete ${selectedCusts.size} selected contact${selectedCusts.size>1?'s':''}? This cannot be undone.`)) return;
+  db.customers=db.customers.filter(c=>!selectedCusts.has(c.id));
+  selectedCusts.clear(); saveDB(); renderCustomers();
+}
+function openColChooser(){
+  const existing=document.getElementById('col-chooser-modal');
+  if(existing){existing.remove();return;}
+  const modal=document.createElement('div');
+  modal.id='col-chooser-modal';
+  modal.style.cssText='position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:var(--card);border:1px solid var(--border);border-radius:14px;padding:20px 24px;z-index:10000;min-width:320px;max-width:480px;box-shadow:0 20px 60px rgba(0,0,0,.3)';
+  modal.innerHTML=`<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
+    <div style="font-size:15px;font-weight:700;color:var(--text)">⚙ Choose Table Columns</div>
+    <button onclick="document.getElementById('col-chooser-modal').remove()" style="background:none;border:none;font-size:18px;cursor:pointer;color:var(--text3)">✕</button>
+  </div>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;max-height:320px;overflow-y:auto;margin-bottom:14px">
+    ${ALL_TABLE_COLS.map(col=>`<label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer;padding:4px 0" data-tip="${col.tip}">
+      <input type="checkbox" style="accent-color:var(--gold)" ${custTableCols.includes(col.key)?'checked':''} onchange="toggleTableCol('${col.key}',this.checked)">
+      ${col.label}
+    </label>`).join('')}
+  </div>
+  <div style="display:flex;gap:8px;justify-content:flex-end">
+    <button class="btn btn-outline btn-sm" onclick="custTableCols=ALL_TABLE_COLS.map(c=>c.key);renderCustomers();document.getElementById('col-chooser-modal').remove()">Reset All</button>
+    <button class="btn btn-gold btn-sm" onclick="document.getElementById('col-chooser-modal').remove();renderCustomers()">Apply</button>
+  </div>`;
+  document.body.appendChild(modal);
+  // click outside to close
+  setTimeout(()=>document.addEventListener('click',function _cc(e){if(!modal.contains(e.target)){modal.remove();document.removeEventListener('click',_cc);}},true),100);
+}
+function toggleTableCol(key,checked){
+  if(checked){if(!custTableCols.includes(key))custTableCols.push(key);}
+  else{custTableCols=custTableCols.filter(k=>k!==key);}
 }
 
 function buildCustDetail(c){
@@ -1593,7 +1684,7 @@ function buildCustDetail(c){
       <button class="btn btn-outline btn-sm" onclick="selectedCustId=null;renderCustomers()">✕</button>
     </div>
     <div class="grid-2" style="gap:8px;margin-bottom:12px;font-size:12px">
-      ${[['Status',`<span class="badge badge-${(c.leadStatus||'new').toLowerCase()}">${c.leadStatus||'New'}</span>`],
+      ${[['Status',`<span class="badge badge-${(c.leadStatus||'new').toLowerCase()}" data-tip="Lead status: ${c.leadStatus||'New'}">${c.leadStatus||'New'}</span>`],
          ['Stage',c.pipelineStage||'—'],['Deal',fmt(c.dealValue)],['Probability',(c.probability||0)+'%'],
          ['Source',c.leadSource||'—'],['Assigned',c.assignedTo||'—']
         ].map(([k,v])=>`<div><div class="text-xs">${k}</div><div style="font-weight:600;color:var(--text)">${v}</div></div>`).join('')}
