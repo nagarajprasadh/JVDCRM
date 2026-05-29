@@ -3320,7 +3320,8 @@ function renderHelp(){
 <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:28px" id="help-toc">
   ${[['#h-start','Getting Started'],['#h-login','Login'],['#h-nav','Navigation'],['#h-customers','Customers'],
      ['#h-pipeline','Sales Pipeline'],['#h-import','Excel Import'],['#h-users','Users & Access'],
-     ['#h-roles','Role Control'],['#h-other','Other Sections'],['#h-data','Data & Backup'],['#h-creds','Credentials'],['#h-faq','FAQ']]
+     ['#h-roles','Role Control'],['#h-other','Other Sections'],['#h-bizcard','Business Cards'],
+     ['#h-data','Data & Backup'],['#h-creds','Credentials'],['#h-faq','FAQ']]
     .map(([href,label])=>`<a href="${href}" style="padding:5px 14px;border-radius:20px;background:var(--card);border:1px solid var(--border);font-size:12px;color:var(--text);text-decoration:none;transition:all .15s" onmouseover="this.style.borderColor='var(--gold)';this.style.color='var(--gold)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--text)'">${label}</a>`)
     .join('')}
 </div>
@@ -3375,7 +3376,7 @@ function renderHelp(){
       <tr><td>🤝 Salespeople</td><td>Roster with auto-calculated performance metrics</td></tr>
       <tr><td>📈 Reports</td><td>Revenue charts, conversion funnel, campaign ROI</td></tr>
       <tr><td>📣 Campaigns</td><td>Marketing campaign management and customer linkage</td></tr>
-      <tr><td>🪪 Business Cards</td><td>Printable digital business card generator</td></tr>
+      <tr><td>🪪 Business Cards</td><td>OCR card scanner — drop a photo or multi-page PDF; contacts extracted automatically and saved as leads</td></tr>
       <tr><td>🧾 Invoices &amp; Payments</td><td>Invoice creation, payment recording, balance tracking</td></tr>
       <tr><td>🔐 Users &amp; Access</td><td><b>Admin only</b> — manage user accounts &amp; roles</td></tr>
       <tr><td>❓ Help &amp; FAQ</td><td>This screen — full user manual</td></tr>
@@ -3399,6 +3400,16 @@ function renderHelp(){
 
   <div class="help-h2">Editing &amp; deleting</div>
   <p class="help-p">Click any card to open the detail panel. Edit / Delete buttons appear on cards — availability depends on your role (see Role-Based Access below).</p>
+
+  <div class="help-h2">Customer &amp; Lead photos <span class="help-new">NEW</span></div>
+  <p class="help-p">Each customer or lead card can have a profile photo. To add one:</p>
+  <div class="help-steps">
+    <div class="help-step"><span class="help-step-n">1</span>Click <b>+ Add Customer</b> or <b>✏️ Edit</b> on an existing record.</div>
+    <div class="help-step"><span class="help-step-n">2</span>In the form, click the photo area (or the camera icon) and select a JPG/PNG image from your device. Maximum size is <b>3 MB</b>.</div>
+    <div class="help-step"><span class="help-step-n">3</span>A preview appears immediately. Click <b>✕ Remove</b> to clear it. Save the record to store the photo.</div>
+  </div>
+  <p class="help-p">Photos are stored as part of the record in localStorage and are included in all data backups. If no photo is set, the card displays the contact's initial letter as before.</p>
+  <div class="help-note">💡 For best results use square portrait images under 1 MB. Very large photos will still work but increase the localStorage footprint.</div>
 </div>
 
 <!-- ═══════════════════ SECTION: Sales Pipeline ═══════════════════ -->
@@ -3515,16 +3526,74 @@ function renderHelp(){
   <div class="help-h2">📣 Campaigns</div>
   <p class="help-p">Create campaigns (Email, WhatsApp, Event, etc.), set budgets and dates, link customers. View engagement metrics and estimated ROI.</p>
   <div class="help-h2">🪪 Business Cards</div>
-  <p class="help-p">Generate printable digital business cards for any salesperson. Select a person and colour theme — the card renders with their name, title, phone, email, and company details.</p>
+  <p class="help-p">OCR-powered contact scanner. Drop any business card photo or multi-page PDF and the CRM automatically reads the text and fills in contact fields. See the dedicated section below for full details.</p>
   <div class="help-h2">🧾 Invoices &amp; Payments</div>
   <p class="help-p">Create invoices linked to customer records. Track Paid / Pending / Overdue status and view a running total of outstanding amounts.</p>
   <div class="help-h2">⚙️ Settings</div>
   <p class="help-p">Configure company details used on business cards and invoices, set VIP deal value thresholds (Bronze / Silver / Gold / Platinum), export the full database as a JSON backup, or import a previous backup.</p>
 </div>
 
+<!-- ═══════════════════ SECTION: Business Card Scanner ═══════════════════ -->
+<div class="help-section" id="h-bizcard">
+  <div class="help-h1">10. Business Card Scanner <span class="help-new">NEW</span></div>
+  <p class="help-p">The Business Cards section uses on-device OCR (Tesseract.js) to read physical business cards from photos or PDFs — no internet connection required. Extracted contacts can be saved to the card library or converted directly to Leads.</p>
+
+  <div class="help-h2">Uploading a card</div>
+  <div class="help-steps">
+    <div class="help-step"><span class="help-step-n">1</span>Navigate to <b>🪪 Business Cards</b> in the sidebar.</div>
+    <div class="help-step"><span class="help-step-n">2</span>Drag a file onto the drop zone, or click the zone to browse. Accepted formats: <b>JPG, PNG, PDF</b>.</div>
+    <div class="help-step"><span class="help-step-n">3</span>OCR runs automatically. A progress bar shows the status. When complete, extracted cards appear in the gallery below.</div>
+    <div class="help-step"><span class="help-step-n">4</span>Review and correct any fields in the edit form, then click <b>💾 Save Selected</b> or <b>➕ Convert Selected to Leads</b>.</div>
+  </div>
+
+  <div class="help-h2">Multiple cards in one photo <span class="help-new">NEW</span></div>
+  <p class="help-p">If you photograph several cards lying on a table, the CRM automatically detects how many cards are present (by counting email addresses found in the OCR text) and splits the image into equal horizontal strips — each strip is OCR'd separately as its own card.</p>
+  <p class="help-p">After extraction a <b>re-split bar</b> appears below "Extracted Cards":</p>
+  <div style="background:var(--hover);border:1px dashed var(--border);border-radius:8px;padding:10px 14px;font-size:12px;color:var(--text2);margin:8px 0">
+    📷 Photo with multiple cards? &nbsp; Split into: &nbsp; <b>1 · 2 · 3 · 4 · 5</b> cards
+  </div>
+  <p class="help-p">The currently active count is highlighted in gold. Tap any number to re-split the image without re-uploading. Use this if auto-detection got the count wrong (e.g. a card had no email address).</p>
+  <div class="help-note">💡 For best results, arrange cards in a single vertical column when photographing. Lay them flat, ensure good lighting, and avoid overlapping edges.</div>
+
+  <div class="help-h2">Multi-page PDF <span class="help-new">NEW</span></div>
+  <p class="help-p">If each card has been scanned as a separate page in one PDF, upload the PDF and the CRM processes <b>every page independently</b> — one card per page. A single shared OCR engine is used for all pages, so even 10+ page PDFs complete reliably without errors.</p>
+
+  <div class="help-h2">Handwritten notes capture <span class="help-new">NEW</span></div>
+  <p class="help-p">OCR often picks up handwritten text on cards (e.g. a mobile number jotted in pen). Any text that doesn't match a known field pattern — name, company, email, phone — is automatically placed in the <b>✍️ Handwritten Notes</b> field for that card. You can freely edit this before saving.</p>
+  <p class="help-p">When saved, handwritten notes are combined with any internal notes and stored on the contact record. They also appear on the saved card tile in the right panel.</p>
+
+  <div class="help-h2">Edit form fields</div>
+  <table class="help-table">
+    <thead><tr><th>Field</th><th>Auto-filled from OCR?</th><th>Notes</th></tr></thead>
+    <tbody>
+      <tr><td>Full Name</td><td>✅ Yes</td><td>First capitalised line that isn't a known company/title pattern</td></tr>
+      <tr><td>Company</td><td>✅ Yes</td><td>Matched against "PCL", "Co.", "Ltd", "Bank" and similar keywords</td></tr>
+      <tr><td>Title</td><td>✅ Yes</td><td>VP, President, Manager, Director, Head of… etc.</td></tr>
+      <tr><td>Email</td><td>✅ Yes</td><td>Standard email pattern</td></tr>
+      <tr><td>Phone / Mobile / Fax</td><td>✅ Yes</td><td>Labelled lines with T / M / F prefixes or +66 / 66x patterns</td></tr>
+      <tr><td>Website</td><td>✅ Yes</td><td>Lines starting with www. or http</td></tr>
+      <tr><td>Line / WeChat</td><td>✅ Yes</td><td>Lines containing "line:" or "wechat:"</td></tr>
+      <tr><td>Address</td><td>✅ Yes</td><td>Lines with road/floor/building/Bangkok keywords</td></tr>
+      <tr><td>✍️ Handwritten Notes</td><td>✅ Auto-detected</td><td>Residual unmatched OCR text — edit freely</td></tr>
+      <tr><td>Internal Notes</td><td>❌ Manual</td><td>Your own private notes about this contact</td></tr>
+    </tbody>
+  </table>
+
+  <div class="help-h2">Saving &amp; converting</div>
+  <p class="help-p">Use the checkboxes on each card to select which ones to action. Then choose:</p>
+  <table class="help-table">
+    <thead><tr><th>Button</th><th>What it does</th></tr></thead>
+    <tbody>
+      <tr><td>💾 Save Selected</td><td>Saves cards to the right-hand Saved Cards list for future reference</td></tr>
+      <tr><td>➕ Convert Selected to Leads</td><td>Creates a new Lead in Customers &amp; Leads for each selected card, pre-filled with all extracted fields</td></tr>
+    </tbody>
+  </table>
+  <div class="help-note">💡 OCR accuracy depends on photo quality. Blurry images, poor lighting, or very small fonts will reduce accuracy. Always review the extracted fields before saving — the edit form lets you fix anything.</div>
+</div>
+
 <!-- ═══════════════════ SECTION: Data & Backup ═══════════════════ -->
 <div class="help-section" id="h-data">
-  <div class="help-h1">10. Data Management &amp; Backup</div>
+  <div class="help-h1">11. Data Management &amp; Backup</div>
   <div class="help-h2">How data is stored</div>
   <p class="help-p">All CRM data is stored in your browser's <b>localStorage</b> under the key <code>diamondCRM_v2</code>. It persists until the browser cache is cleared. Session info is in <code>sessionStorage</code> and clears when the tab is closed.</p>
   <div class="help-h2">Exporting a backup</div>
@@ -3536,7 +3605,7 @@ function renderHelp(){
 
 <!-- ═══════════════════ SECTION: Quick Credentials ═══════════════════ -->
 <div class="help-section" id="h-creds">
-  <div class="help-h1">11. Quick Credentials Reference</div>
+  <div class="help-h1">12. Quick Credentials Reference</div>
   <table class="help-table">
     <thead><tr><th>Username</th><th>Default Password</th><th>Role</th><th>Linked Salesperson</th></tr></thead>
     <tbody>
@@ -3553,7 +3622,7 @@ function renderHelp(){
 
 <!-- ═══════════════════ SECTION: FAQ ═══════════════════ -->
 <div class="help-section" id="h-faq">
-  <div class="help-h1">12. Frequently Asked Questions</div>
+  <div class="help-h1">13. Frequently Asked Questions</div>
 
   <div class="faq-item">
     <div class="faq-q" onclick="toggleFaq(this)">▶ I cleared my browser data — is the CRM data gone?</div>
@@ -3590,6 +3659,26 @@ function renderHelp(){
   <div class="faq-item">
     <div class="faq-q" onclick="toggleFaq(this)">▶ How do I print a business card or report?</div>
     <div class="faq-a">Navigate to the Business Cards or Reports section, then use your browser's built-in print function: press Ctrl+P (Windows) or Cmd+P (Mac), or File → Print. The CRM pages are styled for print output.</div>
+  </div>
+  <div class="faq-item">
+    <div class="faq-q" onclick="toggleFaq(this)">▶ I photographed 3 cards but only 1 was extracted.</div>
+    <div class="faq-a">Auto-detection counts email addresses in the OCR output to guess how many cards are in the image. If any cards have no email, the count will be under-detected. After extraction you'll see a <b>re-split bar</b> — click the correct number (e.g. "3") and the image is re-processed into that many strips instantly, with no need to re-upload.</div>
+  </div>
+  <div class="faq-item">
+    <div class="faq-q" onclick="toggleFaq(this)">▶ The OCR extracted garbled or wrong text. Can I fix it?</div>
+    <div class="faq-a">Yes — all extracted fields are fully editable before you save. Click <b>✏️ Edit</b> on any card in the gallery to open the form and correct any field. OCR accuracy depends on photo quality; for best results use a well-lit, straight-on photo with cards laid flat.</div>
+  </div>
+  <div class="faq-item">
+    <div class="faq-q" onclick="toggleFaq(this)">▶ The card had handwritten notes but they weren't captured.</div>
+    <div class="faq-a">Handwritten text is captured in the <b>✍️ Handwritten Notes</b> field — it collects any OCR text that didn't match a standard field like name, company, email or phone. If the handwriting was too faint or stylised for the OCR engine to read, type the notes manually in that field before saving.</div>
+  </div>
+  <div class="faq-item">
+    <div class="faq-q" onclick="toggleFaq(this)">▶ How do I add a photo to a customer or lead?</div>
+    <div class="faq-a">Open the customer's edit form (click ✏️ Edit on their card). The form has a photo upload area — click it and select a JPG or PNG from your device (max 3 MB). A preview appears immediately. Click Save to store it. The photo also appears on their card in list and card views, and in the detail panel.</div>
+  </div>
+  <div class="faq-item">
+    <div class="faq-q" onclick="toggleFaq(this)">▶ My PDF had 5 pages but only some cards were extracted.</div>
+    <div class="faq-a">For PDFs, each page is treated as one card — so a 5-page PDF should yield 5 extracted cards. If fewer appear, one or more pages may have been blank or unreadable. The CRM uses a single shared OCR engine for all pages, so the process should complete reliably. Try re-uploading the PDF; if a specific page consistently fails, extract that page as a separate image and upload it alone.</div>
   </div>
 </div>
 
