@@ -2393,7 +2393,9 @@ let bcWorker=null;
 // ══════════════════════════════════════════════
 // BUSINESS CARDS — MULTI-CARD PDF + SINGLE IMAGE OCR
 // ══════════════════════════════════════════════
-let parsedCards = [];   // [{imgDataUrl, fields, selected, expanded}, ...]
+let parsedCards   = [];   // [{imgDataUrl, fields, selected, expanded}, ...]
+let _ocrWorker    = null; // reused Tesseract worker (one for the whole session)
+let _ocrProgCb    = null; // current progress callback
 
 function renderBizcard(){
   document.getElementById('content').innerHTML=`
@@ -2458,6 +2460,7 @@ function renderBCList(){
           <div class="text-xs">${bc.email||''}</div>
         </div>
       </div>
+      ${bc.handwrittenNotes?`<div style="margin-top:6px;font-size:11px;color:var(--text2);background:var(--hover);border-left:3px solid var(--gold);padding:4px 8px;border-radius:0 4px 4px 0;white-space:pre-wrap">✍️ ${bc.handwrittenNotes}</div>`:''}
       <div class="flex gap-2 mt-1">
         <button class="btn btn-xs btn-outline" onclick="convertToLeadFromSaved('${bc.id}')">➕ Lead</button>
         <button class="btn btn-xs btn-red" onclick="deleteBC('${bc.id}')">🗑</button>
@@ -2518,13 +2521,22 @@ async function processPDFMultiCard(file){
   setOCRStatus(`Extracted ${numPages} card${numPages>1?'s':''}`, 100);
 }
 
+async function getOCRWorker(){
+  if(!_ocrWorker){
+    // Create ONE worker for the whole session — avoids re-downloading the language pack per page
+    _ocrWorker = await Tesseract.createWorker('eng', 1, {
+      logger: m=>{ if(m.status==='recognizing text' && _ocrProgCb) _ocrProgCb(m.progress); }
+    });
+  }
+  return _ocrWorker;
+}
+
 async function runOCROnImage(imgUrl, progressCb){
-  const worker = await Tesseract.createWorker('eng', 1, {
-    logger: m=>{ if(m.status==='recognizing text') progressCb(m.progress); }
-  });
+  _ocrProgCb = progressCb;
+  const worker = await getOCRWorker();
   const {data:{text}} = await worker.recognize(imgUrl);
-  await worker.terminate();
-  return parseBusinessCardText(text, imgUrl);
+  _ocrProgCb = null;
+  return parseBusinessCardText(text);
 }
 
 function fileToDataURL(file){
@@ -2536,34 +2548,56 @@ function fileToDataURL(file){
 function parseBusinessCardText(text){
   const lines=text.split(/\n/).map(l=>l.trim()).filter(l=>l.length>1);
   const result={rawText:text};
+  const usedLines=new Set();
+
   const emailMatch=text.match(/[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}/);
-  if(emailMatch) result.email=emailMatch[0];
+  if(emailMatch){ result.email=emailMatch[0]; lines.filter(l=>l.includes(result.email)).forEach(l=>usedLines.add(l)); }
+
   const webMatch=text.match(/(?:https?:\/\/|www\.)[^\s,;]+/i);
-  if(webMatch) result.website=webMatch[0].replace(/[,;.]$/,'');
+  if(webMatch){ result.website=webMatch[0].replace(/[,;.]$/,''); lines.filter(l=>l.includes('www')||l.includes('http')).forEach(l=>usedLines.add(l)); }
+
   const phoneAll=[...text.matchAll(/(?:\+?[\d][\d\s\-().]{5,17}\d)/g)].map(m=>m[0].trim()).filter(p=>p.replace(/\D/g,'').length>=7&&p.replace(/\D/g,'').length<=15);
   if(phoneAll.length>0) result.phone=phoneAll[0];
   if(phoneAll.length>1) result.mobile=phoneAll[1];
+  lines.filter(l=>phoneAll.some(p=>l.includes(p))).forEach(l=>usedLines.add(l));
+
   const lineMatch=text.match(/(?:Line|LINE|WeChat|Wechat)[:\s]+([^\n,;]+)/i);
-  if(lineMatch) result.line=lineMatch[1].trim();
+  if(lineMatch){ result.line=lineMatch[1].trim(); lines.filter(l=>/Line|WeChat/i.test(l)).forEach(l=>usedLines.add(l)); }
+
   const companyKw=/(?:Co\.|Ltd\.|Inc\.|Corp\.|LLC|Pte\.|limited|company|enterprise|group|international|global|trading|solutions|consulting|diamond|jewel)/i;
   const companyLine=lines.find(l=>companyKw.test(l));
-  if(companyLine) result.company=companyLine;
+  if(companyLine){ result.company=companyLine; usedLines.add(companyLine); }
+
   const titleKw=/(?:CEO|CFO|COO|CTO|Director|Manager|President|Vice\s*President|VP|Head|Officer|Associate|Consultant|Executive|Partner|Founder|Owner|Advisor|Sales|Marketing|Engineer)/i;
   const titleLine=lines.find(l=>titleKw.test(l)&&l.length<60&&!companyKw.test(l));
-  if(titleLine) result.title=titleLine;
+  if(titleLine){ result.title=titleLine; usedLines.add(titleLine); }
+
   const addrKw=/(?:Road|Rd\.|Street|St\.|Ave|Floor|Building|Tower|Plaza|Sukhumvit|Silom|Bangkok|Thailand|Singapore|Hong Kong|\d{4,6})/i;
   const addrLines=lines.filter(l=>addrKw.test(l)&&!phoneAll.some(p=>l.includes(p)));
-  if(addrLines.length) result.address=addrLines.join(', ');
+  if(addrLines.length){ result.address=addrLines.join(', '); addrLines.forEach(l=>usedLines.add(l)); }
+
   const nameLine=lines.find(l=>{
     if(result.email&&l.includes('@')) return false;
-    if(result.website&&l.includes('www')) return false;
+    if(result.website&&(l.includes('www')||l.includes('http'))) return false;
     if(phoneAll.some(p=>l.replace(/\s/g,'').includes(p.replace(/\s/g,'')))) return false;
     if(result.company&&l===result.company) return false;
     if(result.title&&l===result.title) return false;
     const w=l.trim().split(/\s+/);
     return w.length>=1&&w.length<=5&&/^[A-Z]/.test(l)&&!/[@:/\d]/.test(l);
   });
-  if(nameLine) result.name=nameLine;
+  if(nameLine){ result.name=nameLine; usedLines.add(nameLine); }
+
+  // ── Capture residual lines as handwritten / extra notes ──────────────────
+  // Any line not matched by a known field pattern is likely a handwritten annotation
+  const residual=lines.filter(l=>{
+    if(usedLines.has(l)) return false;
+    if(l.length<3) return false;
+    // skip lines that are purely numbers/symbols (artefacts)
+    if(/^[\d\s\-+().,:;/\\|_*#=]{1,}$/.test(l)) return false;
+    return true;
+  });
+  if(residual.length) result.handwrittenNotes=residual.join('\n');
+
   return result;
 }
 
@@ -2583,6 +2617,7 @@ function renderMCGallery(){
       ${mcFieldRow('Phone', card.fields.phone)}
       ${mcFieldRow('Mobile', card.fields.mobile)}
       ${mcFieldRow('Website', card.fields.website)}
+      ${card.fields.handwrittenNotes?`<div class="mc-field" style="margin-top:6px;padding:6px 8px;background:var(--hover);border-radius:6px;border-left:3px solid var(--gold)"><span class="mc-field-label" style="color:var(--gold)">✍️ Notes:</span><span style="color:var(--text2);font-size:12px;white-space:pre-wrap">${card.fields.handwrittenNotes}</span></div>`:''}
       <div class="flex gap-2 mt-1">
         <button class="btn btn-xs btn-outline" onclick="toggleMCExpand(${i})">${card.expanded?'▲ Collapse':'✏️ Edit'}</button>
         <button class="btn btn-xs btn-outline" onclick="toggleMCSelect(${i})">${card.selected?'Deselect':'Select'}</button>
@@ -2607,9 +2642,23 @@ function buildMCEditForm(i, f){
     <div class="field"><label>Phone</label><input id="mce-${i}-phone" value="${f.phone||''}" oninput="updateParsedCard(${i},'phone',this.value)"></div>
     <div class="field"><label>Mobile</label><input id="mce-${i}-mobile" value="${f.mobile||''}" oninput="updateParsedCard(${i},'mobile',this.value)"></div>
     <div class="field"><label>Website</label><input id="mce-${i}-website" value="${f.website||''}" oninput="updateParsedCard(${i},'website',this.value)"></div>
-    <div class="field"><label>Line/WeChat</label><input id="mce-${i}-line" value="${f.line||''}" oninput="updateParsedCard(${i},'line',this.value)"></div>
+    <div class="field"><label>Line / WeChat</label><input id="mce-${i}-line" value="${f.line||''}" oninput="updateParsedCard(${i},'line',this.value)"></div>
     <div class="field full"><label>Address</label><textarea id="mce-${i}-address" rows="2" oninput="updateParsedCard(${i},'address',this.value)">${f.address||''}</textarea></div>
-    <div class="field full"><label>Notes</label><textarea id="mce-${i}-notes" rows="2" oninput="updateParsedCard(${i},'notes',this.value)">${f.notes||''}</textarea></div>
+    <div class="field full">
+      <label style="display:flex;align-items:center;gap:6px">
+        ✍️ Handwritten Notes
+        <span style="font-size:10px;color:var(--text3);font-weight:400">auto-detected from OCR · edit freely</span>
+      </label>
+      <textarea id="mce-${i}-handwrittenNotes" rows="3" style="border-left:3px solid var(--gold)"
+        placeholder="Type any handwritten notes you see on the card…"
+        oninput="updateParsedCard(${i},'handwrittenNotes',this.value)">${f.handwrittenNotes||''}</textarea>
+    </div>
+    <div class="field full">
+      <label>Internal Notes</label>
+      <textarea id="mce-${i}-notes" rows="2"
+        placeholder="Your own notes about this contact…"
+        oninput="updateParsedCard(${i},'notes',this.value)">${f.notes||''}</textarea>
+    </div>
   </div>`;
 }
 
@@ -2624,9 +2673,11 @@ function saveSelectedCards(){
   sel.forEach(card=>{
     const f=card.fields;
     if(!f.name&&!f.email&&!f.phone) return; // skip truly empty
+    const combinedNotes=[f.handwrittenNotes?'✍️ '+f.handwrittenNotes:'', f.notes||''].filter(Boolean).join('\n\n');
     db.businessCards.push({id:uid(),name:f.name||'',company:f.company||'',title:f.title||'',
       email:f.email||'',phone:f.phone||'',mobile:f.mobile||'',website:f.website||'',
-      line:f.line||'',address:f.address||'',notes:f.notes||'',
+      line:f.line||'',address:f.address||'',
+      handwrittenNotes:f.handwrittenNotes||'', notes:combinedNotes,
       dateCollected:new Date().toISOString().slice(0,10),createdAt:new Date().toISOString()});
   });
   saveDB();
@@ -2650,7 +2701,11 @@ function convertSelectedToLeads(){
       set('f-ln',(f.name||'').split(' ').slice(1).join(' ')||'');
       set('f-email',f.email||''); set('f-phone',f.phone||f.mobile||'');
       set('f-company',f.company||''); set('f-desig',f.title||'');
-      set('f-notes','Converted from business card. '+( f.website?'Website: '+f.website:''));
+      const bcNotes=['Converted from business card.',
+        f.website?'Website: '+f.website:'',
+        f.handwrittenNotes?'✍️ '+f.handwrittenNotes:''
+      ].filter(Boolean).join('\n');
+      set('f-notes', bcNotes);
     },100);
   } else {
     // Bulk convert
@@ -2662,7 +2717,7 @@ function convertSelectedToLeads(){
       db.customers.push({id:uid(),firstName:nameParts[0]||'Contact',lastName:nameParts.slice(1).join(' ')||'',
         email:f.email||'',phone:f.phone||f.mobile||'',company:f.company||'',designation:f.title||'',
         website:f.website||'',wechat:f.line||'',leadStatus:'New',pipelineStage:'Awareness',
-        leadSource:'Business Card',notes:'Converted from business card scan.',
+        leadSource:'Business Card',notes:['Converted from business card scan.',f.handwrittenNotes?'✍️ '+f.handwrittenNotes:''].filter(Boolean).join('\n'),
         activityLog:[{type:'Created',note:'Imported from business card scan',ts:new Date().toISOString()}],
         createdAt:new Date().toISOString(),updatedAt:new Date().toISOString()});
       count++;
