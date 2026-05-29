@@ -1535,9 +1535,6 @@ function renderCustCards(list){
   return `<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:10px">
 ${list.map(c=>`
   <div class="cust-card ${selectedCusts.has(c.id)?'selected':''}"  onclick="selectedCustId='${c.id}';renderCustomers()">
-    <div class="cust-card-sel" onclick="event.stopPropagation()">
-      <input type="checkbox" class="row-cb" ${selectedCusts.has(c.id)?'checked':''} onchange="toggleCustSel('${c.id}',this.checked)">
-    </div>
     <div class="flex items-center gap-2">
       ${avatarHtml(c,40,14)}
       <div style="flex:1;min-width:0">
@@ -1545,6 +1542,7 @@ ${list.map(c=>`
         <div class="cust-meta">${c.company||c.nationality||''} ${c.assignedTo?'· '+c.assignedTo:''}</div>
       </div>
       <span class="badge badge-${(c.leadStatus||'new').toLowerCase().replace(' ','-')}">${c.leadStatus||'New'}</span>
+      <input type="checkbox" class="row-cb" ${selectedCusts.has(c.id)?'checked':''} onclick="event.stopPropagation()" onchange="toggleCustSel('${c.id}',this.checked)" style="width:16px;height:16px;flex-shrink:0;cursor:pointer;accent-color:var(--gold)">
     </div>
     <div class="flex gap-2 mt-1" style="font-size:12px;color:var(--text3)">
       <span>💰 ${fmt(c.dealValue)}</span>
