@@ -1847,26 +1847,94 @@ function buildCustForm(c){
 function handlePhotoUpload(input){
   const file=input.files[0];
   if(!file) return;
-  if(file.size > 3*1024*1024){ alert('Photo must be under 3 MB.'); return; }
+  if(file.size > 3*1024*1024){ alert('Photo must be under 3 MB.'); input.value=''; return; }
   const reader=new FileReader();
-  reader.onload=function(e){
-    custPhoto=e.target.result;
-    const wrap=document.getElementById('photo-preview-wrap');
-    const img=document.getElementById('photo-preview-img');
-    if(img.tagName==='IMG'){
-      img.src=custPhoto;
-    } else {
-      // replace placeholder div with img
-      const newImg=document.createElement('img');
-      newImg.id='photo-preview-img';
-      newImg.src=custPhoto;
-      newImg.style.cssText='width:100%;height:100%;object-fit:cover';
-      img.parentNode.replaceChild(newImg, img);
+  reader.onload=async function(e){
+    const newPhoto=e.target.result;
+
+    // ── Duplicate photo check ──────────────────────────────────────
+    const dupResult = await findPhotoDuplicate(newPhoto);
+    if(dupResult){
+      const cust=dupResult.customer;
+      const name=((cust.firstName||'')+(cust.lastName?' '+cust.lastName:'')).trim()||cust.email||'another contact';
+      const kind=dupResult.type==='exact'?'identical':'visually similar';
+      const confirmed=confirm(
+        `⚠️ Duplicate Photo Detected\n\nThis photo appears to be ${kind} to one already assigned to:\n\n  "${name}"\n\nUsing the same photo on two contacts may cause confusion.\n\nDo you still want to use it here?`
+      );
+      if(!confirmed){ input.value=''; return; }
     }
-    const btn=document.getElementById('photo-remove-btn');
-    if(btn) btn.style.display='';
+    // ──────────────────────────────────────────────────────────────
+
+    custPhoto=newPhoto;
+    _applyPhotoPreview(custPhoto);
   };
   reader.readAsDataURL(file);
+}
+
+// Apply photo to the preview UI
+function _applyPhotoPreview(src){
+  const img=document.getElementById('photo-preview-img');
+  if(!img) return;
+  if(img.tagName==='IMG'){
+    img.src=src;
+  } else {
+    const newImg=document.createElement('img');
+    newImg.id='photo-preview-img';
+    newImg.src=src;
+    newImg.style.cssText='width:100%;height:100%;object-fit:cover';
+    img.parentNode.replaceChild(newImg,img);
+  }
+  const btn=document.getElementById('photo-remove-btn');
+  if(btn) btn.style.display='';
+}
+
+// ── Perceptual hash helpers ────────────────────────────────────────────────
+// Compute a 256-bit average hash (aHash) by downsampling to 16×16 grayscale
+function _photoHash(base64){
+  return new Promise(resolve=>{
+    const img=new Image();
+    img.onload=()=>{
+      const SZ=16;
+      const cv=document.createElement('canvas'); cv.width=SZ; cv.height=SZ;
+      const ctx=cv.getContext('2d');
+      ctx.drawImage(img,0,0,SZ,SZ);
+      const d=ctx.getImageData(0,0,SZ,SZ).data;
+      const grays=[];
+      for(let i=0;i<d.length;i+=4) grays.push(0.299*d[i]+0.587*d[i+1]+0.114*d[i+2]);
+      const avg=grays.reduce((a,b)=>a+b,0)/grays.length;
+      resolve(grays.map(g=>g>=avg?1:0));
+    };
+    img.onerror=()=>resolve(null);
+    img.src=base64;
+  });
+}
+
+function _hammingDist(h1,h2){
+  if(!h1||!h2) return 256;
+  return h1.reduce((n,b,i)=>n+(b!==h2[i]?1:0),0);
+}
+
+// Returns {type:'exact'|'similar', customer} or null
+async function findPhotoDuplicate(newPhoto){
+  const others=db.customers.filter(c=>c.photo && c.id!==editCustId);
+  if(!others.length) return null;
+
+  // 1. Exact match (fast string compare)
+  const exact=others.find(c=>c.photo===newPhoto);
+  if(exact) return {type:'exact', customer:exact};
+
+  // 2. Perceptual similarity (aHash, Hamming distance < 25/256 ≈ 90% similar)
+  const newHash=await _photoHash(newPhoto);
+  if(!newHash) return null;
+  const THRESHOLD=25;
+  let best=null, bestDist=256;
+  for(const c of others){
+    const h=await _photoHash(c.photo);
+    const d=_hammingDist(newHash,h);
+    if(d<bestDist){ bestDist=d; best=c; }
+  }
+  if(bestDist<=THRESHOLD) return {type:'similar', customer:best};
+  return null;
 }
 function clearCustPhoto(){
   custPhoto=null;
