@@ -2751,28 +2751,32 @@ function mcFieldRow(label, val){
 }
 
 function buildMCEditForm(i, f){
-  return `<div class="fields" style="margin-top:8px">
-    <div class="field full"><label>Full Name</label><input id="mce-${i}-name" value="${f.name||''}" placeholder="Full name" oninput="updateParsedCard(${i},'name',this.value)"></div>
-    <div class="field"><label>Company</label><input id="mce-${i}-company" value="${f.company||''}" oninput="updateParsedCard(${i},'company',this.value)"></div>
-    <div class="field"><label>Title</label><input id="mce-${i}-title" value="${f.title||''}" oninput="updateParsedCard(${i},'title',this.value)"></div>
-    <div class="field"><label>Email</label><input id="mce-${i}-email" value="${f.email||''}" oninput="updateParsedCard(${i},'email',this.value)"></div>
-    <div class="field"><label>Phone</label><input id="mce-${i}-phone" value="${f.phone||''}" oninput="updateParsedCard(${i},'phone',this.value)"></div>
-    <div class="field"><label>Mobile</label><input id="mce-${i}-mobile" value="${f.mobile||''}" oninput="updateParsedCard(${i},'mobile',this.value)"></div>
-    <div class="field"><label>Website</label><input id="mce-${i}-website" value="${f.website||''}" oninput="updateParsedCard(${i},'website',this.value)"></div>
-    <div class="field"><label>Line / WeChat</label><input id="mce-${i}-line" value="${f.line||''}" oninput="updateParsedCard(${i},'line',this.value)"></div>
-    <div class="field full"><label>Address</label><textarea id="mce-${i}-address" rows="2" oninput="updateParsedCard(${i},'address',this.value)">${f.address||''}</textarea></div>
-    <div class="field full">
-      <label style="display:flex;align-items:center;gap:6px">
+  const inp = `style="width:100%;box-sizing:border-box;min-width:0;background:var(--card);border:1px solid var(--border);border-radius:8px;padding:8px 10px;font-size:12px;color:var(--text);outline:none;font-family:'Inter',sans-serif"`;
+  const ta  = `style="width:100%;box-sizing:border-box;min-width:0;background:var(--card);border:1px solid var(--border);border-radius:8px;padding:8px 10px;font-size:12px;color:var(--text);outline:none;font-family:'Inter',sans-serif;resize:vertical"`;
+  const lbl = `style="font-size:10px;font-weight:500;color:var(--text3);text-transform:uppercase;letter-spacing:.8px;margin-bottom:3px;display:block"`;
+  const fld = `style="display:flex;flex-direction:column;min-width:0;overflow:hidden"`;
+  const fldFull = `style="display:flex;flex-direction:column;min-width:0;overflow:hidden;grid-column:1/-1"`;
+  return `<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:10px;width:100%;box-sizing:border-box;overflow:hidden">
+    <div ${fldFull}><label ${lbl}>Full Name</label><input id="mce-${i}-name" value="${f.name||''}" placeholder="Full name" ${inp} oninput="updateParsedCard(${i},'name',this.value)"></div>
+    <div ${fld}><label ${lbl}>Company</label><input id="mce-${i}-company" value="${f.company||''}" ${inp} oninput="updateParsedCard(${i},'company',this.value)"></div>
+    <div ${fld}><label ${lbl}>Title</label><input id="mce-${i}-title" value="${f.title||''}" ${inp} oninput="updateParsedCard(${i},'title',this.value)"></div>
+    <div ${fld}><label ${lbl}>Email</label><input id="mce-${i}-email" value="${f.email||''}" ${inp} oninput="updateParsedCard(${i},'email',this.value)"></div>
+    <div ${fld}><label ${lbl}>Phone</label><input id="mce-${i}-phone" value="${f.phone||''}" ${inp} oninput="updateParsedCard(${i},'phone',this.value)"></div>
+    <div ${fld}><label ${lbl}>Mobile</label><input id="mce-${i}-mobile" value="${f.mobile||''}" ${inp} oninput="updateParsedCard(${i},'mobile',this.value)"></div>
+    <div ${fld}><label ${lbl}>Website</label><input id="mce-${i}-website" value="${f.website||''}" ${inp} oninput="updateParsedCard(${i},'website',this.value)"></div>
+    <div ${fld}><label ${lbl}>Line / WeChat</label><input id="mce-${i}-line" value="${f.line||''}" ${inp} oninput="updateParsedCard(${i},'line',this.value)"></div>
+    <div ${fldFull}><label ${lbl}>Address</label><textarea id="mce-${i}-address" rows="2" ${ta} oninput="updateParsedCard(${i},'address',this.value)">${f.address||''}</textarea></div>
+    <div ${fldFull}>
+      <label style="font-size:10px;font-weight:500;color:var(--text3);text-transform:uppercase;letter-spacing:.8px;margin-bottom:3px;display:flex;align-items:center;gap:6px">
         ✍️ Handwritten Notes
-        <span style="font-size:10px;color:var(--text3);font-weight:400">auto-detected from OCR · edit freely</span>
+        <span style="font-size:10px;font-weight:400;color:var(--text3)">auto-detected · edit freely</span>
       </label>
-      <textarea id="mce-${i}-handwrittenNotes" rows="3" style="border-left:3px solid var(--gold)"
-        placeholder="Type any handwritten notes you see on the card…"
+      <textarea id="mce-${i}-handwrittenNotes" rows="3" ${ta} style="width:100%;box-sizing:border-box;min-width:0;background:var(--card);border:1px solid var(--border);border-left:3px solid var(--gold);border-radius:8px;padding:8px 10px;font-size:12px;color:var(--text);outline:none;font-family:'Inter',sans-serif;resize:vertical"
+        placeholder="Handwritten notes from card…"
         oninput="updateParsedCard(${i},'handwrittenNotes',this.value)">${f.handwrittenNotes||''}</textarea>
     </div>
-    <div class="field full">
-      <label>Internal Notes</label>
-      <textarea id="mce-${i}-notes" rows="2"
+    <div ${fldFull}><label ${lbl}>Internal Notes</label>
+      <textarea id="mce-${i}-notes" rows="2" ${ta}
         placeholder="Your own notes about this contact…"
         oninput="updateParsedCard(${i},'notes',this.value)">${f.notes||''}</textarea>
     </div>
