@@ -580,9 +580,9 @@ const DB_KEY = 'diamondCRM_v2';
 const AUTH_KEY = 'diamondCRM_auth';
 let currentUser = null; // set after login
 let importState = null; // excel import state
-// Built-in demo data — always available even without localStorage
+// Built-in demo data -- always available even without localStorage
 const DEMO_DB = {"customers":[{"id":"c001","firstName":"Rajesh","lastName":"Agarwal","salutation":"Mr","email":"rajesh.agarwal@gmail.com","phone":"+91 98200 11234","whatsapp":"+91 98200 11234","nationality":"Indian","language":"English, Hindi","dob":"1978-04-12","city":"Mumbai","country":"India","company":"Agarwal Textiles Pvt Ltd","designation":"Chairman","leadSource":"Referral","referredBy":"Kanokwan Thana","assignedTo":"Arjun Mehta","leadStatus":"Won","pipelineStage":"Won","vipLevel":"Platinum","dealValue":2850000,"probability":100,"expectedCloseDate":"2026-01-18","currency":"THB","budgetMin":2000000,"budgetMax":3500000,"diamondType":"Natural","purpose":"Investment","preferredShapes":["Round","Cushion"],"caratMin":3,"caratMax":5,"colorGrade":["D","E","F"],"clarityGrade":["FL","IF","VVS1"],"certification":["GIA"],"settingInterest":"Loose Stone","metalPreference":["Platinum"],"totalLifetimeValue":4200000,"paymentPreference":"Wire Transfer","purchaseUrgency":"Immediate","conflictFreePriority":"Yes","envConcern":"No","commPref":["WhatsApp","Email"],"notes":"Repeat client. Purchased 3.2ct D/FL round brilliant. Very particular about GIA certification.","tags":["VIP","HNI","Investment","Repeat"],"createdAt":"2025-11-05T01:39:30","updatedAt":"2026-04-29T01:39:30"},{"id":"c002","firstName":"Siriporn","lastName":"Charoenwong","salutation":"Ms","email":"siriporn.c@outlook.com","phone":"+66 81 234 9988","whatsapp":"+66 81 234 9988","nationality":"Thai","language":"Thai, English","dob":"1985-09-22","city":"Bangkok","country":"Thailand","company":"","designation":"","leadSource":"Walk-in","referredBy":"","assignedTo":"Kanokwan Thana","leadStatus":"Won","pipelineStage":"Won","vipLevel":"Gold","dealValue":980000,"probability":100,"expectedCloseDate":"2026-02-14","currency":"THB","budgetMin":800000,"budgetMax":1200000,"diamondType":"Natural","purpose":"Engagement Ring","preferredShapes":["Oval","Cushion"],"caratMin":1.5,"caratMax":2.5,"colorGrade":["E","F","G"],"clarityGrade":["VS1","VS2","VVS2"],"certification":["GIA","IGI"],"settingInterest":"Setting","settingType":"Halo","metalPreference":["White Gold","Platinum"],"totalLifetimeValue":980000,"paymentPreference":"Credit Card","purchaseUrgency":"Immediate","conflictFreePriority":"No","envConcern":"No","commPref":["Line","WhatsApp"],"notes":"Purchased 1.8ct F/VS1 oval with halo setting. Valentine's Day delivery.","tags":["Engagement","Thai-VIP","Walk-in"],"createdAt":"2026-02-03T01:39:30","updatedAt":"2026-04-24T01:39:30"},{"id":"c003","firstName":"Ahmed","lastName":"Al-Mansoori","salutation":"HE","email":"ahmed.almansoori@uae.ae","phone":"+971 50 123 4567","whatsapp":"+971 50 123 4567","nationality":"Emirati","language":"Arabic, English","dob":"1971-03-05","city":"Dubai","country":"UAE","company":"Al-Mansoori Holdings","designation":"Managing Director","leadSource":"Exhibition","referredBy":"","assignedTo":"Nadia Al-Rashid","leadStatus":"Won","pipelineStage":"Won","vipLevel":"Platinum","dealValue":5200000,"probability":100,"expectedCloseDate":"2025-12-20","currency":"THB","budgetMin":4000000,"budgetMax":7000000,"diamondType":"Natural","purpose":"Investment","preferredShapes":["Round","Princess"],"caratMin":5,"caratMax":10,"colorGrade":["D","E"],"clarityGrade":["FL","IF"],"certification":["GIA"],"settingInterest":"Loose Stone","metalPreference":["Platinum"],"totalLifetimeValue":8900000,"paymentPreference":"Wire Transfer","purchaseUrgency":"Flexible","conflictFreePriority":"Yes","envConcern":"No","commPref":["WhatsApp","In-Person"],"notes":"Purchased 6.1ct D/IF round for collection. Interested in coloured diamonds next visit.","tags":["Platinum","GCC","Investment","Exhibition"],"createdAt":"2025-10-06T01:39:30","updatedAt":"2026-04-04T01:39:30"},{"id":"c004","firstName":"Jennifer","lastName":"Wu","salutation":"Ms","email":"jennifer.wu@jw-capital.hk","phone":"+852 9123 4567","whatsapp":"+852 9123 4567","nationality":"Hong Kong","language":"English, Cantonese","dob":"1983-11-30","city":"Hong Kong","country":"Hong Kong","company":"JW Capital Group","designation":"Partner","leadSource":"Referral","referredBy":"Ahmed Al-Mansoori","assignedTo":"David Lim","leadStatus":"Won","pipelineStage":"Won","vipLevel":"Gold","dealValue":1650000,"probability":100,"expectedCloseDate":"2026-02-28","currency":"THB","budgetMin":1000000,"budgetMax":2000000,"diamondType":"Natural","purpose":"Self-purchase","preferredShapes":["Emerald","Asscher"],"caratMin":2,"caratMax":3.5,"colorGrade":["D","E","F"],"clarityGrade":["VS1","VVS2","IF"],"certification":["GIA","HRD"],"settingInterest":"Setting","settingType":"Bezel","metalPreference":["Platinum","White Gold"],"totalLifetimeValue":1650000,"paymentPreference":"Wire Transfer","purchaseUrgency":"Within a month","conflictFreePriority":"Yes","envConcern":"Yes","commPref":["Email","WhatsApp"],"notes":"2.5ct E/VS1 emerald cut in platinum bezel setting. Referral from Ahmed.","tags":["HNI","HK","Emerald Cut","Referral"],"createdAt":"2026-03-05T01:39:30","updatedAt":"2026-04-26T01:39:30"},{"id":"c005","firstName":"Vikram","lastName":"Malhotra","salutation":"Mr","email":"vikram.malhotra@malhotragroup.in","phone":"+91 99000 22334","whatsapp":"+91 99000 22334","nationality":"Indian","language":"English, Hindi, Punjabi","dob":"1975-06-18","city":"Delhi","country":"India","company":"Malhotra Group","designation":"CEO","leadSource":"Referral","referredBy":"Rajesh Agarwal","assignedTo":"Arjun Mehta","leadStatus":"Proposal","pipelineStage":"Negotiation","vipLevel":"Gold","dealValue":3400000,"probability":75,"expectedCloseDate":"2026-05-16","currency":"THB","budgetMin":2500000,"budgetMax":4000000,"diamondType":"Natural","purpose":"Investment","preferredShapes":["Round","Cushion"],"caratMin":4,"caratMax":6,"colorGrade":["D","E"],"clarityGrade":["IF","VVS1","VVS2"],"certification":["GIA"],"settingInterest":"Loose Stone","metalPreference":["Platinum"],"totalLifetimeValue":3400000,"paymentPreference":"Wire Transfer","purchaseUrgency":"Within a month","conflictFreePriority":"Yes","envConcern":"No","commPref":["WhatsApp","Phone"],"notes":"Negotiating on a 4.8ct D/VVS1 round. Price point is the main discussion. Decision expected end of May.","tags":["HNI","Investment","Negotiation","Hot Lead"],"createdAt":"2026-03-20T01:39:30","updatedAt":"2026-05-02T01:39:30"},{"id":"c006","firstName":"Lin","lastName":"Mei-Xiu","salutation":"Ms","email":"linmeixiu@cnenterprises.com","phone":"+86 138 1234 5678","whatsapp":"+86 138 1234 5678","nationality":"Chinese","language":"Mandarin, English","dob":"1980-08-08","city":"Shanghai","country":"China","company":"CN Luxury Enterprises","designation":"Director","leadSource":"Exhibition","referredBy":"","assignedTo":"David Lim","leadStatus":"Proposal","pipelineStage":"Negotiation","vipLevel":"Silver","dealValue":1800000,"probability":65,"expectedCloseDate":"2026-05-22","currency":"THB","budgetMin":1500000,"budgetMax":2200000,"diamondType":"Natural","purpose":"Anniversary Gift","preferredShapes":["Round","Pear"],"caratMin":2,"caratMax":3,"colorGrade":["E","F","G"],"clarityGrade":["VS1","VS2"],"certification":["GIA"],"settingInterest":"Setting","settingType":"Halo","metalPreference":["Platinum","White Gold"],"totalLifetimeValue":1800000,"paymentPreference":"Wire Transfer","purchaseUrgency":"Within a month","conflictFreePriority":"No","envConcern":"No","commPref":["WeChat","WhatsApp"],"notes":"20th wedding anniversary gift. Comparing options between us and a competitor in Hong Kong.","tags":["China Market","Anniversary","Hot Lead"],"createdAt":"2026-03-27T01:39:30","updatedAt":"2026-05-03T01:39:30"},{"id":"c007","firstName":"Chalit","lastName":"Pornprasert","salutation":"Mr","email":"chalit.p@cpg.co.th","phone":"+66 85 678 9012","whatsapp":"+66 85 678 9012","nationality":"Thai","language":"Thai, English","dob":"1982-04-28","city":"Bangkok","country":"Thailand","company":"CP Group","designation":"VP Finance","leadSource":"Walk-in","referredBy":"","assignedTo":"Kanokwan Thana","leadStatus":"Proposal","pipelineStage":"Proposal","vipLevel":"Gold","dealValue":2200000,"probability":55,"expectedCloseDate":"2026-05-25","currency":"THB","budgetMin":1800000,"budgetMax":2500000,"diamondType":"Natural","purpose":"Engagement Ring","preferredShapes":["Round","Cushion"],"caratMin":3,"caratMax":4,"colorGrade":["E","F"],"clarityGrade":["VS1","VVS2"],"certification":["GIA"],"settingInterest":"Setting","settingType":"Solitaire","metalPreference":["Platinum"],"totalLifetimeValue":2200000,"paymentPreference":"Wire Transfer","purchaseUrgency":"Within a month","conflictFreePriority":"No","envConcern":"No","commPref":["Line","Phone"],"notes":"Proposal presented for 3.1ct F/VS1 solitaire. Awaiting client's decision post family consultation.","tags":["Engagement","Thai-VIP","Proposal Stage"],"createdAt":"2026-04-06T01:39:30","updatedAt":"2026-05-01T01:39:30"},{"id":"c008","firstName":"Sophie","lastName":"Beaumont","salutation":"Ms","email":"sophie.beaumont@beaumont-partners.fr","phone":"+33 6 12 34 56 78","whatsapp":"+33 6 12 34 56 78","nationality":"French","language":"French, English","dob":"1988-02-14","city":"Paris","country":"France","company":"Beaumont & Partners Law","designation":"Partner","leadSource":"Website","referredBy":"","assignedTo":"Priya Sharma","leadStatus":"Proposal","pipelineStage":"Proposal","vipLevel":"Silver","dealValue":680000,"probability":50,"expectedCloseDate":"2026-05-29","currency":"THB","budgetMin":500000,"budgetMax":800000,"diamondType":"Lab-Grown","purpose":"Engagement Ring","preferredShapes":["Oval","Pear"],"caratMin":1.5,"caratMax":2,"colorGrade":["E","F","G"],"clarityGrade":["VS1","VS2","VVS2"],"certification":["IGI","GIA"],"settingInterest":"Setting","settingType":"Pav\u00e9","metalPreference":["White Gold","Rose Gold"],"totalLifetimeValue":680000,"paymentPreference":"Credit Card","purchaseUrgency":"Within a month","conflictFreePriority":"Yes","envConcern":"Yes","commPref":["Email","WhatsApp"],"notes":"Strongly prefers lab-grown for ethical reasons. Proposal for 1.8ct F/VS1 oval, IGI certified.","tags":["Lab-Grown","Engagement","Europe","Eco-Conscious"],"createdAt":"2026-04-12T01:39:30","updatedAt":"2026-04-30T01:39:30"},{"id":"c009","firstName":"Sanjay","lastName":"Kapoor","salutation":"Mr","email":"sanjay.kapoor@kapoorindustries.in","phone":"+91 98100 44556","whatsapp":"+91 98100 44556","nationality":"Indian","language":"English, Hindi","dob":"1970-12-01","city":"Jaipur","country":"India","company":"Kapoor Industries","designation":"Chairman","leadSource":"Referral","referredBy":"Vikram Malhotra","assignedTo":"Arjun Mehta","leadStatus":"Qualified","pipelineStage":"Evaluation","vipLevel":"None","dealValue":4800000,"probability":40,"expectedCloseDate":"2026-06-08","currency":"THB","budgetMin":3500000,"budgetMax":6000000,"diamondType":"Natural","purpose":"Investment","preferredShapes":["Round"],"caratMin":5,"caratMax":8,"colorGrade":["D","E"],"clarityGrade":["FL","IF"],"certification":["GIA"],"settingInterest":"Loose Stone","metalPreference":["Platinum"],"totalLifetimeValue":4800000,"paymentPreference":"Wire Transfer","purchaseUrgency":"3\u20136 months","conflictFreePriority":"Yes","envConcern":"No","commPref":["WhatsApp","Email"],"notes":"Very selective. Evaluating a 5.5ct D/FL round. Wants to see GIA report before deciding.","tags":["HNI","Investment","Large Carat","Evaluation"],"createdAt":"2026-04-16T01:39:30","updatedAt":"2026-04-29T01:39:30"},{"id":"c010","firstName":"Park","lastName":"Ji-Young","salutation":"Ms","email":"jiyoung.park@seoulstyle.kr","phone":"+82 10 1234 5678","whatsapp":"+82 10 1234 5678","nationality":"Korean","language":"Korean, English","dob":"1991-07-17","city":"Seoul","country":"South Korea","company":"Seoul Style Group","designation":"Creative Director","leadSource":"Social Media","referredBy":"","assignedTo":"Priya Sharma","leadStatus":"Qualified","pipelineStage":"Evaluation","vipLevel":"None","dealValue":420000,"probability":35,"expectedCloseDate":"2026-06-03","currency":"THB","budgetMin":350000,"budgetMax":550000,"diamondType":"Lab-Grown","purpose":"Self-purchase","preferredShapes":["Marquise","Oval"],"caratMin":1,"caratMax":1.5,"colorGrade":["E","F","G","H"],"clarityGrade":["VS1","VS2","SI1"],"certification":["IGI"],"settingInterest":"Setting","settingType":"Solitaire","metalPreference":["Rose Gold","White Gold"],"totalLifetimeValue":420000,"paymentPreference":"Credit Card","purchaseUrgency":"2\u20133 months","conflictFreePriority":"No","envConcern":"Yes","commPref":["Instagram DM","Email"],"notes":"Influencer, 850k followers. Interested in a marquise lab-grown for editorial shoot and personal use.","tags":["Lab-Grown","Social Media","Korea","Influencer"],"createdAt":"2026-04-20T01:39:30","updatedAt":"2026-04-28T01:39:30"},{"id":"c011","firstName":"Omar","lastName":"Al-Farsi","salutation":"Mr","email":"omar.alfarsi@alfarsi.ae","phone":"+971 55 987 6543","whatsapp":"+971 55 987 6543","nationality":"Emirati","language":"Arabic, English","dob":"1985-01-20","city":"Abu Dhabi","country":"UAE","company":"Al-Farsi Real Estate","designation":"Director","leadSource":"Walk-in","referredBy":"","assignedTo":"Nadia Al-Rashid","leadStatus":"Contacted","pipelineStage":"Interest","vipLevel":"None","dealValue":1200000,"probability":25,"expectedCloseDate":"2026-06-23","currency":"THB","budgetMin":1000000,"budgetMax":1800000,"diamondType":"Natural","purpose":"Anniversary Gift","preferredShapes":["Round","Heart"],"caratMin":2,"caratMax":3,"colorGrade":["E","F","G"],"clarityGrade":["VS1","VS2"],"certification":["GIA"],"settingInterest":"Setting","settingType":"Three-Stone","metalPreference":["Yellow Gold","Platinum"],"totalLifetimeValue":1200000,"paymentPreference":"Wire Transfer","purchaseUrgency":"3\u20136 months","conflictFreePriority":"No","envConcern":"No","commPref":["WhatsApp"],"notes":"Browsing for anniversary options. Has come in once. Follow up scheduled for May 20.","tags":["GCC","Anniversary","Middle East"],"createdAt":"2026-04-24T01:39:30","updatedAt":"2026-04-24T01:39:30"},{"id":"c012","firstName":"Yuki","lastName":"Tanaka","salutation":"Ms","email":"yuki.tanaka@tanaka-corp.jp","phone":"+81 90 1234 5678","whatsapp":"+81 90 1234 5678","nationality":"Japanese","language":"Japanese, English","dob":"1987-03-25","city":"Tokyo","country":"Japan","company":"Tanaka Corp","designation":"Executive","leadSource":"Exhibition","referredBy":"","assignedTo":"David Lim","leadStatus":"Contacted","pipelineStage":"Interest","vipLevel":"None","dealValue":580000,"probability":20,"expectedCloseDate":"2026-06-18","currency":"THB","budgetMin":450000,"budgetMax":700000,"diamondType":"Natural","purpose":"Self-purchase","preferredShapes":["Cushion","Asscher"],"caratMin":1,"caratMax":1.8,"colorGrade":["F","G","H"],"clarityGrade":["VS1","VS2","VVS2"],"certification":["GIA","HRD"],"settingInterest":"Setting","settingType":"Vintage","metalPreference":["Platinum","White Gold"],"totalLifetimeValue":580000,"paymentPreference":"Wire Transfer","purchaseUrgency":"3\u20136 months","conflictFreePriority":"No","envConcern":"No","commPref":["Email","WhatsApp"],"notes":"Met at Bangkok Gems & Jewellery Fair. Interested in vintage-style settings. Needs follow-up with lookbook.","tags":["Japan","Exhibition","Vintage","Interest"],"createdAt":"2026-04-26T01:39:30","updatedAt":"2026-04-26T01:39:30"},{"id":"c013","firstName":"Mehmet","lastName":"Yilmaz","salutation":"Mr","email":"mehmet.yilmaz@yilmazholding.tr","phone":"+90 532 123 4567","whatsapp":"+90 532 123 4567","nationality":"Turkish","language":"Turkish, English","dob":"1976-09-14","city":"Istanbul","country":"Turkey","company":"Yilmaz Holding","designation":"Owner","leadSource":"Cold Outreach","referredBy":"","assignedTo":"Nadia Al-Rashid","leadStatus":"New","pipelineStage":"Awareness","vipLevel":"None","dealValue":900000,"probability":10,"expectedCloseDate":"2026-07-18","currency":"THB","budgetMin":800000,"budgetMax":1200000,"diamondType":"Natural","purpose":"Investment","preferredShapes":["Round"],"caratMin":2,"caratMax":4,"colorGrade":["D","E","F"],"clarityGrade":["IF","VVS1","VVS2"],"certification":["GIA"],"settingInterest":"Loose Stone","metalPreference":["Platinum"],"totalLifetimeValue":900000,"paymentPreference":"Wire Transfer","purchaseUrgency":"6\u201312 months","conflictFreePriority":"No","envConcern":"No","commPref":["WhatsApp","Email"],"notes":"Sent initial brochure via WhatsApp. No response yet. Follow up after 2 weeks.","tags":["Turkey","New Lead","Investment","Cold Outreach"],"createdAt":"2026-04-30T01:39:30","updatedAt":"2026-04-30T01:39:30"},{"id":"c014","firstName":"Shreya","lastName":"Patel","salutation":"Ms","email":"shreya.patel@gmail.com","phone":"+65 9123 4567","whatsapp":"+65 9123 4567","nationality":"Singaporean","language":"English, Gujarati","dob":"1993-05-11","city":"Singapore","country":"Singapore","company":"","designation":"","leadSource":"Website","referredBy":"","assignedTo":"Priya Sharma","leadStatus":"New","pipelineStage":"Awareness","vipLevel":"None","dealValue":320000,"probability":10,"expectedCloseDate":"2026-07-03","currency":"THB","budgetMin":250000,"budgetMax":400000,"diamondType":"Lab-Grown","purpose":"Engagement Ring","preferredShapes":["Round","Oval"],"caratMin":1,"caratMax":1.5,"colorGrade":["E","F","G"],"clarityGrade":["VS1","VS2"],"certification":["IGI","GIA"],"settingInterest":"Setting","settingType":"Solitaire","metalPreference":["White Gold"],"totalLifetimeValue":320000,"paymentPreference":"Credit Card","purchaseUrgency":"3\u20136 months","conflictFreePriority":"Yes","envConcern":"Yes","commPref":["Email","WhatsApp"],"notes":"Submitted enquiry form on website. Interested in lab-grown for ethical and budget reasons.","tags":["Singapore","Lab-Grown","Web Lead","New"],"createdAt":"2026-05-02T01:39:30","updatedAt":"2026-05-02T01:39:30"},{"id":"c015","firstName":"Robert","lastName":"Chen","salutation":"Mr","email":"robert.chen@rc-investments.hk","phone":"+852 9876 5432","whatsapp":"+852 9876 5432","nationality":"Hong Kong","language":"English, Cantonese","dob":"1968-07-30","city":"Hong Kong","country":"Hong Kong","company":"RC Investments","designation":"Managing Partner","leadSource":"Referral","referredBy":"Jennifer Wu","assignedTo":"David Lim","leadStatus":"Lost","pipelineStage":"Lost","vipLevel":"None","dealValue":0,"probability":0,"expectedCloseDate":"2026-03-15","currency":"THB","budgetMin":3000000,"budgetMax":5000000,"diamondType":"Natural","purpose":"Investment","preferredShapes":["Round"],"caratMin":5,"caratMax":8,"colorGrade":["D","E"],"clarityGrade":["FL","IF"],"certification":["GIA"],"settingInterest":"Loose Stone","metalPreference":["Platinum"],"totalLifetimeValue":0,"paymentPreference":"Wire Transfer","purchaseUrgency":"Immediate","conflictFreePriority":"Yes","envConcern":"No","commPref":["Email"],"notes":"Lost to Christie's Geneva auction. Client preferred a 6ct stone with coloured fluorescence \u2014 something we could not source in time.","tags":["Lost","HK","Investment","Competition"],"createdAt":"2026-01-29T01:39:30","updatedAt":"2026-04-12T01:39:30"},{"id":"c016","firstName":"Isabella","lastName":"Rossi","salutation":"Ms","email":"isabella.rossi@rossigroup.it","phone":"+39 335 123 4567","whatsapp":"+39 335 123 4567","nationality":"Italian","language":"Italian, English","dob":"1979-12-03","city":"Milan","country":"Italy","company":"Rossi Group","designation":"Creative Director","leadSource":"Exhibition","referredBy":"","assignedTo":"Priya Sharma","leadStatus":"Dormant","pipelineStage":"Interest","vipLevel":"None","dealValue":750000,"probability":15,"expectedCloseDate":"","currency":"THB","budgetMin":600000,"budgetMax":900000,"diamondType":"Natural","purpose":"Self-purchase","preferredShapes":["Pear","Marquise"],"caratMin":1.5,"caratMax":2.5,"colorGrade":["D","E","F"],"clarityGrade":["VS1","VVS2"],"certification":["GIA","HRD"],"settingInterest":"Setting","settingType":"Pav\u00e9","metalPreference":["White Gold","Platinum"],"totalLifetimeValue":750000,"paymentPreference":"Credit Card","purchaseUrgency":"6\u201312 months","conflictFreePriority":"No","envConcern":"No","commPref":["Email","WhatsApp"],"notes":"Went cold after initial consultation in November 2025. Send re-engagement email for upcoming collection preview.","tags":["Dormant","Italy","Exhibition","Re-engage"],"createdAt":"2025-11-25T01:39:30","updatedAt":"2026-02-13T01:39:30"},{"id":"c017","firstName":"Priya","lastName":"Singh","salutation":"Ms","email":"client017@email.com","phone":"+66 817 000 0017","nationality":"Indian","leadSource":"Referral","assignedTo":"Arjun Mehta","leadStatus":"Lost","pipelineStage":"Lost","vipLevel":"Bronze","dealValue":657000,"probability":0,"diamondType":"Natural","purpose":"Engagement Ring","preferredShapes":["Emerald"],"currency":"THB","createdAt":"2025-11-15T01:39:30","updatedAt":"2025-11-22T01:39:30"},{"id":"c018","firstName":"Rohan","lastName":"Gupta","salutation":"Mr","email":"client018@email.com","phone":"+66 818 000 0018","nationality":"Indian","leadSource":"Social Media","assignedTo":"Arjun Mehta","leadStatus":"Won","pipelineStage":"Won","vipLevel":"None","dealValue":647000,"probability":100,"diamondType":"Natural","purpose":"Engagement Ring","preferredShapes":["Emerald"],"currency":"THB","createdAt":"2025-11-17T01:39:30","updatedAt":"2025-11-28T01:39:30"},{"id":"c019","firstName":"Min","lastName":"Chen","salutation":"Ms","email":"client019@email.com","phone":"+66 819 000 0019","nationality":"Chinese","leadSource":"Website","assignedTo":"David Lim","leadStatus":"Won","pipelineStage":"Won","vipLevel":"Gold","dealValue":1406000,"probability":100,"diamondType":"Lab-Grown","purpose":"Engagement Ring","preferredShapes":["Oval"],"currency":"THB","createdAt":"2025-12-15T01:39:30","updatedAt":"2026-01-02T01:39:30"},{"id":"c020","firstName":"Fatima","lastName":"Hassan","salutation":"Mr","email":"client020@email.com","phone":"+66 820 000 0020","nationality":"Saudi","leadSource":"Walk-in","assignedTo":"Priya Sharma","leadStatus":"Won","pipelineStage":"Lost","vipLevel":"Silver","dealValue":409000,"probability":0,"diamondType":"Natural","purpose":"Self-purchase","preferredShapes":["Round"],"currency":"THB","createdAt":"2025-12-25T01:39:30","updatedAt":"2026-01-10T01:39:30"},{"id":"c021","firstName":"Carlos","lastName":"Martinez","salutation":"Ms","email":"client021@email.com","phone":"+66 821 000 0021","nationality":"Spanish","leadSource":"Website","assignedTo":"Kanokwan Thana","leadStatus":"Won","pipelineStage":"Won","vipLevel":"Gold","dealValue":1298000,"probability":100,"diamondType":"Natural","purpose":"Self-purchase","preferredShapes":["Round"],"currency":"THB","createdAt":"2025-12-24T01:39:30","updatedAt":"2026-01-15T01:39:30"},{"id":"c022","firstName":"Ana","lastName":"Costa","salutation":"Mr","email":"client022@email.com","phone":"+66 822 000 0022","nationality":"Portuguese","leadSource":"Website","assignedTo":"Kanokwan Thana","leadStatus":"Won","pipelineStage":"Won","vipLevel":"None","dealValue":293000,"probability":100,"diamondType":"Natural","purpose":"Anniversary Gift","preferredShapes":["Round"],"currency":"THB","createdAt":"2026-01-25T01:39:30","updatedAt":"2026-02-06T01:39:30"},{"id":"c023","firstName":"Kenji","lastName":"Nakamura","salutation":"Ms","email":"client023@email.com","phone":"+66 823 000 0023","nationality":"Japanese","leadSource":"Social Media","assignedTo":"Kanokwan Thana","leadStatus":"Dormant","pipelineStage":"Lost","vipLevel":"Silver","dealValue":533000,"probability":0,"diamondType":"Lab-Grown","purpose":"Anniversary Gift","preferredShapes":["Oval"],"currency":"THB","createdAt":"2026-01-31T01:39:30","updatedAt":"2026-02-13T01:39:30"},{"id":"c024","firstName":"Lars","lastName":"Jensen","salutation":"Mr","email":"client024@email.com","phone":"+66 824 000 0024","nationality":"Danish","leadSource":"Referral","assignedTo":"Nadia Al-Rashid","leadStatus":"Won","pipelineStage":"Won","vipLevel":"Bronze","dealValue":534000,"probability":100,"diamondType":"Both","purpose":"Self-purchase","preferredShapes":["Cushion"],"currency":"THB","createdAt":"2026-01-14T01:39:30","updatedAt":"2026-02-08T01:39:30"},{"id":"c025","firstName":"Nina","lastName":"Petrov","salutation":"Ms","email":"client025@email.com","phone":"+66 825 000 0025","nationality":"Russian","leadSource":"Exhibition","assignedTo":"Kanokwan Thana","leadStatus":"Won","pipelineStage":"Won","vipLevel":"Bronze","dealValue":265000,"probability":100,"diamondType":"Lab-Grown","purpose":"Self-purchase","preferredShapes":["Cushion"],"currency":"THB","createdAt":"2026-02-16T01:39:30","updatedAt":"2026-02-23T01:39:30"},{"id":"c026","firstName":"Aisha","lastName":"Khan","salutation":"Mr","email":"client026@email.com","phone":"+66 826 000 0026","nationality":"Pakistani","leadSource":"Website","assignedTo":"Kanokwan Thana","leadStatus":"Won","pipelineStage":"Lost","vipLevel":"Gold","dealValue":1010000,"probability":0,"diamondType":"Both","purpose":"Investment","preferredShapes":["Cushion"],"currency":"THB","createdAt":"2026-02-27T01:39:30","updatedAt":"2026-03-08T01:39:30"},{"id":"c027","firstName":"Pierre","lastName":"Dubois","salutation":"Ms","email":"client027@email.com","phone":"+66 827 000 0027","nationality":"French","leadSource":"Website","assignedTo":"Nadia Al-Rashid","leadStatus":"Lost","pipelineStage":"Won","vipLevel":"Gold","dealValue":1395000,"probability":100,"diamondType":"Both","purpose":"Anniversary Gift","preferredShapes":["Oval"],"currency":"THB","createdAt":"2026-03-28T01:39:30","updatedAt":"2026-04-06T01:39:30"},{"id":"c028","firstName":"Zara","lastName":"Al-Said","salutation":"Mr","email":"client028@email.com","phone":"+66 828 000 0028","nationality":"Emirati","leadSource":"Social Media","assignedTo":"Arjun Mehta","leadStatus":"Won","pipelineStage":"Won","vipLevel":"None","dealValue":513000,"probability":100,"diamondType":"Natural","purpose":"Self-purchase","preferredShapes":["Emerald"],"currency":"THB","createdAt":"2026-03-19T01:39:30","updatedAt":"2026-03-26T01:39:30"},{"id":"c029","firstName":"Ravi","lastName":"Verma","salutation":"Ms","email":"client029@email.com","phone":"+66 829 000 0029","nationality":"Indian","leadSource":"Social Media","assignedTo":"Nadia Al-Rashid","leadStatus":"Dormant","pipelineStage":"Lost","vipLevel":"Silver","dealValue":1333000,"probability":0,"diamondType":"Natural","purpose":"Engagement Ring","preferredShapes":["Emerald"],"currency":"THB","createdAt":"2026-04-22T01:39:30","updatedAt":"2026-05-04T01:39:30"},{"id":"c030","firstName":"Mei","lastName":"Huang","salutation":"Mr","email":"client030@email.com","phone":"+66 830 000 0030","nationality":"Chinese","leadSource":"Walk-in","assignedTo":"Arjun Mehta","leadStatus":"Lost","pipelineStage":"Won","vipLevel":"Gold","dealValue":523000,"probability":100,"diamondType":"Both","purpose":"Engagement Ring","preferredShapes":["Cushion"],"currency":"THB","createdAt":"2026-04-14T01:39:30","updatedAt":"2026-05-04T01:39:30"}],"salespeople":[{"id":"sp001","name":"Arjun Mehta","empId":"JV-001","email":"arjun@saraff.co.th","phone":"+66 81 234 5678","role":"Senior Sales","team":"High Jewellery","commRate":4.5,"startDate":"2021-03-15","notes":"Top performer, specialises in HNI clients from India & Singapore."},{"id":"sp002","name":"Priya Sharma","empId":"JV-002","email":"priya@saraff.co.th","phone":"+66 82 345 6789","role":"Sales Consultant","team":"Engagement","commRate":3.5,"startDate":"2022-07-01","notes":"Strong closer for engagement rings and anniversary gifts."},{"id":"sp003","name":"Kanokwan Thana","empId":"JV-003","email":"kanokwan@saraff.co.th","phone":"+66 89 456 7890","role":"Manager","team":"Thailand & ASEAN","commRate":5.0,"startDate":"2019-11-01","notes":"Manages Thai VIP clients and ASEAN wholesale relationships."},{"id":"sp004","name":"David Lim","empId":"JV-004","email":"david@saraff.co.th","phone":"+66 83 567 8901","role":"Sales Consultant","team":"Greater China","commRate":3.5,"startDate":"2023-01-10","notes":"Mandarin and Cantonese speaker. Focused on China & HK market."},{"id":"sp005","name":"Nadia Al-Rashid","empId":"JV-005","email":"nadia@saraff.co.th","phone":"+66 84 678 9012","role":"Senior Sales","team":"Middle East","commRate":4.0,"startDate":"2022-02-14","notes":"Arabic speaker, handles GCC clients visiting Bangkok."}],"campaigns":[{"id":"camp001","name":"Valentine's Engagement Drive 2026","type":"WhatsApp","status":"Active","startDate":"2026-01-20","endDate":"2026-02-28","budget":85000,"spent":62400,"targetAudience":"Existing leads \u2013 Engagement purpose, Budget > \u0e3f300k","template":"Dear {name}, this Valentine's Day, let us help you find the perfect diamond that tells your story...","sentCount":148,"openCount":112,"replyCount":34,"notes":"Best campaign performance to date. High reply rate from Indian and Thai clients."},{"id":"camp002","name":"GIA Certified Lab-Grown Showcase","type":"Email","status":"Active","startDate":"2026-03-01","endDate":"2026-04-30","budget":45000,"spent":31200,"targetAudience":"Eco-conscious leads, Budget \u0e3f150k\u2013\u0e3f500k","template":"Introducing our curated collection of GIA-certified lab-grown diamonds...","sentCount":220,"openCount":165,"replyCount":28,"notes":"Good engagement from younger clientele, 25\u201335 age bracket."},{"id":"camp003","name":"Songkran VIP Preview 2026","type":"In-Person Event","status":"Active","startDate":"2026-04-10","endDate":"2026-04-15","budget":200000,"spent":188000,"targetAudience":"Gold & Platinum VIP clients, Bangkok-based","template":"You are exclusively invited to our private Songkran jewellery preview at Jay Vijay, Silom...","sentCount":42,"openCount":42,"replyCount":35,"notes":"Hosted 35 VIP guests. 8 deals closed on the night. Exceptional ROI."},{"id":"camp004","name":"Q2 Investment Diamond Seminar","type":"Email","status":"Scheduled","startDate":"2026-05-20","endDate":"2026-05-20","budget":30000,"spent":0,"targetAudience":"Investment-purpose leads, Portfolio > \u0e3f1M","template":"Join us for an exclusive seminar on coloured diamond investments...","sentCount":0,"openCount":0,"replyCount":0,"notes":"Targeting HNI segment. Keynote by GIA graduate gemologist."},{"id":"camp005","name":"Diwali Gifting Collection 2025","type":"WhatsApp","status":"Completed","startDate":"2025-10-15","endDate":"2025-11-05","budget":60000,"spent":58500,"targetAudience":"Indian community, Bangkok & Singapore","template":"Celebrate Diwali with timeless diamond jewellery. Special Diwali pricing available for this week only...","sentCount":310,"openCount":248,"replyCount":67,"notes":"Highest volume campaign. Generated 22 new leads, 14 converted."}],"invoices":[{"id":"inv001","invoiceNo":"JV-0001","type":"Invoice","customerId":"c001","clientName":"Rajesh Agarwal","invoiceDate":"2026-03-03","dueDate":"2026-04-02","currency":"THB","paymentMethod":"Wire Transfer","lineItems":[{"desc":"3.2ct D/FL Round Brilliant \u2013 GIA #2467891234","qty":1,"unitPrice":2750000,"discount":0},{"desc":"GIA Certificate & Insurance Documentation","qty":1,"unitPrice":8500,"discount":0}],"discountPct":0,"taxPct":7,"subtotal":2758500,"discountAmt":0,"taxAmt":193095,"total":2951595,"paidAmount":2951595,"balanceDue":0,"status":"Paid","payments":[{"amount":2951595,"date":"2026-03-05","method":"Wire Transfer","ref":"SWIFT-TH20260301-9981","notes":"Full payment received, confirmed by bank.","recordedAt":"2026-03-05T10:00:00"}],"notes":"Payment terms: 100% upfront. Wire transfer to Bangkok Bank, Silom Branch.\nSwift: BKKBTHBK. Account: 172-3-09182-5","createdAt":"2026-03-02T09:00:00","updatedAt":"2026-03-05T10:00:00"},{"id":"inv002","invoiceNo":"JV-0002","type":"Invoice","customerId":"c003","clientName":"Ahmed Al-Mansoori","invoiceDate":"2026-01-29","dueDate":"2026-02-13","currency":"USD","paymentMethod":"Wire Transfer","lineItems":[{"desc":"6.1ct D/IF Round Brilliant \u2013 GIA #4892341005","qty":1,"unitPrice":4800000,"discount":0},{"desc":"Platinum Loose Stone Setting (client's own design)","qty":1,"unitPrice":85000,"discount":5},{"desc":"International Courier & Insurance (FedEx Priority)","qty":1,"unitPrice":12000,"discount":0}],"discountPct":0,"taxPct":0,"subtotal":4892750,"discountAmt":0,"taxAmt":0,"total":4892750,"paidAmount":4892750,"balanceDue":0,"status":"Paid","payments":[{"amount":2500000,"date":"2026-02-08","method":"Wire Transfer","ref":"SWIFT-UAE-20251201-44A","notes":"50% deposit received.","recordedAt":"2026-02-08T14:00:00"},{"amount":2392750,"date":"2026-02-18","method":"Wire Transfer","ref":"SWIFT-UAE-20251215-88B","notes":"Balance received, stone dispatched.","recordedAt":"2026-02-18T11:00:00"}],"notes":"Tax-exempt (export). Delivered to Dubai. No VAT applicable.","cryptoRef":"","createdAt":"2026-01-28T09:00:00","updatedAt":"2026-02-18T11:00:00"},{"id":"inv003","invoiceNo":"JV-0003","type":"Invoice","customerId":"c002","clientName":"Siriporn Charoenwong","invoiceDate":"2026-03-17","dueDate":"2026-04-16","currency":"THB","paymentMethod":"Credit Card","lineItems":[{"desc":"1.8ct F/VS1 Oval \u2013 GIA #3381920045","qty":1,"unitPrice":720000,"discount":0},{"desc":"18K White Gold Halo Setting \u2013 Handcrafted","qty":1,"unitPrice":185000,"discount":5},{"desc":"Engraving & Packaging","qty":1,"unitPrice":3500,"discount":0}],"discountPct":0,"taxPct":7,"subtotal":899750,"discountAmt":0,"taxAmt":62983,"total":962733,"paidAmount":962733,"balanceDue":0,"status":"Paid","payments":[{"amount":962733,"date":"2026-03-20","method":"Credit Card","ref":"CC-AUTH-882947","notes":"Visa card, 3 installments, interest-free.","recordedAt":"2026-03-20T16:00:00"}],"notes":"Valentine's special. Delivered Feb 14, 2026.","createdAt":"2026-03-16T10:00:00","updatedAt":"2026-03-20T16:00:00"},{"id":"inv004","invoiceNo":"JV-0004","type":"Invoice","customerId":"c004","clientName":"Jennifer Wu","invoiceDate":"2026-04-12","dueDate":"2026-05-12","currency":"THB","paymentMethod":"Wire Transfer","lineItems":[{"desc":"2.5ct E/VS1 Emerald Cut \u2013 GIA #7723901887","qty":1,"unitPrice":1420000,"discount":0},{"desc":"Platinum Bezel Setting","qty":1,"unitPrice":145000,"discount":0},{"desc":"HRD Appraisal Certificate","qty":1,"unitPrice":8500,"discount":0}],"discountPct":2,"taxPct":7,"subtotal":1573500,"discountAmt":31470,"taxAmt":107101,"total":1649131,"paidAmount":824565,"balanceDue":824566,"status":"Partial","payments":[{"amount":824565,"date":"2026-04-14","method":"Wire Transfer","ref":"SWIFT-HK-20260312-33X","notes":"50% deposit paid. Balance due on collection.","recordedAt":"2026-04-14T09:00:00"}],"notes":"Balance of 50% due upon collection. Client collecting in person in Bangkok May 12.","createdAt":"2026-04-11T11:00:00","updatedAt":"2026-04-14T09:00:00"},{"id":"inv005","invoiceNo":"JV-0005","type":"Quote","customerId":"c005","clientName":"Vikram Malhotra","invoiceDate":"2026-04-26","dueDate":"2026-05-26","currency":"THB","paymentMethod":"Wire Transfer","lineItems":[{"desc":"4.8ct D/VVS1 Round Brilliant \u2013 GIA Certified (stock no. JV-2026-048)","qty":1,"unitPrice":3200000,"discount":0},{"desc":"Diamond Origin Report (KP Certified \u2013 Botswana)","qty":1,"unitPrice":12000,"discount":0}],"discountPct":0,"taxPct":7,"subtotal":3212000,"discountAmt":0,"taxAmt":224840,"total":3436840,"paidAmount":0,"balanceDue":3436840,"status":"Sent","payments":[],"notes":"Quote valid for 14 days. Price subject to exchange rate fluctuation. 30% deposit required to confirm.","cryptoRef":"","createdAt":"2026-04-26T14:00:00","updatedAt":"2026-04-26T14:00:00"},{"id":"inv006","invoiceNo":"JV-0006","type":"Invoice","customerId":"c007","clientName":"Chalit Pornprasert","invoiceDate":"2026-04-29","dueDate":"2026-05-29","currency":"THB","paymentMethod":"Crypto \u2013 USDT","lineItems":[{"desc":"3.1ct F/VS1 Round Brilliant Solitaire \u2013 GIA #9901234556","qty":1,"unitPrice":1950000,"discount":0},{"desc":"Platinum Solitaire Setting \u2013 4-claw basket","qty":1,"unitPrice":165000,"discount":0},{"desc":"Ring Sizing & Polishing","qty":1,"unitPrice":3500,"discount":0}],"discountPct":0,"taxPct":7,"subtotal":2118500,"discountAmt":0,"taxAmt":148295,"total":2266795,"paidAmount":0,"balanceDue":2266795,"status":"Sent","payments":[],"notes":"Client prefers USDT (TRC20) payment. Wallet: TJYJdLgH7rkQnmXV8D5yZ4mXj1KQnpTZ88\nPayment due within 30 days of invoice date.","cryptoRef":"TJYJdLgH7rkQnmXV8D5yZ4mXj1KQnpTZ88 (TRC20)","createdAt":"2026-04-29T10:00:00","updatedAt":"2026-04-29T10:00:00"},{"id":"inv007","invoiceNo":"JV-0007","type":"Invoice","customerId":"c008","clientName":"Sophie Beaumont","invoiceDate":"2026-04-19","dueDate":"2026-05-04","currency":"THB","paymentMethod":"Credit Card","lineItems":[{"desc":"1.8ct F/VS1 Oval Lab-Grown \u2013 IGI Certified #LG4923881","qty":1,"unitPrice":380000,"discount":0},{"desc":"18K White Gold Pav\u00e9 Halo Setting","qty":1,"unitPrice":220000,"discount":5},{"desc":"Packaging & Insurance Shipping (Paris)","qty":1,"unitPrice":8500,"discount":0}],"discountPct":0,"taxPct":0,"subtotal":597500,"discountAmt":0,"taxAmt":0,"total":597500,"paidAmount":0,"balanceDue":597500,"status":"Overdue","payments":[],"notes":"Tax-exempt (export, France). Net 15 terms agreed. Client to pay by card. Follow up required.","createdAt":"2026-04-19T09:00:00","updatedAt":"2026-04-19T09:00:00"},{"id":"inv008","invoiceNo":"JV-0008","type":"Proforma Invoice","customerId":"c006","clientName":"Lin Mei-Xiu","invoiceDate":"2026-05-01","dueDate":"2026-05-18","currency":"THB","paymentMethod":"Wire Transfer","lineItems":[{"desc":"2.2ct E/VS1 Round Brilliant \u2013 GIA Certified","qty":1,"unitPrice":1600000,"discount":0},{"desc":"Platinum Halo Setting with Pav\u00e9 Band","qty":1,"unitPrice":145000,"discount":0}],"discountPct":0,"taxPct":7,"subtotal":1745000,"discountAmt":0,"taxAmt":122150,"total":1867150,"paidAmount":0,"balanceDue":1867150,"status":"Draft","payments":[],"notes":"Proforma for client approval before final order. 40% deposit required to proceed.","createdAt":"2026-05-01T11:00:00","updatedAt":"2026-05-01T11:00:00"}],"businessCards":[{"id":"bc001","name":"Thomas Bergmann","title":"Senior Diamond Trader","company":"Antwerp Diamond Bourse","email":"t.bergmann@adb.be","phone":"+32 3 222 0594","website":"www.antwerpdiamondbourse.be","address":"Hoveniersstraat 22, 2018 Antwerp, Belgium","notes":"Met at Bangkok Gems Fair 2025. Interested in wholesale rough supply. Follow up Q3 2026.","createdAt":"2026-03-20T01:39:30","source":"PDF Scan"},{"id":"bc002","name":"Preethi Ramachandran","title":"GIA Graduate Gemologist","company":"GIA Mumbai","email":"p.ramachandran@gia.edu","phone":"+91 22 4090 4040","website":"www.gia.edu","address":"Bharat Diamond Bourse, G Block, BKC, Mumbai 400051","notes":"GIA rep, useful for certification queries and training partnerships.","createdAt":"2026-04-04T01:39:30","source":"Image Upload"},{"id":"bc003","name":"Zhang Wei","title":"Procurement Director","company":"Luk Fook Jewellery HK","email":"zhang.wei@lukfook.com","phone":"+852 2128 0900","website":"www.lukfook.com","address":"8 Hart Avenue, Tsim Sha Tsui, Hong Kong","notes":"Interested in loose natural diamonds, 0.5\u20132ct range for retail. High volume potential.","createdAt":"2026-04-14T01:39:30","source":"PDF Scan"},{"id":"bc004","name":"Maria Kowalski","title":"Luxury Brand Manager","company":"Vasco Gems Poland","email":"m.kowalski@vascogems.pl","phone":"+48 22 123 4567","website":"www.vascogems.pl","address":"ul. Mokotowska 48, 00-543 Warsaw, Poland","notes":"Eastern European market contact. Looking for coloured diamonds and fancy shapes.","createdAt":"2026-04-22T01:39:30","source":"Image Upload"}],"users":[{"id":"u001","username":"admin","pwd":"6e28012e","role":"admin","salespersonId":null,"name":"Administrator","active":true,"createdAt":"2026-01-01"},{"id":"u002","username":"arjun","pwd":"cbf66923","role":"user","salespersonId":"sp001","name":"Arjun Mehta","active":true,"createdAt":"2026-01-01"},{"id":"u003","username":"priya","pwd":"531f7c32","role":"user","salespersonId":"sp002","name":"Priya Sharma","active":true,"createdAt":"2026-01-01"},{"id":"u004","username":"kanokwan","pwd":"163e4941","role":"user","salespersonId":"sp003","name":"Kanokwan Thana","active":true,"createdAt":"2026-01-01"},{"id":"u005","username":"david","pwd":"07a34d9f","role":"user","salespersonId":"sp004","name":"David Lim","active":true,"createdAt":"2026-01-01"},{"id":"u006","username":"nadia","pwd":"26eae302","role":"user","salespersonId":"sp005","name":"Nadia Al-Rashid","active":true,"createdAt":"2026-01-01"}],"version":"2.0"};
-// Live database — starts with demo data, overwritten from localStorage if available
+// Live database -- starts with demo data, overwritten from localStorage if available
 let db = JSON.parse(JSON.stringify(DEMO_DB));
 
 function loadDB(){
@@ -739,7 +739,7 @@ function renderUsers(){
       <td><b>${u.username}</b>${isSelf?' <span style="font-size:10px;color:var(--gold)">(you)</span>':''}</td>
       <td>${u.name}</td>
       <td><span class="role-badge role-${u.role}">${u.role==='admin'?'Admin':'User'}</span></td>
-      <td>${sp?sp.name:'—'}</td>
+      <td>${sp?sp.name:'--'}</td>
       <td><span style="color:${u.active!==false?'var(--green)':'var(--red)'}">●</span> ${u.active!==false?'Active':'Inactive'}</td>
       <td>
         <button class="btn btn-outline btn-xs" onclick="editUserModal('${u.id}')">Edit</button>
@@ -763,8 +763,8 @@ function renderUsers(){
         <div style="font-size:12px;color:var(--text2);line-height:1.8">
           <b>Default passwords (first login):</b> Each user's default password is their username + "1234" (e.g. admin → admin1234).
           Ask users to change passwords immediately in Settings → Change Password.
-          <br><b>Roles:</b> <span class="role-badge role-admin">Admin</span> — full access, can manage users.
-          &nbsp;<span class="role-badge role-user">User</span> — can view all records, but can only edit/delete their own assigned customers.
+          <br><b>Roles:</b> <span class="role-badge role-admin">Admin</span> -- full access, can manage users.
+          &nbsp;<span class="role-badge role-user">User</span> -- can view all records, but can only edit/delete their own assigned customers.
         </div>
       </div>
     </div>`;
@@ -778,7 +778,7 @@ function newUserModal(){
       <div class="field"><label>Full Name</label><input id="mu-name" placeholder="e.g. John Smith"></div>
       <div class="field"><label>Password</label><input id="mu-pwd" type="password" placeholder="Min 6 characters"></div>
       <div class="field"><label>Role</label><select id="mu-role"><option value="user">User (Standard)</option><option value="admin">Admin</option></select></div>
-      <div class="field"><label>Linked Salesperson</label><select id="mu-sp"><option value="">— None (Admin) —</option>${spOpts}</select></div>
+      <div class="field"><label>Linked Salesperson</label><select id="mu-sp"><option value="">-- None (Admin) --</option>${spOpts}</select></div>
       <div class="field"><label>Status</label><select id="mu-active"><option value="true">Active</option><option value="false">Inactive</option></select></div>
     </div>
     <div style="display:flex;gap:10px;margin-top:20px">
@@ -798,7 +798,7 @@ function editUserModal(id){
       <div class="field"><label>Full Name</label><input id="mu-name" value="${u.name}"></div>
       <div class="field"><label>New Password <span style="font-weight:400;color:var(--text3)">(leave blank to keep)</span></label><input id="mu-pwd" type="password" placeholder="Leave blank to keep current"></div>
       <div class="field"><label>Role</label><select id="mu-role"><option value="user" ${u.role==='user'?'selected':''}>User (Standard)</option><option value="admin" ${u.role==='admin'?'selected':''}>Admin</option></select></div>
-      <div class="field"><label>Linked Salesperson</label><select id="mu-sp"><option value="">— None (Admin) —</option>${spOpts}</select></div>
+      <div class="field"><label>Linked Salesperson</label><select id="mu-sp"><option value="">-- None (Admin) --</option>${spOpts}</select></div>
       <div class="field"><label>Status</label><select id="mu-active"><option value="true" ${u.active!==false?'selected':''}>Active</option><option value="false" ${u.active===false?'selected':''}>Inactive</option></select></div>
     </div>
     <div style="display:flex;gap:10px;margin-top:20px">
@@ -885,7 +885,7 @@ function showImportModal(){
     <div class="import-zone" id="import-zone" onclick="document.getElementById('import-file').click()" ondragover="event.preventDefault();this.classList.add('drag-over')" ondragleave="this.classList.remove('drag-over')" ondrop="handleImportDrop(event)">
       <div style="font-size:40px;margin-bottom:10px">📊</div>
       <div style="font-size:15px;font-weight:600;color:var(--text);margin-bottom:6px">Click to upload or drag &amp; drop</div>
-      <div style="font-size:12px;color:var(--text3)">.xlsx, .xls, .csv — max 5,000 rows</div>
+      <div style="font-size:12px;color:var(--text3)">.xlsx, .xls, .csv -- max 5,000 rows</div>
       <input type="file" id="import-file" accept=".xlsx,.xls,.csv" style="display:none" onchange="handleImportFile(this.files[0])">
     </div>
     <div id="import-result"></div>`;
@@ -947,9 +947,9 @@ function processImportRows(rows){
     const isDup=dups.find(d=>d.rec===r);
     return `<tr class="${isDup?'dup-row':''}">
       <td>${r.firstName||''} ${r.lastName||''}</td>
-      <td>${r.email||'—'}</td>
-      <td>${r.phone||'—'}</td>
-      <td>${r.leadStatus||'—'}</td>
+      <td>${r.email||'--'}</td>
+      <td>${r.phone||'--'}</td>
+      <td>${r.leadStatus||'--'}</td>
       <td>${isDup?`<span style="color:var(--red);font-size:11px">${isDup.matchReason}</span>`:'<span style="color:var(--green);font-size:11px">✓ New</span>'}</td>
     </tr>`;
   }).join('');
@@ -1067,7 +1067,7 @@ function nav(section){
   }catch(e){
     console.error('[CRM] Render error in '+section+':', e);
     document.getElementById('content').innerHTML=`<div style="background:#fff0f0;border:1.5px solid #e74c3c;border-radius:12px;padding:28px 32px;margin:32px auto;max-width:700px;font-family:monospace">
-      <div style="font-size:18px;font-weight:700;color:#c0392b;margin-bottom:12px">⚠️ Render Error — ${section}</div>
+      <div style="font-size:18px;font-weight:700;color:#c0392b;margin-bottom:12px">⚠️ Render Error -- ${section}</div>
       <div style="color:#333;font-size:14px;margin-bottom:8px"><b>Message:</b> ${e.message}</div>
       <pre style="background:#fff;border:1px solid #eee;border-radius:8px;padding:12px;font-size:12px;overflow:auto;white-space:pre-wrap">${e.stack||e}</pre>
       <div style="margin-top:16px;font-size:13px;color:#666">Please copy this error and report it, or go to <b>Settings → Reload Demo Data</b> to reset.</div>
@@ -1188,7 +1188,7 @@ function renderDashboard(){
 <!-- KPI Hero Row -->
 <div class="kpi-hero">
   ${[
-    ['💎','Active Leads',active.length,`of ${total} total`,total>0?Math.round(active.length/total*100)+'%':'—','neu'],
+    ['💎','Active Leads',active.length,`of ${total} total`,total>0?Math.round(active.length/total*100)+'%':'--','neu'],
     ['🔄','Pipeline Value',fmt(pipeline),'฿ active deals','','neu'],
     ['✅','Won Deals',won.length,fmt(won.reduce((s,c)=>s+(c.dealValue||0),0))+' closed',won.length>0?'+'+won.length:'0','up'],
     ['📊','Avg Deal Size',fmt(avgDeal),'per customer','','neu'],
@@ -1281,7 +1281,7 @@ function renderDashboard(){
           <div class="avatar" style="width:30px;height:30px;font-size:12px">${(c.firstName||'?')[0]}</div>
           <div class="flex-1">
             <div class="rank-name">${c.firstName} ${c.lastName}${c.vipLevel&&c.vipLevel!=='None'?` <span class="badge badge-vip-${c.vipLevel.toLowerCase()}">${c.vipLevel}</span>`:''}</div>
-            <div class="rank-stage">${c.pipelineStage||'—'} · ${c.assignedTo||'Unassigned'}</div>
+            <div class="rank-stage">${c.pipelineStage||'--'} · ${c.assignedTo||'Unassigned'}</div>
           </div>
           <div class="rank-val">${fmt(c.dealValue)}</div>
         </div>`).join(''):`<div class="empty-state" style="padding:24px"><div class="empty-icon">💎</div><p>No customers yet</p></div>`}
@@ -1341,7 +1341,7 @@ function renderDashboard(){
         <div class="followup-urgency ${urg}"></div>
         <div class="flex-1">
           <div class="followup-name">${c.firstName} ${c.lastName}</div>
-          <div class="followup-meta">${c.pipelineStage||'—'} · ${fmt(c.dealValue)}</div>
+          <div class="followup-meta">${c.pipelineStage||'--'} · ${fmt(c.dealValue)}</div>
         </div>
         <div class="followup-date">In ${diff}d<br><span style="color:var(--text3);font-size:10px">${fmtDate(c.expectedCloseDate)}</span></div>
       </div>`;
@@ -1426,16 +1426,16 @@ const ALL_TABLE_COLS=[
   {key:'jewelleryInterest',label:'Jewellery Int.',tip:'Interest in finished jewellery pieces'},
   {key:'purpose',        label:'Purpose',        tip:'Reason for purchase (Investment, Engagement…)'},
   {key:'preferredShapes',label:'Shape',          tip:'Preferred diamond shapes'},
-  {key:'caratMin',       label:'Carat',          tip:'Carat range (min – max)'},
+  {key:'caratMin',       label:'Carat',          tip:'Carat range (min - max)'},
   {key:'nationality',    label:'Nationality',    tip:'Client nationality'},
   {key:'paymentPreference',label:'Payment',      tip:'Preferred payment method'},
-  {key:'probability',    label:'Prob %',         tip:'Estimated close probability (0–100%)'},
-  {key:'budgetMin',      label:'Budget',         tip:'Stated budget range (min – max THB)'},
+  {key:'probability',    label:'Prob %',         tip:'Estimated close probability (0-100%)'},
+  {key:'budgetMin',      label:'Budget',         tip:'Stated budget range (min - max THB)'},
   {key:'updatedAt',      label:'Last Updated',   tip:'Date record was last modified'},
 ];
 function renderCustomers(){
   // Debug: immediately mark that we entered the function
-  console.log('[CRM] renderCustomers called — db.customers:', (db.customers||[]).length, 'db.salespeople:', (db.salespeople||[]).length);
+  console.log('[CRM] renderCustomers called -- db.customers:', (db.customers||[]).length, 'db.salespeople:', (db.salespeople||[]).length);
 
   let list=[...(db.customers||[])];
   if(custFilter.search){ const s=custFilter.search.toLowerCase(); list=list.filter(c=>((c.firstName||'')+' '+(c.lastName||'')+' '+(c.email||'')+' '+(c.phone||'')).toLowerCase().includes(s)); }
@@ -1470,13 +1470,16 @@ function renderCustomers(){
   const cardSvg=`<svg viewBox="0 0 16 16" fill="currentColor"><rect x="1" y="1" width="6" height="6" rx="1"/><rect x="9" y="1" width="6" height="6" rx="1"/><rect x="1" y="9" width="6" height="6" rx="1"/><rect x="9" y="9" width="6" height="6" rx="1"/></svg>`;
   const tableSvg=`<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="1" y="1" width="14" height="14" rx="1.5"/><line x1="1" y1="5.5" x2="15" y2="5.5"/><line x1="1" y1="10" x2="15" y2="10"/><line x1="5.5" y1="5.5" x2="5.5" y2="15"/></svg>`;
 
-  const selectAllCardBtn = custViewMode==='card' ? `<button class="btn btn-outline btn-sm" data-tip="Select all visible cards for bulk actions" onclick="selectAllVisibleCards()" style="white-space:nowrap">☑ Select All</button>${selectedCusts.size>0?` <button class="btn btn-outline btn-sm" onclick="selectedCusts.clear();renderCustomers()">✕ Clear</button>`:''}` : '';
+  const selectAllCardBtn = custViewMode==='card' ? (
+    '<button class="btn btn-outline btn-sm" data-tip="Select all visible cards for bulk actions" onclick="selectAllVisibleCards()" style="white-space:nowrap">☑ Select All</button>' +
+    (selectedCusts.size>0 ? ' <button class="btn btn-outline btn-sm" onclick="selectedCusts.clear();renderCustomers()">✕ Clear</button>' : '')
+  ) : '';
   const sortCardSelect = custViewMode==='card' ? `
   <select class="filter-select" onchange="custFilter.sort=this.value;renderCustomers()">
     <option value="newest" ${custFilter.sort==='newest'?'selected':''}>Newest</option>
     <option value="oldest" ${custFilter.sort==='oldest'?'selected':''}>Oldest</option>
     <option value="value" ${custFilter.sort==='value'?'selected':''}>Deal Value ↓</option>
-    <option value="name" ${custFilter.sort==='name'?'selected':''}>Name A–Z</option>
+    <option value="name" ${custFilter.sort==='name'?'selected':''}>Name A-Z</option>
   </select>` : '';
 
   document.getElementById('content').innerHTML=`
@@ -1573,7 +1576,7 @@ function sortCustTable(col){
 function renderCustTableHTML(list){
   if(!list.length) return `<div class="empty-state"><div class="empty-icon">👥</div><p>No customers found</p><button class="btn btn-gold mt-2" onclick="openCustModal(null)">+ Add First Customer</button></div>`;
   const allChecked=list.length>0&&list.every(c=>selectedCusts.has(c.id));
-  const vipBadge=(v)=>v&&v!=='None'?`<span class="badge badge-vip-${v.toLowerCase()}" style="font-size:10px" data-tip="${v} VIP tier">${v}</span>`:'—';
+  const vipBadge=(v)=>v&&v!=='None'?`<span class="badge badge-vip-${v.toLowerCase()}" style="font-size:10px" data-tip="${v} VIP tier">${v}</span>`:'--';
   const activeCols=ALL_TABLE_COLS.filter(col=>custTableCols.includes(col.key));
 
   const cellVal=(c,key)=>{
@@ -1582,11 +1585,11 @@ function renderCustTableHTML(list){
     if(key==='vipLevel') return vipBadge(c.vipLevel);
     if(key==='dealValue') return `<span style="font-weight:600;color:var(--text)">${fmt(c.dealValue)}</span>`;
     if(key==='lastContactedDate') return freshnessBadge(c);
-    if(key==='caratMin') return c.caratMin?(c.caratMin+(c.caratMax?' – '+c.caratMax:'')):'—';
-    if(key==='budgetMin') return c.budgetMin?(fmt(c.budgetMin)+(c.budgetMax?' – '+fmt(c.budgetMax)):''):'—';
-    if(key==='preferredShapes') return (c.preferredShapes||[]).slice(0,2).join(', ')||'—';
+    if(key==='caratMin') return c.caratMin?(c.caratMin+(c.caratMax?' - '+c.caratMax:'')):'--';
+    if(key==='budgetMin') return c.budgetMin?(fmt(c.budgetMin)+(c.budgetMax?' - '+fmt(c.budgetMax):'')):'--';
+    if(key==='preferredShapes') return (c.preferredShapes||[]).slice(0,2).join(', ')||'--';
     if(key==='updatedAt') return fmtDate(c.updatedAt||c.createdAt);
-    return c[key]||'—';
+    return c[key]||'--';
   };
 
   const rows=list.map(c=>`
@@ -1598,7 +1601,7 @@ function renderCustTableHTML(list){
       <td onclick="event.stopPropagation()">
         <div class="flex gap-1">
           ${canEdit(c)?`<button class="btn btn-outline btn-sm" style="padding:3px 7px" data-tip="Edit ${c.firstName}" onclick="openCustModal('${c.id}')">✏️</button>`:''}
-          ${canEdit(c)?`<button class="btn btn-outline btn-sm" style="padding:3px 7px" data-tip="Delete ${c.firstName}" onclick="deleteCust('${c.id}')">🗑</button>`:`<span style="font-size:10px;color:var(--text3)" data-tip="View only — not your assigned lead">👁</span>`}
+          ${canEdit(c)?`<button class="btn btn-outline btn-sm" style="padding:3px 7px" data-tip="Delete ${c.firstName}" onclick="deleteCust('${c.id}')">🗑</button>`:`<span style="font-size:10px;color:var(--text3)" data-tip="View only -- not your assigned lead">👁</span>`}
         </div>
       </td>
     </tr>`).join('');
@@ -1609,7 +1612,7 @@ function renderCustTableHTML(list){
       <th style="width:36px;text-align:center" data-tip="Select all rows">
         <input type="checkbox" class="row-cb" ${allChecked?'checked':''} onchange="toggleAllCusts(this.checked,${JSON.stringify(list.map(c=>c.id)).replace(/"/g,"'")})">
       </th>
-      ${activeCols.map(col=>`<th class="${custTableSort.col===col.key?'sorted':''}" onclick="sortCustTable('${col.key}')" data-tip="${col.tip} — click to sort">${col.label} <span class="sort-ic ${custTableSort.col===col.key?'on':''}">${custTableSort.col===col.key?(custTableSort.dir==='asc'?'▲':'▼'):'⇅'}</span></th>`).join('')}
+      ${activeCols.map(col=>`<th class="${custTableSort.col===col.key?'sorted':''}" onclick="sortCustTable('${col.key}')" data-tip="${col.tip} -- click to sort">${col.label} <span class="sort-ic ${custTableSort.col===col.key?'on':''}">${custTableSort.col===col.key?(custTableSort.dir==='asc'?'▲':'▼'):'⇅'}</span></th>`).join('')}
       <th data-tip="Edit or delete this record">Actions</th>
     </tr></thead>
     <tbody>${rows}</tbody>
@@ -1618,7 +1621,7 @@ function renderCustTableHTML(list){
 }
 
 function selectAllVisibleCards(){
-  // select all currently filtered list — re-filter same way renderCustomers does
+  // select all currently filtered list -- re-filter same way renderCustomers does
   let list=[...db.customers];
   if(custFilter.search){const s=custFilter.search.toLowerCase();list=list.filter(c=>((c.firstName||'')+' '+(c.lastName||'')+' '+(c.email||'')+' '+(c.phone||'')).toLowerCase().includes(s));}
   if(custFilter.status&&custFilter.status!=='All')list=list.filter(c=>(c.leadStatus||'New')===custFilter.status);
@@ -1685,13 +1688,13 @@ function buildCustDetail(c){
     </div>
     <div class="grid-2" style="gap:8px;margin-bottom:12px;font-size:12px">
       ${[['Status',`<span class="badge badge-${(c.leadStatus||'new').toLowerCase()}" data-tip="Lead status: ${c.leadStatus||'New'}">${c.leadStatus||'New'}</span>`],
-         ['Stage',c.pipelineStage||'—'],['Deal',fmt(c.dealValue)],['Probability',(c.probability||0)+'%'],
-         ['Source',c.leadSource||'—'],['Assigned',c.assignedTo||'—']
+         ['Stage',c.pipelineStage||'--'],['Deal',fmt(c.dealValue)],['Probability',(c.probability||0)+'%'],
+         ['Source',c.leadSource||'--'],['Assigned',c.assignedTo||'--']
         ].map(([k,v])=>`<div><div class="text-xs">${k}</div><div style="font-weight:600;color:var(--text)">${v}</div></div>`).join('')}
     </div>
     ${c.diamondType?`<div class="form-section-title">💎 Diamond Prefs</div>
     <div style="font-size:12px;color:var(--text2);margin-bottom:10px">
-      ${c.diamondType} · ${(c.preferredShapes||[]).join(', ')||'Any shape'} · ${c.caratMin||0}–${c.caratMax||'?'} ct · ${(c.colorGrade||[]).join(', ')||'Any color'} · ${(c.clarityGrade||[]).join(', ')||'Any clarity'}
+      ${c.diamondType} · ${(c.preferredShapes||[]).join(', ')||'Any shape'} · ${c.caratMin||0}-${c.caratMax||'?'} ct · ${(c.colorGrade||[]).join(', ')||'Any color'} · ${(c.clarityGrade||[]).join(', ')||'Any clarity'}
     </div>`:''}
 
     <div class="form-section-title">📋 Activity Log</div>
@@ -1699,7 +1702,7 @@ function buildCustDetail(c){
       <div class="activity-item">
         <div class="activity-dot"></div>
         <div style="flex:1">
-          <div class="activity-text"><strong>${actIcons[a.type]||'📝'} ${a.type||'Note'}</strong> — ${a.note||''}</div>
+          <div class="activity-text"><strong>${actIcons[a.type]||'📝'} ${a.type||'Note'}</strong> -- ${a.note||''}</div>
           <div class="activity-time">${fmtDatetime(a.ts)}</div>
         </div>
       </div>`).join('')+`</div>`:'<div class="text-xs" style="margin-bottom:12px;color:var(--text3)">No activity yet</div>'}
@@ -1761,7 +1764,7 @@ function logActivity(id){
 }
 
 function fmtDatetime(iso){
-  if(!iso) return '—';
+  if(!iso) return '--';
   const d=new Date(iso);
   return d.toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'})+' '+d.toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'});
 }
@@ -1844,12 +1847,12 @@ function buildCustForm(c){
   <div class="fields">
     <div class="field"><label>Lead Source</label><select id="f-src">${SOURCES.map(s=>`<option ${v(c,'leadSource')===s?'selected':''}>${s}</option>`).join('')}</select></div>
     <div class="field"><label>Referred By</label><input id="f-ref" value="${v(c,'referredBy')}" placeholder="Name / Exhibition"></div>
-    <div class="field"><label>Assigned To</label><select id="f-sp"><option value="">— Unassigned —</option>${db.salespeople.map(s=>`<option value="${s.name}" ${v(c,'assignedTo')===s.name?'selected':''}>${s.name}</option>`).join('')}</select></div>
+    <div class="field"><label>Assigned To</label><select id="f-sp"><option value="">-- Unassigned --</option>${db.salespeople.map(s=>`<option value="${s.name}" ${v(c,'assignedTo')===s.name?'selected':''}>${s.name}</option>`).join('')}</select></div>
     <div class="field"><label>Lead Status</label><select id="f-stat">${STATUSES.map(s=>`<option ${v(c,'leadStatus')===s?'selected':''}>${s}</option>`).join('')}</select></div>
     <div class="field"><label>Pipeline Stage</label><select id="f-stage">${STAGES.map(s=>`<option ${v(c,'pipelineStage')===s?'selected':''}>${s}</option>`).join('')}</select></div>
         <div class="field"><label>Best Time to Contact</label><select id="f-btc">${['Morning (9-12)','Afternoon (12-17)','Evening (17-20)','Anytime'].map(t=>`<option ${v(c,'bestTime')===t?'selected':''}>${t}</option>`).join('')}</select></div>
     <div class="field"><label>Deal Value (THB)</label><input type="number" id="f-deal" value="${v(c,'dealValue')}" placeholder="e.g. 2500000"></div>
-    <div class="field"><label>Close Probability (%)</label><input type="number" id="f-prob" min="0" max="100" value="${v(c,'probability')}" placeholder="0–100"></div>
+    <div class="field"><label>Close Probability (%)</label><input type="number" id="f-prob" min="0" max="100" value="${v(c,'probability')}" placeholder="0-100"></div>
     <div class="field"><label>Expected Close Date</label><input type="date" id="f-ecd" value="${v(c,'expectedCloseDate','').slice(0,10)}"></div>
     <div class="field"><label>Date of First Contact</label><input type="date" id="f-fcd" value="${v(c,'firstContactDate','').slice(0,10)}"></div>
     <div class="field"><label>Last Contacted Date</label><input type="date" id="f-lcd" value="${v(c,'lastContactedDate','').slice(0,10)}"><div style="font-size:10px;color:var(--text3);margin-top:3px">Auto-updates to today on every save</div></div>
@@ -2176,9 +2179,9 @@ function renderPipeline(){
   // Card HTML for a customer
   function custCard(c){
     const sp = (db.salespeople||[]).find(s=>s.id===c.salespersonId);
-    const spName = sp ? sp.name.split(' ')[0] : '—';
+    const spName = sp ? sp.name.split(' ')[0] : '--';
     const val = parseFloat(c.totalPurchased)||0;
-    const valStr = val>=1000 ? '$'+(val/1000).toFixed(0)+'k' : (val>0?'$'+val.toFixed(0):'—');
+    const valStr = val>=1000 ? '$'+(val/1000).toFixed(0)+'k' : (val>0?'$'+val.toFixed(0):'--');
     const initials = ((c.firstName||'?')[0]+(c.lastName||'?')[0]).toUpperCase();
     const vipBadge = c.isVip ? `<span style="background:#B48A50;color:#fff;border-radius:20px;padding:1px 7px;font-size:10px;font-weight:700;margin-left:4px">VIP</span>` : '';
     const colorPool = ['#B48A50','#4a90d9','#27ae60','#7c5cbf','#e67e22','#00a8cc'];
@@ -2188,13 +2191,13 @@ function renderPipeline(){
         <div style="width:30px;height:30px;border-radius:50%;background:${avatarBg};color:#fff;font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0">${initials}</div>
         <div style="flex:1;min-width:0">
           <div style="font-weight:600;font-size:13px;color:#1a1a2e;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${c.firstName||''} ${c.lastName||''}${vipBadge}</div>
-          <div style="font-size:11px;color:#888;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${c.company||c.email||'—'}</div>
+          <div style="font-size:11px;color:#888;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${c.company||c.email||'--'}</div>
         </div>
         <div style="font-size:12px;font-weight:700;color:#B48A50;flex-shrink:0">${valStr}</div>
       </div>
       <div style="display:flex;gap:6px;flex-wrap:wrap">
         ${c.leadStatus?`<span style="background:#f5f0ea;color:#7a6040;border-radius:20px;padding:2px 8px;font-size:10px">${c.leadStatus}</span>`:''}
-        ${spName!=='—'?`<span style="background:#f0f4ff;color:#4a6fa5;border-radius:20px;padding:2px 8px;font-size:10px">👤 ${spName}</span>`:''}
+        ${spName!=='--'?`<span style="background:#f0f4ff;color:#4a6fa5;border-radius:20px;padding:2px 8px;font-size:10px">👤 ${spName}</span>`:''}
       </div>
     </div>`;
   }
@@ -2301,7 +2304,7 @@ function renderInventory(){
     ${db.customers.filter(c=>c.diamondType).slice(0,12).map(c=>`
       <div class="inv-pref-row">
         <div style="flex:1"><div class="cust-name" style="font-size:13px">${c.firstName} ${c.lastName}</div>
-          <div class="text-xs">${c.diamondType} · ${(c.preferredShapes||[]).slice(0,3).join(', ')||'—'} · ${c.caratMin||0}–${c.caratMax||'?'}ct</div></div>
+          <div class="text-xs">${c.diamondType} · ${(c.preferredShapes||[]).slice(0,3).join(', ')||'--'} · ${c.caratMin||0}-${c.caratMax||'?'}ct</div></div>
         <div class="text-xs">${fmt(c.dealValue)}</div>
       </div>`).join('')||'<div class="text-xs">No preference data</div>'}
   </div>
@@ -2448,7 +2451,7 @@ function renderReportOverview(){
     <div class="section-title" style="margin-bottom:10px">Top Customers by Deal Value</div>
     <table class="report-table">
       <tr><th>Customer</th><th>Stage</th><th>Deal Value</th></tr>
-      ${topCust.map(c=>`<tr><td>${c.firstName} ${c.lastName}</td><td>${c.pipelineStage||'—'}</td><td style="font-weight:700;color:var(--gold)">${fmt(c.dealValue)}</td></tr>`).join('')||'<tr><td colspan="3" style="text-align:center">No data</td></tr>'}
+      ${topCust.map(c=>`<tr><td>${c.firstName} ${c.lastName}</td><td>${c.pipelineStage||'--'}</td><td style="font-weight:700;color:var(--gold)">${fmt(c.dealValue)}</td></tr>`).join('')||'<tr><td colspan="3" style="text-align:center">No data</td></tr>'}
     </table>
   </div>
   <div class="card">
@@ -2479,7 +2482,7 @@ ${overdue.length?`
       return `<tr>
         <td><b>${c.firstName} ${c.lastName}</b></td>
         <td><span class="badge badge-${(c.leadStatus||'new').toLowerCase().replace(' ','-')}">${c.leadStatus||'New'}</span></td>
-        <td>${c.assignedTo||'—'}</td>
+        <td>${c.assignedTo||'--'}</td>
         <td>${c.lastContactedDate?fmtDate(c.lastContactedDate):'<span style="color:#ef4444">Never</span>'}</td>
         <td style="font-weight:700;color:${color}">${c._days===999?'Never':c._days+'d'}</td>
       </tr>`;
@@ -2520,7 +2523,7 @@ function openPdfReport(type){
       const d=daysSince(c.lastContactedDate); return {...c,_d:d===null?9999:d};
     }).filter(c=>c._d>0).sort((a,b)=>b._d-a._d);
     tableHtml=`<table><thead><tr><th>#</th><th>Name</th><th>Status</th><th>Stage</th><th>Salesperson</th><th>Referred By</th><th>Last Contacted</th><th>Days Since</th></tr></thead><tbody>
-      ${rows.map((c,i)=>{const color=c._d>30?'#c0392b':c._d>14?'#e67e22':'#27ae60';return`<tr><td>${i+1}</td><td><b>${c.firstName} ${c.lastName}</b></td><td>${c.leadStatus||'New'}</td><td>${c.pipelineStage||'—'}</td><td>${c.assignedTo||'—'}</td><td>${c.referredBy||'—'}</td><td>${c.lastContactedDate?new Date(c.lastContactedDate).toLocaleDateString('en-GB'):'<span style="color:#c0392b">Never</span>'}</td><td style="color:${color};font-weight:700">${c._d===9999?'Never':c._d+'d'}</td></tr>`;}).join('')||'<tr><td colspan="8" style="text-align:center;color:#888">No overdue follow-ups 🎉</td></tr>'}
+      ${rows.map((c,i)=>{const color=c._d>30?'#c0392b':c._d>14?'#e67e22':'#27ae60';return`<tr><td>${i+1}</td><td><b>${c.firstName} ${c.lastName}</b></td><td>${c.leadStatus||'New'}</td><td>${c.pipelineStage||'--'}</td><td>${c.assignedTo||'--'}</td><td>${c.referredBy||'--'}</td><td>${c.lastContactedDate?new Date(c.lastContactedDate).toLocaleDateString('en-GB'):'<span style="color:#c0392b">Never</span>'}</td><td style="color:${color};font-weight:700">${c._d===9999?'Never':c._d+'d'}</td></tr>`;}).join('')||'<tr><td colspan="8" style="text-align:center;color:#888">No overdue follow-ups 🎉</td></tr>'}
     </tbody></table>`;
   } else if(type==='source'){
     title='Lead Source & Referral Report';
@@ -2540,7 +2543,7 @@ function openPdfReport(type){
     const byStage={};STAGES.forEach(s=>byStage[s]={count:0,value:0});
     db.customers.forEach(c=>{const s=c.pipelineStage||'Awareness';if(byStage[s]){byStage[s].count++;byStage[s].value+=(c.dealValue||0);}});
     tableHtml=`<table><thead><tr><th>Stage</th><th>Leads</th><th>Total Deal Value (฿)</th><th>Avg Deal Value (฿)</th></tr></thead><tbody>
-      ${STAGES.map(s=>{const r=byStage[s];return`<tr><td><b>${s}</b></td><td>${r.count}</td><td>${r.value.toLocaleString()}</td><td>${r.count?Math.round(r.value/r.count).toLocaleString():'—'}</td></tr>`;}).join('')}
+      ${STAGES.map(s=>{const r=byStage[s];return`<tr><td><b>${s}</b></td><td>${r.count}</td><td>${r.value.toLocaleString()}</td><td>${r.count?Math.round(r.value/r.count).toLocaleString():'--'}</td></tr>`;}).join('')}
     </tbody></table>`;
   } else if(type==='salesperson'){
     title='Salesperson Performance Report';
@@ -2562,12 +2565,12 @@ function openPdfReport(type){
       ${tiers.map(t=>{const n=db.customers.filter(c=>(c.vipLevel||'None')===t).length;return`<tr><td><b>${t}</b></td><td>${n}</td><td>${db.customers.length?Math.round(n/db.customers.length*100):0}%</td></tr>`;}).join('')}
     </tbody></table>
     <h3 style="margin-top:24px">Top 10 Customers by Lifetime Value</h3><table><thead><tr><th>#</th><th>Name</th><th>VIP</th><th>Assigned To</th><th>Lifetime Value (฿)</th></tr></thead><tbody>
-      ${[...db.customers].sort((a,b)=>(b.totalLifetimeValue||b.dealValue||0)-(a.totalLifetimeValue||a.dealValue||0)).slice(0,10).map((c,i)=>`<tr><td>${i+1}</td><td><b>${c.firstName} ${c.lastName}</b></td><td>${c.vipLevel||'None'}</td><td>${c.assignedTo||'—'}</td><td><b>${(c.totalLifetimeValue||c.dealValue||0).toLocaleString()}</b></td></tr>`).join('')}
+      ${[...db.customers].sort((a,b)=>(b.totalLifetimeValue||b.dealValue||0)-(a.totalLifetimeValue||a.dealValue||0)).slice(0,10).map((c,i)=>`<tr><td>${i+1}</td><td><b>${c.firstName} ${c.lastName}</b></td><td>${c.vipLevel||'None'}</td><td>${c.assignedTo||'--'}</td><td><b>${(c.totalLifetimeValue||c.dealValue||0).toLocaleString()}</b></td></tr>`).join('')}
     </tbody></table>`;
   } else if(type==='campaign'){
     title='Campaign ROI Report';
     tableHtml=`<table><thead><tr><th>Campaign</th><th>Type</th><th>Status</th><th>Budget (฿)</th><th>Spent (฿)</th><th>Sent</th><th>Opened</th><th>Replied</th><th>Open %</th><th>Reply %</th></tr></thead><tbody>
-      ${db.campaigns.map(c=>`<tr><td><b>${c.name}</b></td><td>${c.type||'—'}</td><td>${c.status||'—'}</td><td>${(c.budget||0).toLocaleString()}</td><td>${(c.spent||0).toLocaleString()}</td><td>${c.sentCount||0}</td><td>${c.openCount||0}</td><td>${c.replyCount||0}</td><td>${c.sentCount?Math.round((c.openCount||0)/c.sentCount*100):0}%</td><td>${c.sentCount?Math.round((c.replyCount||0)/c.sentCount*100):0}%</td></tr>`).join('')||'<tr><td colspan="10" style="text-align:center;color:#888">No campaigns</td></tr>'}
+      ${db.campaigns.map(c=>`<tr><td><b>${c.name}</b></td><td>${c.type||'--'}</td><td>${c.status||'--'}</td><td>${(c.budget||0).toLocaleString()}</td><td>${(c.spent||0).toLocaleString()}</td><td>${c.sentCount||0}</td><td>${c.openCount||0}</td><td>${c.replyCount||0}</td><td>${c.sentCount?Math.round((c.openCount||0)/c.sentCount*100):0}%</td><td>${c.sentCount?Math.round((c.replyCount||0)/c.sentCount*100):0}%</td></tr>`).join('')||'<tr><td colspan="10" style="text-align:center;color:#888">No campaigns</td></tr>'}
     </tbody></table>`;
   }
 
@@ -2604,7 +2607,7 @@ function openPdfReport(type){
   </div>
   ${tableHtml}
   <div class="footer">
-    <span>💎 Diamond CRM — Confidential</span>
+    <span>💎 Diamond CRM -- Confidential</span>
     <span>Generated ${today}</span>
   </div>
   <div class="no-print" style="margin-top:24px;text-align:center">
@@ -2655,7 +2658,7 @@ function renderReportBuilder(){
     <div class="card" style="padding:14px">
       <div style="font-size:13px;font-weight:700;margin-bottom:10px">💾 Saved Reports</div>
       ${db.savedReports.length?`<select id="rb-load-sel" style="width:100%;margin-bottom:8px;padding:6px 10px;border:1px solid var(--border);border-radius:6px;background:var(--card);color:var(--text);font-size:12px">
-        <option value="">— Select saved report —</option>
+        <option value="">-- Select saved report --</option>
         ${db.savedReports.map((r,i)=>`<option value="${i}">${r.name}</option>`).join('')}
       </select>
       <div style="display:flex;gap:6px">
@@ -2703,7 +2706,7 @@ function renderReportBuilder(){
       </div>
       <label style="font-size:11px;color:var(--text3);display:block;margin-bottom:3px">Group By (optional)</label>
       <select id="rb-group" onchange="_rbState.groupBy=this.value;rbPreview()" style="width:100%;padding:6px;border:1px solid var(--border);border-radius:6px;background:var(--card);color:var(--text);font-size:12px">
-        <option value="">— No grouping —</option>
+        <option value="">-- No grouping --</option>
         ${RB_FIELDS.map(f=>`<option value="${f.key}" ${_rbState.groupBy===f.key?'selected':''}>${f.label}</option>`).join('')}
       </select>
     </div>
@@ -2787,7 +2790,7 @@ function rbPreview(){
   if(_rbState.groupBy){
     const gDef=RB_FIELDS.find(f=>f.key===_rbState.groupBy);
     const groups={};
-    rows.forEach(r=>{ const g=gDef?String(gDef.get(r)):'—'; (groups[g]=groups[g]||[]).push(r); });
+    rows.forEach(r=>{ const g=gDef?String(gDef.get(r)):'--'; (groups[g]=groups[g]||[]).push(r); });
     Object.entries(groups).forEach(([g,gRows])=>{
       html+=`<div style="font-size:11px;font-weight:700;color:var(--gold);padding:6px 0;border-bottom:1px solid var(--border);margin-bottom:4px">${gDef.label}: ${g} (${gRows.length})</div>`;
       html+=rbTableHtml(cols,gRows.slice(0,20));
@@ -2835,7 +2838,7 @@ function rbPrintPdf(){
   <table><thead><tr>${cols.map(f=>`<th>${f.label}</th>`).join('')}</tr></thead><tbody>
   ${rows.map(r=>`<tr>${cols.map(f=>`<td title="${f.get(r)}">${f.get(r)}</td>`).join('')}</tr>`).join('')}
   </tbody></table>
-  <div class="footer"><span>💎 Diamond CRM — Confidential</span><span>${today}</span></div>
+  <div class="footer"><span>💎 Diamond CRM -- Confidential</span><span>${today}</span></div>
   <div style="margin-top:16px;text-align:center"><button onclick="window.print()" style="padding:8px 24px;background:#B48A50;color:#fff;border:none;border-radius:6px;font-size:13px;font-weight:700;cursor:pointer">🖨️ Print / Save as PDF</button></div>
   </body></html>`);
   win.document.close(); setTimeout(()=>win.focus(),300);
@@ -2886,10 +2889,10 @@ function clearData(){ if(confirm('Delete ALL data? This cannot be undone!')){ db
 // ══════════════════════════════════════════════
 const CAMP_TEMPLATES=[
   {name:'Birthday Greeting',subject:'Happy Birthday from Jay Vijay Diamond!',body:'Dear {name},\n\nWishing you a very Happy Birthday! 🎂\n\nAs a valued client, we\'d love to make your special day even more memorable. Visit us this month for exclusive birthday privileges on our diamond collection.\n\nWarm regards,\nJay Vijay Diamond Co., Ltd.'},
-  {name:'New Arrival',subject:'Exclusive New Arrivals — For Your Eyes First',body:'Dear {name},\n\nWe have just received a stunning new collection of diamonds that we thought you would love. Given your refined taste, we wanted to share these with you first before they go to the showroom.\n\nPlease contact your advisor at your earliest convenience.\n\nWarm regards,\nJay Vijay Diamond Co., Ltd.'},
+  {name:'New Arrival',subject:'Exclusive New Arrivals -- For Your Eyes First',body:'Dear {name},\n\nWe have just received a stunning new collection of diamonds that we thought you would love. Given your refined taste, we wanted to share these with you first before they go to the showroom.\n\nPlease contact your advisor at your earliest convenience.\n\nWarm regards,\nJay Vijay Diamond Co., Ltd.'},
   {name:'VIP Offer',subject:'Your Exclusive VIP Offer',body:'Dear {name},\n\nAs a valued VIP client, we are delighted to offer you an exclusive private preview of our latest collection, along with a special preferential rate available only to you.\n\nThis offer is valid for the next 7 days.\n\nYours sincerely,\nJay Vijay Diamond Co., Ltd.'},
-  {name:'Follow-Up',subject:'Following Up — {name}',body:'Dear {name},\n\nI wanted to follow up on our recent conversation and see if you have any questions or if there is anything further I can assist you with regarding your diamond selection.\n\nPlease do not hesitate to reach out at any time.\n\nWarm regards,'},
-  {name:'Exhibition Invite',subject:'Exclusive Invitation — Diamond Exhibition',body:'Dear {name},\n\nWe are delighted to invite you to our exclusive diamond exhibition, where you will have the opportunity to view our finest collection and speak with our expert gemologists.\n\nKindly RSVP at your earliest convenience.\n\nWarm regards,\nJay Vijay Diamond Co., Ltd.'}
+  {name:'Follow-Up',subject:'Following Up -- {name}',body:'Dear {name},\n\nI wanted to follow up on our recent conversation and see if you have any questions or if there is anything further I can assist you with regarding your diamond selection.\n\nPlease do not hesitate to reach out at any time.\n\nWarm regards,'},
+  {name:'Exhibition Invite',subject:'Exclusive Invitation -- Diamond Exhibition',body:'Dear {name},\n\nWe are delighted to invite you to our exclusive diamond exhibition, where you will have the opportunity to view our finest collection and speak with our expert gemologists.\n\nKindly RSVP at your earliest convenience.\n\nWarm regards,\nJay Vijay Diamond Co., Ltd.'}
 ];
 
 function renderCampaigns(){
@@ -2980,12 +2983,12 @@ function saveCamp(){
 function deleteCamp(id){ if(confirm('Delete campaign?')){ db.campaigns=db.campaigns.filter(c=>c.id!==id); saveDB(); renderCampaigns(); } }
 
 // ══════════════════════════════════════════════
-// BUSINESS CARDS — AUTO OCR
+// BUSINESS CARDS -- AUTO OCR
 // ══════════════════════════════════════════════
 let bcWorker=null;
 
 // ══════════════════════════════════════════════
-// BUSINESS CARDS — MULTI-CARD PDF + SINGLE IMAGE OCR
+// BUSINESS CARDS -- MULTI-CARD PDF + SINGLE IMAGE OCR
 // ══════════════════════════════════════════════
 let parsedCards   = [];   // [{imgDataUrl, fields, selected, expanded}, ...]
 let _ocrWorker    = null; // reused Tesseract worker (one for the whole session)
@@ -3002,7 +3005,7 @@ function renderBizcard(){
       <div class="section-header">
         <div>
           <div class="section-title">📸 Scan Business Cards</div>
-          <div class="section-sub">Upload image or multi-page PDF — each card is extracted automatically</div>
+          <div class="section-sub">Upload image or multi-page PDF -- each card is extracted automatically</div>
         </div>
       </div>
       <div class="ocr-zone" id="ocr-zone"
@@ -3013,7 +3016,7 @@ function renderBizcard(){
         <input type="file" id="bc-file-input" accept="image/*,.pdf" style="display:none" onchange="handleBCFile(this.files[0])">
         <div class="ocr-zone-icon">📄</div>
         <div class="ocr-zone-title">Drop image or PDF here</div>
-        <div class="ocr-zone-sub">PNG · JPG · PDF (multi-page) — OCR runs automatically on every card</div>
+        <div class="ocr-zone-sub">PNG · JPG · PDF (multi-page) -- OCR runs automatically on every card</div>
         <div class="ocr-progress" id="ocr-progress">
           <div class="ocr-status-text" id="ocr-status">Initialising…</div>
           <div class="ocr-progress-bar"><div class="ocr-progress-fill" id="ocr-bar"></div></div>
@@ -3064,7 +3067,7 @@ function renderBCList(){
       <div class="flex items-center gap-2">
         <div class="avatar" style="width:32px;height:32px;font-size:12px">${(bc.name||'?')[0]}</div>
         <div style="flex:1;min-width:0">
-          <div style="font-size:13px;font-weight:600;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${bc.name||'—'}</div>
+          <div style="font-size:13px;font-weight:600;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${bc.name||'--'}</div>
           <div class="text-xs" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${bc.title||''}${bc.title&&bc.company?' · ':''}${bc.company||''}</div>
           <div class="text-xs">${bc.email||''}</div>
         </div>
@@ -3120,13 +3123,13 @@ async function processSingleImage(file){
   const cardCount = detectCardCountFromOCR(fullText);
 
   if(cardCount <= 1){
-    // Single card — parse the text we already have
+    // Single card -- parse the text we already have
     setOCRStatus('Parsing card…', 90);
     parsedCards=[{imgDataUrl:imgUrl, fields:parseBusinessCardText(fullText), selected:true, expanded:false}];
     setOCRStatus('Done', 100);
   } else {
-    // Multiple cards detected — split image and re-OCR each strip
-    setOCRStatus(`Detected ${cardCount} cards — splitting…`, 50);
+    // Multiple cards detected -- split image and re-OCR each strip
+    setOCRStatus(`Detected ${cardCount} cards -- splitting…`, 50);
     await _splitAndOCR(imgUrl, cardCount, 50);
   }
 }
@@ -3200,7 +3203,7 @@ async function processPDFMultiCard(file){
   const arrayBuf = await file.arrayBuffer();
   const pdf = await pdfjsLib.getDocument({data:arrayBuf}).promise;
   const numPages = pdf.numPages;
-  setOCRStatus(`Found ${numPages} page${numPages>1?'s':''} — processing each card…`, 10);
+  setOCRStatus(`Found ${numPages} page${numPages>1?'s':''} -- processing each card…`, 10);
 
   for(let pg=1; pg<=numPages; pg++){
     setOCRStatus(`Processing card ${pg} of ${numPages}…`, Math.round(10+(pg-1)/numPages*85));
@@ -3218,7 +3221,7 @@ async function processPDFMultiCard(file){
 
 async function getOCRWorker(){
   if(!_ocrWorker){
-    // Create ONE worker for the whole session — avoids re-downloading the language pack per page
+    // Create ONE worker for the whole session -- avoids re-downloading the language pack per page
     _ocrWorker = await Tesseract.createWorker('eng', 1, {
       logger: m=>{ if(m.status==='recognizing text' && _ocrProgCb) _ocrProgCb(m.progress); }
     });
@@ -3321,7 +3324,7 @@ function renderMCGallery(){
     <div class="mc-card ${card.selected?'selected':''}" id="mc-card-${i}">
       <div class="mc-check ${card.selected?'checked':''}" onclick="toggleMCSelect(${i})" title="Select">${card.selected?'✓':''}</div>
       ${card.imgDataUrl?`<img class="mc-card-img" src="${card.imgDataUrl}" alt="Card ${i+1}">`:''}
-      <div style="font-size:12px;font-weight:700;color:var(--text);margin-bottom:6px">Card ${i+1}${card.fields.name?' — '+card.fields.name:''}</div>
+      <div style="font-size:12px;font-weight:700;color:var(--text);margin-bottom:6px">Card ${i+1}${card.fields.name?' -- '+card.fields.name:''}</div>
       ${mcFieldRow('Company', card.fields.company)}
       ${mcFieldRow('Title', card.fields.title)}
       ${mcFieldRow('Email', card.fields.email)}
@@ -3480,7 +3483,7 @@ function convertToLeadFromSaved(id){
 // ACCOUNTING & INVOICING MODULE
 // ══════════════════════════════════════════════
 const INV_STATUSES = ['Draft','Sent','Paid','Overdue','Cancelled','Partial'];
-const PAY_METHODS  = ['Cash','Wire Transfer','Credit Card','Installment','Crypto – BTC','Crypto – ETH','Crypto – USDT','Mixed'];
+const PAY_METHODS  = ['Cash','Wire Transfer','Credit Card','Installment','Crypto - BTC','Crypto - ETH','Crypto - USDT','Mixed'];
 let editInvId = null;
 let invFormItems = [];
 
@@ -3586,7 +3589,7 @@ function renderInvRows(invs){
   if(!invs.length) return '';
   return invs.map(inv=>{
     const cust=db.customers.find(c=>c.id===inv.customerId)||{};
-    const name=cust.firstName?(cust.firstName+' '+cust.lastName).trim():inv.clientName||'—';
+    const name=cust.firstName?(cust.firstName+' '+cust.lastName).trim():inv.clientName||'--';
     const statusClass={'Draft':'badge-new','Sent':'badge-contacted','Paid':'badge-won','Overdue':'badge-lost','Cancelled':'badge-dormant','Partial':'badge-qualified'}[inv.status]||'badge-new';
     const isOverdue=inv.status==='Sent'&&inv.dueDate&&new Date(inv.dueDate)<new Date();
     return `<tr style="${isOverdue?'background:rgba(184,48,32,.04)':''}">
@@ -3594,10 +3597,10 @@ function renderInvRows(invs){
       <td>${name}</td>
       <td><span class="badge" style="background:rgba(180,138,80,.1);color:var(--gold3)">${inv.type||'Invoice'}</span></td>
       <td>${fmtDate(inv.createdAt)}</td>
-      <td>${inv.dueDate?fmtDate(inv.dueDate):'—'}</td>
+      <td>${inv.dueDate?fmtDate(inv.dueDate):'--'}</td>
       <td><strong>${fmt(inv.total||0)}</strong></td>
       <td style="color:${(inv.balanceDue||0)>0?'var(--red)':'var(--green)'}">${fmt(inv.balanceDue||0)}</td>
-      <td style="font-size:11px">${inv.paymentMethod||'—'}</td>
+      <td style="font-size:11px">${inv.paymentMethod||'--'}</td>
       <td><span class="badge ${statusClass}">${inv.status}</span></td>
       <td>
         <div style="display:flex;gap:4px">
@@ -3637,7 +3640,7 @@ function openInvModal(id){
 <div class="fields" style="margin-bottom:12px">
   <div class="field"><label>Invoice Type</label><select id="i-type">${['Quote','Proforma Invoice','Invoice','Receipt','Credit Note'].map(t=>`<option ${(inv.type||'Invoice')===t?'selected':''}>${t}</option>`).join('')}</select></div>
   <div class="field"><label>Invoice No.</label><input id="i-no" value="${inv.invoiceNo||nextInvNo()}"></div>
-  <div class="field"><label>Client</label><select id="i-cust"><option value="">— Select Client —</option>${custOptions}</select></div>
+  <div class="field"><label>Client</label><select id="i-cust"><option value="">-- Select Client --</option>${custOptions}</select></div>
   <div class="field"><label>Client Name (if no record)</label><input id="i-cname" value="${inv.clientName||''}" placeholder="Walk-in / manual entry"></div>
   <div class="field"><label>Invoice Date</label><input type="date" id="i-date" value="${(inv.invoiceDate||new Date().toISOString().slice(0,10))}"></div>
   <div class="field"><label>Due Date</label><input type="date" id="i-due" value="${inv.dueDate||''}"></div>
@@ -3717,7 +3720,7 @@ function recalcInv(){
   const sumEl=document.getElementById('inv-summary');
   if(sumEl) sumEl.innerHTML=`
 <div style="display:flex;justify-content:space-between;margin-bottom:4px"><span>Subtotal</span><strong>${fmt(subtotal)}</strong></div>
-${discAmt?`<div style="display:flex;justify-content:space-between;margin-bottom:4px;color:var(--green)"><span>Discount (${discPct}%)</span><strong>–${fmt(discAmt)}</strong></div>`:''}
+${discAmt?`<div style="display:flex;justify-content:space-between;margin-bottom:4px;color:var(--green)"><span>Discount (${discPct}%)</span><strong>-${fmt(discAmt)}</strong></div>`:''}
 <div style="display:flex;justify-content:space-between;margin-bottom:4px"><span>Tax / VAT (${taxPct}%)</span><strong>${fmt(taxAmt)}</strong></div>
 <div style="display:flex;justify-content:space-between;padding-top:8px;border-top:1px solid var(--border);font-family:'Playfair Display',serif;font-size:18px;color:var(--text)"><span>Total</span><strong>${fmt(total)}</strong></div>`;
 }
@@ -3765,7 +3768,7 @@ function openPaymentModal(id){
   const inv=db.invoices.find(i=>i.id===id); if(!inv) return;
   document.getElementById('payment-form-body').innerHTML=`
 <div style="margin-bottom:12px">
-  <div style="font-weight:600">${inv.invoiceNo} — ${fmt(inv.total)}</div>
+  <div style="font-weight:600">${inv.invoiceNo} -- ${fmt(inv.total)}</div>
   <div style="font-size:12px;color:var(--text3)">Balance due: <strong style="color:var(--red)">${fmt(inv.balanceDue||0)}</strong></div>
 </div>
 <div class="fields">
@@ -3830,12 +3833,12 @@ ${cust.phone?`<div style="color:#5A4E3A;font-size:13px">${cust.phone}</div>`:''}
 <div style="font-size:12px;color:#9A8E7A">Invoice Date: <strong style="color:#1C1810">${fmtDate(inv.invoiceDate||inv.createdAt)}</strong></div>
 ${inv.dueDate?`<div style="font-size:12px;color:#9A8E7A;margin-top:4px">Due Date: <strong style="color:#B83020">${fmtDate(inv.dueDate)}</strong></div>`:''}
 <div style="font-size:12px;color:#9A8E7A;margin-top:4px">Currency: <strong style="color:#1C1810">${inv.currency||'THB'}</strong></div>
-<div style="font-size:12px;color:#9A8E7A;margin-top:4px">Payment: <strong style="color:#1C1810">${inv.paymentMethod||'—'}</strong></div>
+<div style="font-size:12px;color:#9A8E7A;margin-top:4px">Payment: <strong style="color:#1C1810">${inv.paymentMethod||'--'}</strong></div>
 </div></div>
 <table><thead><tr><th>Description</th><th style="text-align:right">Qty</th><th style="text-align:right">Unit Price</th><th style="text-align:right">Disc.</th><th style="text-align:right">Total</th></tr></thead>
 <tbody>${(inv.lineItems||[]).map(it=>`<tr><td>${it.desc||''}</td><td style="text-align:right">${it.qty||1}</td><td style="text-align:right">${fmt(it.unitPrice||0)}</td><td style="text-align:right">${it.discount||0}%</td><td style="text-align:right"><strong>${fmt(calcItemTotal(it))}</strong></td></tr>`).join('')}
 </tbody><tfoot>
-${inv.discountAmt?`<tr><td colspan="4" style="text-align:right;padding:6px 12px;color:#5A7048">Discount (${inv.discountPct}%)</td><td style="text-align:right;padding:6px 12px;color:#5A7048">–${fmt(inv.discountAmt)}</td></tr>`:''}
+${inv.discountAmt?`<tr><td colspan="4" style="text-align:right;padding:6px 12px;color:#5A7048">Discount (${inv.discountPct}%)</td><td style="text-align:right;padding:6px 12px;color:#5A7048">-${fmt(inv.discountAmt)}</td></tr>`:''}
 <tr><td colspan="4" style="text-align:right;padding:6px 12px">Tax / VAT (${inv.taxPct||7}%)</td><td style="text-align:right;padding:6px 12px">${fmt(inv.taxAmt||0)}</td></tr>
 <tr class="total-row"><td colspan="4" style="text-align:right;padding:10px 12px">TOTAL</td><td style="text-align:right;padding:10px 12px">${fmt(inv.total||0)}</td></tr>
 ${inv.balanceDue>0?`<tr><td colspan="4" style="text-align:right;padding:6px 12px;color:#B83020">Balance Due</td><td style="text-align:right;padding:6px 12px;color:#B83020;font-weight:700">${fmt(inv.balanceDue)}</td></tr>`:''}
@@ -3905,9 +3908,9 @@ function renderHelp(){
 <!-- ── hero ── -->
 <div style="background:linear-gradient(120deg,var(--sidebar-bg) 0%,#2a1a4a 100%);border-radius:16px;padding:28px 32px;margin-bottom:28px;color:#fff;position:relative;overflow:hidden">
   <div style="position:absolute;right:24px;top:50%;transform:translateY(-50%);font-size:72px;opacity:.13;line-height:1">💎</div>
-  <div style="font-size:22px;font-weight:700;color:var(--gold);margin-bottom:6px">Diamond CRM — User Manual</div>
+  <div style="font-size:22px;font-weight:700;color:var(--gold);margin-bottom:6px">Diamond CRM -- User Manual</div>
   <div style="font-size:13px;opacity:.8;margin-bottom:4px">Version 3.0 &nbsp;·&nbsp; Jay Vijay Diamond Co., Ltd. / Saraff Global &nbsp;·&nbsp; Bangkok</div>
-  <div style="font-size:12px;opacity:.6">Confidential — Internal Use Only</div>
+  <div style="font-size:12px;opacity:.6">Confidential -- Internal Use Only</div>
 </div>
 
 <!-- ── quick-nav pills ── -->
@@ -3923,19 +3926,19 @@ function renderHelp(){
 <!-- ═══════════════════ SECTION: Getting Started ═══════════════════ -->
 <div class="help-section" id="h-start">
   <div class="help-h1">1. Getting Started</div>
-  <p class="help-p">The Diamond CRM is a self-contained, browser-based tool that runs entirely from a single HTML file — <b>no installation, no internet connection, no server required</b>. All data is stored locally in your browser.</p>
+  <p class="help-p">The Diamond CRM is a self-contained, browser-based tool that runs entirely from a single HTML file -- <b>no installation, no internet connection, no server required</b>. All data is stored locally in your browser.</p>
   <div class="help-steps">
     <div class="help-step"><span class="help-step-n">1</span>Locate <b>diamond_crm.html</b> on your computer.</div>
     <div class="help-step"><span class="help-step-n">2</span>Double-click it, or right-click → <b>Open with → Google Chrome</b> (recommended).</div>
     <div class="help-step"><span class="help-step-n">3</span>The login screen appears. Enter your username and password, then click <b>Sign In</b>.</div>
   </div>
-  <div class="help-note">💡 Always keep the file in a stable folder. Avoid storing it in Downloads — that folder may be auto-cleared.</div>
+  <div class="help-note">💡 Always keep the file in a stable folder. Avoid storing it in Downloads -- that folder may be auto-cleared.</div>
 </div>
 
 <!-- ═══════════════════ SECTION: Login ═══════════════════ -->
 <div class="help-section" id="h-login">
   <div class="help-h1">2. Login &amp; Authentication <span class="help-new">NEW in v3</span></div>
-  <p class="help-p">Every user has their own account. You must sign in before accessing any part of the CRM. If your credentials are wrong, an error appears in the login panel — the page does not reload.</p>
+  <p class="help-p">Every user has their own account. You must sign in before accessing any part of the CRM. If your credentials are wrong, an error appears in the login panel -- the page does not reload.</p>
 
   <div class="help-h2">Session persistence</div>
   <p class="help-p">Your session is remembered within the same browser tab. If you reload the page it restores automatically. To fully sign out, click <b>Sign Out</b> in the top-right corner.</p>
@@ -3945,7 +3948,7 @@ function renderHelp(){
   <table class="help-table">
     <thead><tr><th>Username</th><th>Default Password</th><th>Role</th><th>Linked Salesperson</th></tr></thead>
     <tbody>
-      <tr><td><code>admin</code></td><td><code>admin1234</code></td><td><span class="role-badge role-admin">Admin</span></td><td>— (full access)</td></tr>
+      <tr><td><code>admin</code></td><td><code>admin1234</code></td><td><span class="role-badge role-admin">Admin</span></td><td>-- (full access)</td></tr>
       <tr><td><code>arjun</code></td><td><code>arjun1234</code></td><td><span class="role-badge role-user">User</span></td><td>Arjun Sharma (SP-001)</td></tr>
       <tr><td><code>priya</code></td><td><code>priya1234</code></td><td><span class="role-badge role-user">User</span></td><td>Priya Mehta (SP-002)</td></tr>
       <tr><td><code>kanokwan</code></td><td><code>kanok1234</code></td><td><span class="role-badge role-user">User</span></td><td>Kanokwan T. (SP-003)</td></tr>
@@ -3964,16 +3967,16 @@ function renderHelp(){
     <thead><tr><th>Section</th><th>Purpose</th></tr></thead>
     <tbody>
       <tr><td>📊 Dashboard</td><td>KPI cards, pipeline summary, top salespeople, recent activity</td></tr>
-      <tr><td>👥 Customers &amp; Leads</td><td>Full customer database — add, edit, search, filter, import Excel</td></tr>
+      <tr><td>👥 Customers &amp; Leads</td><td>Full customer database -- add, edit, search, filter, import Excel</td></tr>
       <tr><td>🚀 Sales Pipeline</td><td>7-stage Kanban board for deal progression</td></tr>
       <tr><td>💎 Inventory Interest</td><td>Diamond styles/categories customers have enquired about</td></tr>
       <tr><td>🤝 Salespeople</td><td>Roster with auto-calculated performance metrics</td></tr>
       <tr><td>📈 Reports</td><td>Revenue charts, conversion funnel, campaign ROI</td></tr>
       <tr><td>📣 Campaigns</td><td>Marketing campaign management and customer linkage</td></tr>
-      <tr><td>🪪 Business Cards</td><td>OCR card scanner — drop a photo or multi-page PDF; contacts extracted automatically and saved as leads</td></tr>
+      <tr><td>🪪 Business Cards</td><td>OCR card scanner -- drop a photo or multi-page PDF; contacts extracted automatically and saved as leads</td></tr>
       <tr><td>🧾 Invoices &amp; Payments</td><td>Invoice creation, payment recording, balance tracking</td></tr>
-      <tr><td>🔐 Users &amp; Access</td><td><b>Admin only</b> — manage user accounts &amp; roles</td></tr>
-      <tr><td>❓ Help &amp; FAQ</td><td>This screen — full user manual</td></tr>
+      <tr><td>🔐 Users &amp; Access</td><td><b>Admin only</b> -- manage user accounts &amp; roles</td></tr>
+      <tr><td>❓ Help &amp; FAQ</td><td>This screen -- full user manual</td></tr>
       <tr><td>⚙️ Settings</td><td>Company details, VIP thresholds, export/import database</td></tr>
     </tbody>
   </table>
@@ -3993,7 +3996,7 @@ function renderHelp(){
   <p class="help-p">Click <b>+ Add Customer</b> (visible in the top bar on every screen). Fill in personal details, lead status, pipeline stage, assigned salesperson, budget, diamond preferences, and tags. Click <b>Save</b>.</p>
 
   <div class="help-h2">Editing &amp; deleting</div>
-  <p class="help-p">Click any card to open the detail panel. Edit / Delete buttons appear on cards — availability depends on your role (see Role-Based Access below).</p>
+  <p class="help-p">Click any card to open the detail panel. Edit / Delete buttons appear on cards -- availability depends on your role (see Role-Based Access below).</p>
 
   <div class="help-h2">Customer &amp; Lead photos <span class="help-new">NEW</span></div>
   <p class="help-p">Each customer or lead card can have a profile photo. To add one:</p>
@@ -4028,7 +4031,7 @@ function renderHelp(){
 <!-- ═══════════════════ SECTION: Excel Import ═══════════════════ -->
 <div class="help-section" id="h-import">
   <div class="help-h1">6. Excel / CSV Import <span class="help-new">NEW in v3</span></div>
-  <p class="help-p">Bulk-import customers from an offline spreadsheet — no manual data entry needed.</p>
+  <p class="help-p">Bulk-import customers from an offline spreadsheet -- no manual data entry needed.</p>
   <div class="help-steps">
     <div class="help-step"><span class="help-step-n">1</span>Go to <b>Customers &amp; Leads</b> and click <b>📥 Import Excel</b> in the toolbar.</div>
     <div class="help-step"><span class="help-step-n">2</span>Optionally click <b>Download Template</b> to get a pre-formatted .xlsx file with the correct headers.</div>
@@ -4063,7 +4066,7 @@ function renderHelp(){
 
 <!-- ═══════════════════ SECTION: Users & Access ═══════════════════ -->
 <div class="help-section" id="h-users">
-  <div class="help-h1">7. Users &amp; Access — Admin Portal <span class="help-new">NEW in v3</span></div>
+  <div class="help-h1">7. Users &amp; Access -- Admin Portal <span class="help-new">NEW in v3</span></div>
   <p class="help-p">Visible in the sidebar <b>only when logged in as Admin</b>. Manage all CRM user accounts from this screen.</p>
   <table class="help-table">
     <thead><tr><th>Column</th><th>Description</th></tr></thead>
@@ -4130,7 +4133,7 @@ function renderHelp(){
 <!-- ═══════════════════ SECTION: Business Card Scanner ═══════════════════ -->
 <div class="help-section" id="h-bizcard">
   <div class="help-h1">10. Business Card Scanner <span class="help-new">NEW</span></div>
-  <p class="help-p">The Business Cards section uses on-device OCR (Tesseract.js) to read physical business cards from photos or PDFs — no internet connection required. Extracted contacts can be saved to the card library or converted directly to Leads.</p>
+  <p class="help-p">The Business Cards section uses on-device OCR (Tesseract.js) to read physical business cards from photos or PDFs -- no internet connection required. Extracted contacts can be saved to the card library or converted directly to Leads.</p>
 
   <div class="help-h2">Uploading a card</div>
   <div class="help-steps">
@@ -4141,7 +4144,7 @@ function renderHelp(){
   </div>
 
   <div class="help-h2">Multiple cards in one photo <span class="help-new">NEW</span></div>
-  <p class="help-p">If you photograph several cards lying on a table, the CRM automatically detects how many cards are present (by counting email addresses found in the OCR text) and splits the image into equal horizontal strips — each strip is OCR'd separately as its own card.</p>
+  <p class="help-p">If you photograph several cards lying on a table, the CRM automatically detects how many cards are present (by counting email addresses found in the OCR text) and splits the image into equal horizontal strips -- each strip is OCR'd separately as its own card.</p>
   <p class="help-p">After extraction a <b>re-split bar</b> appears below "Extracted Cards":</p>
   <div style="background:var(--hover);border:1px dashed var(--border);border-radius:8px;padding:10px 14px;font-size:12px;color:var(--text2);margin:8px 0">
     📷 Photo with multiple cards? &nbsp; Split into: &nbsp; <b>1 · 2 · 3 · 4 · 5</b> cards
@@ -4150,10 +4153,10 @@ function renderHelp(){
   <div class="help-note">💡 For best results, arrange cards in a single vertical column when photographing. Lay them flat, ensure good lighting, and avoid overlapping edges.</div>
 
   <div class="help-h2">Multi-page PDF <span class="help-new">NEW</span></div>
-  <p class="help-p">If each card has been scanned as a separate page in one PDF, upload the PDF and the CRM processes <b>every page independently</b> — one card per page. A single shared OCR engine is used for all pages, so even 10+ page PDFs complete reliably without errors.</p>
+  <p class="help-p">If each card has been scanned as a separate page in one PDF, upload the PDF and the CRM processes <b>every page independently</b> -- one card per page. A single shared OCR engine is used for all pages, so even 10+ page PDFs complete reliably without errors.</p>
 
   <div class="help-h2">Handwritten notes capture <span class="help-new">NEW</span></div>
-  <p class="help-p">OCR often picks up handwritten text on cards (e.g. a mobile number jotted in pen). Any text that doesn't match a known field pattern — name, company, email, phone — is automatically placed in the <b>✍️ Handwritten Notes</b> field for that card. You can freely edit this before saving.</p>
+  <p class="help-p">OCR often picks up handwritten text on cards (e.g. a mobile number jotted in pen). Any text that doesn't match a known field pattern -- name, company, email, phone -- is automatically placed in the <b>✍️ Handwritten Notes</b> field for that card. You can freely edit this before saving.</p>
   <p class="help-p">When saved, handwritten notes are combined with any internal notes and stored on the contact record. They also appear on the saved card tile in the right panel.</p>
 
   <div class="help-h2">Edit form fields</div>
@@ -4168,7 +4171,7 @@ function renderHelp(){
       <tr><td>Website</td><td>✅ Yes</td><td>Lines starting with www. or http</td></tr>
       <tr><td>Line / WeChat</td><td>✅ Yes</td><td>Lines containing "line:" or "wechat:"</td></tr>
       <tr><td>Address</td><td>✅ Yes</td><td>Lines with road/floor/building/Bangkok keywords</td></tr>
-      <tr><td>✍️ Handwritten Notes</td><td>✅ Auto-detected</td><td>Residual unmatched OCR text — edit freely</td></tr>
+      <tr><td>✍️ Handwritten Notes</td><td>✅ Auto-detected</td><td>Residual unmatched OCR text -- edit freely</td></tr>
       <tr><td>Internal Notes</td><td>❌ Manual</td><td>Your own private notes about this contact</td></tr>
     </tbody>
   </table>
@@ -4182,7 +4185,7 @@ function renderHelp(){
       <tr><td>➕ Convert Selected to Leads</td><td>Creates a new Lead in Customers &amp; Leads for each selected card, pre-filled with all extracted fields</td></tr>
     </tbody>
   </table>
-  <div class="help-note">💡 OCR accuracy depends on photo quality. Blurry images, poor lighting, or very small fonts will reduce accuracy. Always review the extracted fields before saving — the edit form lets you fix anything.</div>
+  <div class="help-note">💡 OCR accuracy depends on photo quality. Blurry images, poor lighting, or very small fonts will reduce accuracy. Always review the extracted fields before saving -- the edit form lets you fix anything.</div>
 </div>
 
 <!-- ═══════════════════ SECTION: Data & Backup ═══════════════════ -->
@@ -4193,7 +4196,7 @@ function renderHelp(){
   <div class="help-h2">Exporting a backup</div>
   <p class="help-p">Settings → <b>Export Data</b> downloads a complete JSON snapshot of all records and user accounts. Save it somewhere safe.</p>
   <div class="help-h2">Restoring from backup</div>
-  <p class="help-p">Settings → <b>Import Data</b>, then select a previously exported JSON file. <b>This overwrites the current database — it cannot be undone.</b></p>
+  <p class="help-p">Settings → <b>Import Data</b>, then select a previously exported JSON file. <b>This overwrites the current database -- it cannot be undone.</b></p>
   <div class="help-note">⚠️ Back up regularly (at least weekly). If a team member clears their browser data, a recent export is the only way to recover.</div>
 </div>
 
@@ -4203,7 +4206,7 @@ function renderHelp(){
   <table class="help-table">
     <thead><tr><th>Username</th><th>Default Password</th><th>Role</th><th>Linked Salesperson</th></tr></thead>
     <tbody>
-      <tr style="background:#fff9e6"><td><code>admin</code></td><td><code>admin1234</code></td><td><span class="role-badge role-admin">Admin</span></td><td>Full access — all customers</td></tr>
+      <tr style="background:#fff9e6"><td><code>admin</code></td><td><code>admin1234</code></td><td><span class="role-badge role-admin">Admin</span></td><td>Full access -- all customers</td></tr>
       <tr><td><code>arjun</code></td><td><code>arjun1234</code></td><td><span class="role-badge role-user">User</span></td><td>Arjun Sharma (SP-001)</td></tr>
       <tr><td><code>priya</code></td><td><code>priya1234</code></td><td><span class="role-badge role-user">User</span></td><td>Priya Mehta (SP-002)</td></tr>
       <tr><td><code>kanokwan</code></td><td><code>kanok1234</code></td><td><span class="role-badge role-user">User</span></td><td>Kanokwan T. (SP-003)</td></tr>
@@ -4211,7 +4214,7 @@ function renderHelp(){
       <tr><td><code>nadia</code></td><td><code>nadia1234</code></td><td><span class="role-badge role-user">User</span></td><td>Nadia Al-Rashid (SP-005)</td></tr>
     </tbody>
   </table>
-  <p class="help-p" style="color:#e76f51;font-weight:600;margin-top:12px">⚠️ Passwords are one-way hashed — they cannot be recovered. Ask the admin to set a new password via Users &amp; Access if forgotten.</p>
+  <p class="help-p" style="color:#e76f51;font-weight:600;margin-top:12px">⚠️ Passwords are one-way hashed -- they cannot be recovered. Ask the admin to set a new password via Users &amp; Access if forgotten.</p>
 </div>
 
 <!-- ═══════════════════ SECTION: FAQ ═══════════════════ -->
@@ -4219,8 +4222,8 @@ function renderHelp(){
   <div class="help-h1">13. Frequently Asked Questions</div>
 
   <div class="faq-item">
-    <div class="faq-q" onclick="toggleFaq(this)">▶ I cleared my browser data — is the CRM data gone?</div>
-    <div class="faq-a">Yes — all data is stored in localStorage, which is cleared with browser data. This is why regular exports from Settings → Export Data are essential. Restore from your latest JSON backup via Settings → Import Data.</div>
+    <div class="faq-q" onclick="toggleFaq(this)">▶ I cleared my browser data -- is the CRM data gone?</div>
+    <div class="faq-a">Yes -- all data is stored in localStorage, which is cleared with browser data. This is why regular exports from Settings → Export Data are essential. Restore from your latest JSON backup via Settings → Import Data.</div>
   </div>
   <div class="faq-item">
     <div class="faq-q" onclick="toggleFaq(this)">▶ I forgot my password. How do I reset it?</div>
@@ -4248,7 +4251,7 @@ function renderHelp(){
   </div>
   <div class="faq-item">
     <div class="faq-q" onclick="toggleFaq(this)">▶ Can two people use the CRM at the same time?</div>
-    <div class="faq-a">Yes, but each person's browser has its own independent localStorage — changes one person makes are not automatically seen by another. To sync data, use Settings → Export Data / Import Data to exchange JSON snapshots. This is a single-device offline tool by design.</div>
+    <div class="faq-a">Yes, but each person's browser has its own independent localStorage -- changes one person makes are not automatically seen by another. To sync data, use Settings → Export Data / Import Data to exchange JSON snapshots. This is a single-device offline tool by design.</div>
   </div>
   <div class="faq-item">
     <div class="faq-q" onclick="toggleFaq(this)">▶ How do I print a business card or report?</div>
@@ -4256,23 +4259,23 @@ function renderHelp(){
   </div>
   <div class="faq-item">
     <div class="faq-q" onclick="toggleFaq(this)">▶ I photographed 3 cards but only 1 was extracted.</div>
-    <div class="faq-a">Auto-detection counts email addresses in the OCR output to guess how many cards are in the image. If any cards have no email, the count will be under-detected. After extraction you'll see a <b>re-split bar</b> — click the correct number (e.g. "3") and the image is re-processed into that many strips instantly, with no need to re-upload.</div>
+    <div class="faq-a">Auto-detection counts email addresses in the OCR output to guess how many cards are in the image. If any cards have no email, the count will be under-detected. After extraction you'll see a <b>re-split bar</b> -- click the correct number (e.g. "3") and the image is re-processed into that many strips instantly, with no need to re-upload.</div>
   </div>
   <div class="faq-item">
     <div class="faq-q" onclick="toggleFaq(this)">▶ The OCR extracted garbled or wrong text. Can I fix it?</div>
-    <div class="faq-a">Yes — all extracted fields are fully editable before you save. Click <b>✏️ Edit</b> on any card in the gallery to open the form and correct any field. OCR accuracy depends on photo quality; for best results use a well-lit, straight-on photo with cards laid flat.</div>
+    <div class="faq-a">Yes -- all extracted fields are fully editable before you save. Click <b>✏️ Edit</b> on any card in the gallery to open the form and correct any field. OCR accuracy depends on photo quality; for best results use a well-lit, straight-on photo with cards laid flat.</div>
   </div>
   <div class="faq-item">
     <div class="faq-q" onclick="toggleFaq(this)">▶ The card had handwritten notes but they weren't captured.</div>
-    <div class="faq-a">Handwritten text is captured in the <b>✍️ Handwritten Notes</b> field — it collects any OCR text that didn't match a standard field like name, company, email or phone. If the handwriting was too faint or stylised for the OCR engine to read, type the notes manually in that field before saving.</div>
+    <div class="faq-a">Handwritten text is captured in the <b>✍️ Handwritten Notes</b> field -- it collects any OCR text that didn't match a standard field like name, company, email or phone. If the handwriting was too faint or stylised for the OCR engine to read, type the notes manually in that field before saving.</div>
   </div>
   <div class="faq-item">
     <div class="faq-q" onclick="toggleFaq(this)">▶ How do I add a photo to a customer or lead?</div>
-    <div class="faq-a">Open the customer's edit form (click ✏️ Edit on their card). The form has a photo upload area — click it and select a JPG or PNG from your device (max 3 MB). A preview appears immediately. Click Save to store it. The photo also appears on their card in list and card views, and in the detail panel.</div>
+    <div class="faq-a">Open the customer's edit form (click ✏️ Edit on their card). The form has a photo upload area -- click it and select a JPG or PNG from your device (max 3 MB). A preview appears immediately. Click Save to store it. The photo also appears on their card in list and card views, and in the detail panel.</div>
   </div>
   <div class="faq-item">
     <div class="faq-q" onclick="toggleFaq(this)">▶ My PDF had 5 pages but only some cards were extracted.</div>
-    <div class="faq-a">For PDFs, each page is treated as one card — so a 5-page PDF should yield 5 extracted cards. If fewer appear, one or more pages may have been blank or unreadable. The CRM uses a single shared OCR engine for all pages, so the process should complete reliably. Try re-uploading the PDF; if a specific page consistently fails, extract that page as a separate image and upload it alone.</div>
+    <div class="faq-a">For PDFs, each page is treated as one card -- so a 5-page PDF should yield 5 extracted cards. If fewer appear, one or more pages may have been blank or unreadable. The CRM uses a single shared OCR engine for all pages, so the process should complete reliably. Try re-uploading the PDF; if a specific page consistently fails, extract that page as a separate image and upload it alone.</div>
   </div>
 </div>
 
@@ -4340,10 +4343,10 @@ function renderSettings(){
   const t=getVipThresholds();
   const fmtN=n=>Number(n).toLocaleString();
   const tiers=[
-    {tier:'Bronze',  key:'bronze',   color:'#CD7F32', icon:'🥉', desc:'Entry level — first purchase'},
+    {tier:'Bronze',  key:'bronze',   color:'#CD7F32', icon:'🥉', desc:'Entry level -- first purchase'},
     {tier:'Silver',  key:'silver',   color:'#9EA0A8', icon:'🥈', desc:'Regular buyers'},
     {tier:'Gold',    key:'gold',     color:'#B48A50', icon:'🥇', desc:'High-value clients'},
-    {tier:'Platinum',key:'platinum', color:'#5B7FA6', icon:'💎', desc:'Top-tier — exceptional spend'}
+    {tier:'Platinum',key:'platinum', color:'#5B7FA6', icon:'💎', desc:'Top-tier -- exceptional spend'}
   ];
   const counts={Platinum:0,Gold:0,Silver:0,Bronze:0,None:0};
   db.customers.forEach(c=>{ const lv=calcVipLevel(c.id); counts[lv]=(counts[lv]||0)+1; });
@@ -4361,7 +4364,7 @@ function renderSettings(){
       </div>
     </div>
     <div style="background:var(--bg2);border-radius:10px;padding:12px 14px;margin-bottom:16px;font-size:12px;color:var(--text3);border-left:3px solid var(--gold)">
-      <strong style="color:var(--gold)">How VIP works:</strong> Each client's tier is derived from the sum of all their paid invoice amounts. It updates instantly when you record a payment — no manual selection needed.
+      <strong style="color:var(--gold)">How VIP works:</strong> Each client's tier is derived from the sum of all their paid invoice amounts. It updates instantly when you record a payment -- no manual selection needed.
     </div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:18px">
       ${tiers.map(({tier,key,color,icon,desc})=>`
@@ -4418,7 +4421,7 @@ function renderSettings(){
       </button>
     </div>
     <div style="font-size:11px;color:var(--text3);margin-top:10px;background:var(--bg2);padding:8px 12px;border-radius:6px">
-      <strong>Reload Demo Data</strong> replaces your current data with the 30-client sample dataset (useful for testing). <strong>Clear All Data</strong> wipes everything — use with caution.
+      <strong>Reload Demo Data</strong> replaces your current data with the 30-client sample dataset (useful for testing). <strong>Clear All Data</strong> wipes everything -- use with caution.
     </div>
   </div>
 
@@ -4456,7 +4459,7 @@ function saveVipSettings(){
   recalcAllVip();
   renderSettings();
   const t=document.createElement('div');
-  t.textContent='✅ Thresholds saved — all VIP levels updated';
+  t.textContent='✅ Thresholds saved -- all VIP levels updated';
   t.style.cssText='position:fixed;bottom:24px;right:24px;background:var(--gold);color:#fff;padding:12px 20px;border-radius:10px;font-size:13px;font-weight:600;z-index:9999;box-shadow:0 4px 20px rgba(0,0,0,.2)';
   document.body.appendChild(t);
   setTimeout(()=>t.remove(),3000);
