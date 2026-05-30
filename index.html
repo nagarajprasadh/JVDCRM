@@ -327,10 +327,9 @@ th[data-tip]{cursor:pointer}
 .inv-pref-row{display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--border)}
 
 /* ── Draggable column headers ── */
-.cust-table th.draggable-col{cursor:grab;user-select:none;transition:background .1s}
+.cust-table th.draggable-col{cursor:grab;user-select:none}
+.col-grip{color:var(--gold);margin-right:4px;opacity:.35;font-size:13px}
 .cust-table th.draggable-col:hover .col-grip{opacity:1}
-.col-grip{font-size:13px;color:var(--gold);margin-right:4px;opacity:.4;cursor:grab;display:inline-block}
-#col-drag-clone{font-family:'Inter',sans-serif}
 
 /* scrollbar */
 ::-webkit-scrollbar{width:5px;height:5px}
@@ -1806,26 +1805,18 @@ function renderCustTableHTML(list){
     </tr>`).join('');
 
   return `<div class="cust-table-wrap">
-  <table class="cust-table">
-    <thead><tr>
+  <table class="cust-table" id="cust-main-table">
+    <thead><tr id="cust-thead-row">
       <th style="width:36px;text-align:center" data-tip="Select all rows">
         <input type="checkbox" class="row-cb" ${allChecked?'checked':''} onchange="toggleAllCusts(this.checked,${JSON.stringify(list.map(c=>c.id)).replace(/"/g,"'")})">
       </th>
       ${activeCols.map((col,ci)=>{
         const sorted=custTableSort.col===col.key;
-        return `<th
-          class="draggable-col"
-          data-ci="${ci}"
-          data-key="${col.key}"
-          onmousedown="colMouseDown(event,${ci})"
-          onclick="colHeaderClick(event,'${col.key}')"
-          title="Drag ⠿ to reorder | Click to sort"
-          style="position:relative"
-        ><span class="col-grip" onmousedown="colMouseDown(event,${ci})">⠿</span> ${col.label} <span class="sort-ic ${sorted?'on':''}">${sorted?(custTableSort.dir==='asc'?'▲':'▼'):'⇅'}</span></th>`;
+        return `<th class="draggable-col" data-colkey="${col.key}" title="Drag to reorder · Click to sort"><span class="col-grip">⠿</span> ${col.label} <span class="sort-ic ${sorted?'on':''}">${sorted?(custTableSort.dir==='asc'?'▲':'▼'):'⇅'}</span></th>`;
       }).join('')}
       <th data-tip="Edit or delete this record">Actions</th>
     </tr></thead>
-    <tbody>${rows}</tbody>
+    <tbody id="cust-table-body">${rows}</tbody>
   </table>
 </div>`;
 }
@@ -4109,84 +4100,71 @@ function exportInvCSV(){
 }
 
 
-// ── Column drag-to-reorder (mouse-based, works reliably in Chrome) ───────────
-let _colDrag = { active:false, fromIdx:null, clone:null, startX:0, moved:false };
+// ── Column drag-to-reorder (DOM-direct — no re-render) ──────────────────────
+const _cd={idx:null,moved:false,ghost:null};
 
-function colMouseDown(e, idx){
-  if(e.button !== 0) return;
-  _colDrag.fromIdx = idx;
-  _colDrag.startX  = e.clientX;
-  _colDrag.active  = false;
-  _colDrag.moved   = false;
-
-  function onMouseMove(ev){
-    if(Math.abs(ev.clientX - _colDrag.startX) < 5) return; // ignore tiny movements
-    _colDrag.moved = true;
-    if(!_colDrag.active){
-      _colDrag.active = true;
-      // Create floating clone label
-      const ths = document.querySelectorAll('.draggable-col');
-      const srcTh = ths[idx];
-      const clone = document.createElement('div');
-      clone.id = 'col-drag-clone';
-      clone.textContent = srcTh ? srcTh.textContent.replace('⠿','').trim() : '';
-      clone.style.cssText = 'position:fixed;padding:6px 14px;background:var(--gold);color:#1a1a1a;font-size:12px;font-weight:700;border-radius:7px;pointer-events:none;z-index:9999;box-shadow:0 4px 16px rgba(0,0,0,.3);letter-spacing:.3px;white-space:nowrap';
-      document.body.appendChild(clone);
-      _colDrag.clone = clone;
-      if(srcTh) srcTh.style.opacity = '0.35';
-    }
-    // Move clone
-    if(_colDrag.clone){
-      _colDrag.clone.style.left = (ev.clientX + 10) + 'px';
-      _colDrag.clone.style.top  = (ev.clientY - 16) + 'px';
-    }
-    // Highlight target column
-    const ths2 = document.querySelectorAll('.draggable-col');
-    ths2.forEach((th,i)=>{
-      const r = th.getBoundingClientRect();
-      const over = ev.clientX >= r.left && ev.clientX <= r.right;
-      th.style.background = (over && i !== _colDrag.fromIdx) ? 'rgba(180,138,80,.18)' : '';
-      th.style.borderLeft  = (over && i !== _colDrag.fromIdx) ? '3px solid var(--gold)' : '';
-    });
-  }
-
-  function onMouseUp(ev){
-    document.removeEventListener('mousemove', onMouseMove);
-    document.removeEventListener('mouseup',   onMouseUp);
-    // Cleanup clone
-    if(_colDrag.clone){ _colDrag.clone.remove(); _colDrag.clone = null; }
-    // Restore opacity
-    document.querySelectorAll('.draggable-col').forEach(th=>{
-      th.style.opacity = '';
-      th.style.background = '';
-      th.style.borderLeft = '';
-    });
-    if(!_colDrag.moved || !_colDrag.active) return;
-    // Find drop target
-    const ths3 = document.querySelectorAll('.draggable-col');
-    let toIdx = null;
-    ths3.forEach((th,i)=>{
-      const r = th.getBoundingClientRect();
-      if(ev.clientX >= r.left && ev.clientX <= r.right) toIdx = i;
-    });
-    if(toIdx === null || toIdx === _colDrag.fromIdx) return;
-    // Reorder
-    const active = ALL_TABLE_COLS.filter(c=>custTableCols.includes(c.key)).map(c=>c.key);
-    const [moved] = active.splice(_colDrag.fromIdx, 1);
-    active.splice(toIdx, 0, moved);
-    custTableCols = active;
-    try{ localStorage.setItem('jvd_colorder', JSON.stringify(custTableCols)); }catch(ex){}
-    renderCustomers();
-  }
-
-  document.addEventListener('mousemove', onMouseMove);
-  document.addEventListener('mouseup',   onMouseUp);
-}
-
-function colHeaderClick(e, key){
-  // Only sort if user didn't drag
-  if(_colDrag.moved){ _colDrag.moved=false; return; }
-  sortCustTable(key);
+function initColDrag(){
+  const ths=document.querySelectorAll('#cust-thead-row .draggable-col');
+  ths.forEach((th,i)=>{
+    th.onmousedown=function(e){
+      if(e.button!==0) return;
+      _cd.idx=i; _cd.moved=false;
+      if(!_cd.ghost){
+        _cd.ghost=document.createElement('div');
+        _cd.ghost.style.cssText='position:fixed;padding:5px 14px;background:var(--gold);color:#1a1a1a;border-radius:7px;font-size:12px;font-weight:700;pointer-events:none;display:none;z-index:9999;box-shadow:0 4px 16px rgba(0,0,0,.3)';
+        document.body.appendChild(_cd.ghost);
+      }
+      _cd.ghost.textContent=th.textContent.replace('⠿','').trim();
+      function mv(ev){
+        _cd.moved=true;
+        _cd.ghost.style.display='block';
+        _cd.ghost.style.left=(ev.clientX+12)+'px';
+        _cd.ghost.style.top=(ev.clientY-10)+'px';
+        th.style.opacity='0.35';
+        document.querySelectorAll('#cust-thead-row .draggable-col').forEach((t,j)=>{
+          const r=t.getBoundingClientRect();
+          const over=j!==_cd.idx&&ev.clientX>=r.left&&ev.clientX<=r.right;
+          t.style.background=over?'rgba(180,138,80,.2)':'';
+          t.style.borderLeft=over?'3px solid var(--gold)':'';
+        });
+      }
+      function up(ev){
+        document.removeEventListener('mousemove',mv);
+        document.removeEventListener('mouseup',up);
+        _cd.ghost.style.display='none';
+        th.style.opacity='';
+        document.querySelectorAll('#cust-thead-row .draggable-col').forEach(t=>{t.style.background='';t.style.borderLeft='';});
+        if(!_cd.moved){_cd.idx=null;return;}
+        let toIdx=null;
+        const ths2=document.querySelectorAll('#cust-thead-row .draggable-col');
+        ths2.forEach((t,j)=>{const r=t.getBoundingClientRect();if(ev.clientX>=r.left&&ev.clientX<=r.right)toIdx=j;});
+        if(toIdx!==null&&toIdx!==_cd.idx){
+          const fi=_cd.idx,ti=toIdx;
+          // move header th
+          const hr=document.getElementById('cust-thead-row');
+          const hths=[...hr.querySelectorAll('.draggable-col')];
+          if(fi<ti) hr.insertBefore(hths[fi],hths[ti].nextSibling);
+          else       hr.insertBefore(hths[fi],hths[ti]);
+          // move body tds (+1 for checkbox col)
+          document.querySelectorAll('#cust-table-body tr').forEach(tr=>{
+            const cells=[...tr.children];
+            const dc=cells[fi+1],tc=cells[ti+1];
+            if(dc&&tc){if(fi<ti)tr.insertBefore(dc,tc.nextSibling);else tr.insertBefore(dc,tc);}
+          });
+          // sync custTableCols
+          const active=ALL_TABLE_COLS.filter(c=>custTableCols.includes(c.key)).map(c=>c.key);
+          const[mv2]=active.splice(fi,1);active.splice(ti,0,mv2);
+          custTableCols=active;
+          try{localStorage.setItem('jvd_colorder',JSON.stringify(custTableCols));}catch(ex){}
+          initColDrag();
+        }
+        _cd.idx=null;_cd.moved=false;
+      }
+      document.addEventListener('mousemove',mv);
+      document.addEventListener('mouseup',up);
+    };
+    th.onclick=function(){if(_cd.moved){_cd.moved=false;return;}sortCustTable(th.dataset.colkey);};
+  });
 }
 
 function loadCustColOrder(){
@@ -4816,6 +4794,7 @@ function saveVipSettings(){
   t.style.cssText='position:fixed;bottom:24px;right:24px;background:var(--gold);color:#fff;padding:12px 20px;border-radius:10px;font-size:13px;font-weight:600;z-index:9999;box-shadow:0 4px 20px rgba(0,0,0,.2)';
   document.body.appendChild(t);
   setTimeout(()=>t.remove(),3000);
+  if(custViewMode==='table') setTimeout(initColDrag,0);
 }
 
 </script>
