@@ -3258,10 +3258,10 @@ function buildCampForm(c){
 <div class="form-section">
   <div class="form-section-title">🎯 Target Audience Builder</div>
   <div class="fields">
-    <div class="field"><label>VIP Level</label><select id="c-tvip" onchange="updateRecipCount()"><option value="">All</option>${VIP_LEVELS.slice(1).map(v=>`<option ${(c.targetVip||'')==v?'selected':''} value="${v}">${v}</option>`).join('')}</select></div>
-    <div class="field"><label>Diamond Type</label><select id="c-tdt"  onchange="updateRecipCount()"><option value="">All</option>${['Natural','Lab-Grown','Both','Undecided'].map(d=>`<option ${(c.targetDtype||'')==d?'selected':''} value="${d}">${d}</option>`).join('')}</select></div>
-    <div class="field"><label>Lead Status</label><select id="c-tstat" onchange="updateRecipCount()"><option value="">All</option>${STATUSES.map(s=>`<option ${(c.targetStatus||'')==s?'selected':''} value="${s}">${s}</option>`).join('')}</select></div>
-    <div class="field"><label>Assigned Salesperson</label><select id="c-tsp"  onchange="updateRecipCount()"><option value="">All</option>${db.salespeople.map(s=>`<option ${(c.targetSp||'')==s.name?'selected':''} value="${s.name}">${s.name}</option>`).join('')}</select></div>
+    <div class="field"><label>VIP Level</label><select id="c-tvip"><option value="">All</option>${VIP_LEVELS.slice(1).map(v=>`<option ${(c.targetVip||'')==v?'selected':''} value="${v}">${v}</option>`).join('')}</select></div>
+    <div class="field"><label>Diamond Type</label><select id="c-tdt"><option value="">All</option>${['Natural','Lab-Grown','Both','Undecided'].map(d=>`<option ${(c.targetDtype||'')==d?'selected':''} value="${d}">${d}</option>`).join('')}</select></div>
+    <div class="field"><label>Lead Status</label><select id="c-tstat"><option value="">All</option>${STATUSES.map(s=>`<option ${(c.targetStatus||'')==s?'selected':''} value="${s}">${s}</option>`).join('')}</select></div>
+    <div class="field"><label>Assigned Salesperson</label><select id="c-tsp"><option value="">All</option>${db.salespeople.map(s=>`<option ${(c.targetSp||'')==s.name?'selected':''} value="${s.name}">${s.name}</option>`).join('')}</select></div>
   </div>
   <div class="text-xs mt-1" id="recip-count">Estimated recipients: ${recipCount}</div>
 </div>
@@ -3270,17 +3270,6 @@ function buildCampForm(c){
   <button class="btn btn-gold" onclick="saveCamp()">💾 Save Campaign</button>
 </div>`;
 }
-function updateRecipCount(){
-  const c={
-    targetVip:  (document.getElementById('c-tvip')||{}).value||'',
-    targetDtype:(document.getElementById('c-tdt')||{}).value||'',
-    targetStatus:(document.getElementById('c-tstat')||{}).value||'',
-    targetSp:   (document.getElementById('c-tsp')||{}).value||''
-  };
-  const el = document.getElementById('recip-count');
-  if(el) el.textContent = 'Estimated recipients: ' + calcRecipients(c);
-}
-
 function calcRecipients(c){
   return db.customers.filter(cu=>{
     if(c.targetVip&&cu.vipLevel!==c.targetVip) return false;
@@ -3357,11 +3346,11 @@ function renderBizcard(){
         <span>📷 Photo with multiple cards?</span>
         <span style="color:var(--text3)">Split into:</span>
         <div style="display:flex;gap:4px">
-          <button class="btn btn-xs btn-outline" onclick="resplitImage(1)">1</button>
-          <button class="btn btn-xs btn-outline" onclick="resplitImage(2)">2</button>
-          <button class="btn btn-xs btn-outline" onclick="resplitImage(3)">3</button>
-          <button class="btn btn-xs btn-outline" onclick="resplitImage(4)">4</button>
-          <button class="btn btn-xs btn-outline" onclick="resplitImage(5)">5</button>
+          <button class="btn btn-xs btn-outline" onclick="resplitImage(1)" title="1 card">1</button>
+          <button class="btn btn-xs btn-outline" onclick="resplitImage(2)" title="1×2 or 2×1">2</button>
+          <button class="btn btn-xs btn-outline" onclick="resplitImage(4)" title="2×2 grid">2×2</button>
+          <button class="btn btn-xs btn-outline" onclick="resplitImage(6)" title="3×2 grid">3×2</button>
+          <button class="btn btn-xs btn-outline" onclick="resplitImage(8)" title="4×2 grid">4×2</button>
         </div>
         <span style="color:var(--text3)">cards</span>
       </div>
@@ -3439,17 +3428,29 @@ async function processSingleImage(file){
   const {data:{text: fullText}} = await worker.recognize(imgUrl);
   _ocrProgCb = null;
 
-  const cardCount = detectCardCountFromOCR(fullText);
+  // Use grid detection instead of simple count
+  setOCRStatus('Detecting card layout…', 50);
+  const grid = await detectCardGrid(imgUrl);
+  const total = grid.cols * grid.rows;
 
-  if(cardCount <= 1){
-    // Single card -- parse the text we already have
+  if(total <= 1){
+    // Single card — use OCR text we already have
     setOCRStatus('Parsing card…', 90);
     parsedCards=[{imgDataUrl:imgUrl, fields:parseBusinessCardText(fullText), selected:true, expanded:false}];
     setOCRStatus('Done', 100);
   } else {
-    // Multiple cards detected -- split image and re-OCR each strip
-    setOCRStatus(`Detected ${cardCount} cards -- splitting…`, 50);
-    await _splitAndOCR(imgUrl, cardCount, 50);
+    setOCRStatus(`Detected ${grid.cols}×${grid.rows} grid (${total} cards) — splitting…`, 55);
+    const cells = await splitImageGrid(imgUrl, grid.cols, grid.rows);
+    let ci=0;
+    for(const cell of cells){
+      ci++;
+      setOCRStatus(`OCR card ${ci} of ${total}…`, Math.round(55+(ci/total)*40));
+      const fields = await runOCROnImage(cell, ()=>{});
+      if(fields.name||fields.email||fields.phone||fields.company){
+        parsedCards.push({imgDataUrl:cell, fields, selected:true, expanded:false});
+      }
+    }
+    setOCRStatus(`Done — ${parsedCards.length} cards extracted`, 100);
   }
 }
 
@@ -3475,23 +3476,87 @@ async function _splitAndOCR(imgUrl, n, startPct){
 }
 
 // Split a data-URL image into n equal horizontal strips via canvas
-function splitImageHorizontally(imgUrl, n){
+// Split image into a cols×rows grid and return cell data URLs
+function splitImageGrid(imgUrl, cols, rows){
   return new Promise((resolve, reject)=>{
     const img = new Image();
-    img.onerror = ()=>reject(new Error('Could not load image for splitting'));
+    img.onerror = ()=>reject(new Error('Could not load image for grid split'));
     img.onload = ()=>{
-      const strips=[];
-      const h = Math.floor(img.height / n);
-      for(let i=0; i<n; i++){
-        const canvas = document.createElement('canvas');
-        canvas.width  = img.width;
-        canvas.height = (i===n-1) ? img.height - i*h : h;
-        const ctx = canvas.getContext('2d');
-        ctx.drawImage(img, 0, -i*h);
-        strips.push(canvas.toDataURL('image/jpeg', 0.92));
+      const cells=[];
+      const cw = Math.floor(img.width  / cols);
+      const ch = Math.floor(img.height / rows);
+      for(let r=0; r<rows; r++){
+        for(let c=0; c<cols; c++){
+          const canvas = document.createElement('canvas');
+          // Last cell gets any remainder pixels
+          canvas.width  = (c===cols-1) ? img.width  - c*cw : cw;
+          canvas.height = (r===rows-1) ? img.height - r*ch : ch;
+          const ctx = canvas.getContext('2d');
+          ctx.drawImage(img, -c*cw, -r*ch);
+          cells.push(canvas.toDataURL('image/jpeg', 0.92));
+        }
       }
-      resolve(strips);
+      resolve(cells);
     };
+    img.src = imgUrl;
+  });
+}
+
+// Backward-compat wrapper — horizontal only
+function splitImageHorizontally(imgUrl, n){
+  return splitImageGrid(imgUrl, 1, n);
+}
+
+// Detect how many rows/cols of business cards are on this image
+// Uses a combination of whitespace analysis and OCR email/phone counting
+async function detectCardGrid(imgUrl){
+  // Quick OCR pass to count distinct contact blocks
+  const worker = await getOCRWorker();
+  const {data:{text}} = await worker.recognize(imgUrl);
+
+  const emails = (text.match(/[\w.+%-]+@[\w.-]+\.[a-z]{2,}/gi)||[]).length;
+  const phones = (text.match(/(?:\+?\d[\d\s\-().]{6,}\d)/g)||[]).length;
+  const contacts = Math.max(emails, Math.round(phones/1.5));
+
+  // Map contact count to grid layout
+  // Standard scanned sheets: 1,2,4,6,8 cards per page
+  if(contacts <= 1) return {cols:1, rows:1};
+  if(contacts === 2){
+    // Could be 1×2 (stacked) or 2×1 (side by side)
+    // Check aspect ratio: landscape page = 2 cols, portrait = 2 rows
+    return await getAspectGrid(imgUrl, 2);
+  }
+  if(contacts <= 4) return await getAspectGrid(imgUrl, 4);
+  if(contacts <= 6) return await getAspectGrid(imgUrl, 6);
+  if(contacts <= 8) return await getAspectGrid(imgUrl, 8);
+  return await getAspectGrid(imgUrl, contacts);
+}
+
+// Given a total card count, determine cols×rows based on image aspect ratio
+function getAspectGrid(imgUrl, total){
+  return new Promise(resolve=>{
+    const img = new Image();
+    img.onload = ()=>{
+      const ratio = img.width / img.height;
+      let cols, rows;
+      if(total === 2){
+        cols = ratio > 1.2 ? 2 : 1;
+        rows = ratio > 1.2 ? 1 : 2;
+      } else if(total === 4){
+        // 2×2 is most common for A4 scans
+        cols=2; rows=2;
+      } else if(total === 6){
+        cols=3; rows=2;
+      } else if(total === 8){
+        cols=4; rows=2;
+      } else {
+        // Generic: try to make a roughly square grid
+        cols = Math.ceil(Math.sqrt(total * ratio));
+        rows = Math.ceil(total / cols);
+      }
+      resolve({cols, rows});
+    };
+    img.onerror = ()=>resolve({cols:2, rows:2});
     img.src = imgUrl;
   });
 }
@@ -3509,8 +3574,20 @@ async function resplitImage(n){
       parsedCards=[{imgDataUrl:_lastImgUrl, fields, selected:true, expanded:false}];
       setOCRStatus('Done', 100);
     } else {
-      setOCRStatus(`Splitting into ${n} cards…`, 10);
-      await _splitAndOCR(_lastImgUrl, n, 10);
+      // Determine best grid for this count
+      const grid = await getAspectGrid(_lastImgUrl, n);
+      setOCRStatus(`Splitting into ${grid.cols}x${grid.rows} grid…`, 10);
+      const cells = await splitImageGrid(_lastImgUrl, grid.cols, grid.rows);
+      let ci=0;
+      for(const cell of cells){
+        ci++;
+        setOCRStatus(`OCR card ${ci} of ${cells.length}…`, Math.round(10+(ci/cells.length)*85));
+        const fields = await runOCROnImage(cell, ()=>{});
+        if(fields.name||fields.email||fields.phone||fields.company){
+          parsedCards.push({imgDataUrl:cell, fields, selected:true, expanded:false});
+        }
+      }
+      setOCRStatus(`Done — ${parsedCards.length} cards`, 100);
     }
   } catch(err){ setOCRStatus('Error: '+err.message, 0); console.error(err); }
   showOCRProgress(false);
@@ -3522,20 +3599,35 @@ async function processPDFMultiCard(file){
   const arrayBuf = await file.arrayBuffer();
   const pdf = await pdfjsLib.getDocument({data:arrayBuf}).promise;
   const numPages = pdf.numPages;
-  setOCRStatus(`Found ${numPages} page${numPages>1?'s':''} -- processing each card…`, 10);
+  setOCRStatus(`Found ${numPages} page${numPages>1?'s':''} — detecting cards per page…`, 5);
 
   for(let pg=1; pg<=numPages; pg++){
-    setOCRStatus(`Processing card ${pg} of ${numPages}…`, Math.round(10+(pg-1)/numPages*85));
+    setOCRStatus(`Rendering page ${pg}…`, Math.round(5+(pg-1)/numPages*30));
     const page = await pdf.getPage(pg);
     const viewport = page.getViewport({scale:2.5});
     const canvas = document.createElement('canvas');
     canvas.width=viewport.width; canvas.height=viewport.height;
     await page.render({canvasContext:canvas.getContext('2d'), viewport}).promise;
-    const imgUrl = canvas.toDataURL('image/png');
-    const fields = await runOCROnImage(imgUrl, ()=>{});
-    parsedCards.push({imgDataUrl:imgUrl, fields, selected:true, expanded:false});
+    const pageImgUrl = canvas.toDataURL('image/jpeg', 0.92);
+
+    // Detect grid layout on this page
+    setOCRStatus(`Detecting card grid on page ${pg}…`, Math.round(35+(pg-1)/numPages*20));
+    const grid = await detectCardGrid(pageImgUrl);
+    setOCRStatus(`Page ${pg}: detected ${grid.cols}×${grid.rows} grid (${grid.cols*grid.rows} cards) — running OCR…`, Math.round(55+(pg-1)/numPages*10));
+
+    const cells = await splitImageGrid(pageImgUrl, grid.cols, grid.rows);
+    let ci=0;
+    for(const cell of cells){
+      ci++;
+      setOCRStatus(`OCR card ${ci} of ${cells.length} on page ${pg}…`, Math.round(60+(ci/cells.length)*35));
+      const fields = await runOCROnImage(cell, ()=>{});
+      // Only add if OCR found something meaningful
+      if(fields.name||fields.email||fields.phone||fields.company){
+        parsedCards.push({imgDataUrl:cell, fields, selected:true, expanded:false});
+      }
+    }
   }
-  setOCRStatus(`Extracted ${numPages} card${numPages>1?'s':''}`, 100);
+  setOCRStatus(`Done — ${parsedCards.length} card${parsedCards.length!==1?'s':''} extracted`, 100);
 }
 
 async function getOCRWorker(){
