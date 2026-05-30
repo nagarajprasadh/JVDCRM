@@ -327,11 +327,11 @@ th[data-tip]{cursor:pointer}
 .inv-pref-row{display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--border)}
 
 /* ── Draggable column headers ── */
-.cust-table th.draggable-col{cursor:grab;user-select:none;transition:background .15s,opacity .15s}
+.cust-table th.draggable-col{cursor:grab;user-select:none}
 .cust-table th.draggable-col:active{cursor:grabbing}
-.cust-table th.col-drag-over{background:rgba(180,138,80,.18)!important;border-left:2px solid var(--gold)!important}
-.cust-table th.col-dragging{opacity:.35}
-.col-drag-hint{font-size:10px;color:var(--text3);margin-left:4px;opacity:.5;letter-spacing:.5px}
+.cust-table th.col-drag-over{background:rgba(180,138,80,.22)!important;border-left:3px solid var(--gold)!important}
+.cust-table th.col-dragging{opacity:.3;background:var(--hover)!important}
+.col-grip{font-size:11px;color:var(--text3);margin-left:5px;opacity:.5;pointer-events:none}
 
 /* scrollbar */
 ::-webkit-scrollbar{width:5px;height:5px}
@@ -1812,20 +1812,21 @@ function renderCustTableHTML(list){
       <th style="width:36px;text-align:center" data-tip="Select all rows">
         <input type="checkbox" class="row-cb" ${allChecked?'checked':''} onchange="toggleAllCusts(this.checked,${JSON.stringify(list.map(c=>c.id)).replace(/"/g,"'")})">
       </th>
-      ${activeCols.map((col,ci)=>`<th
-        class="draggable-col ${custTableSort.col===col.key?'sorted':''}"
-        draggable="true"
-        data-colidx="${ci}"
-        data-colkey="${col.key}"
-        ondragstart="colDragStart(event,${ci})"
-        ondragover="colDragOver(event,${ci})"
-        ondragleave="colDragLeave(event)"
-        ondrop="colDrop(event,${ci})"
-        ondragend="colDragEnd(event)"
-        onclick="sortCustTable('${col.key}')"
-        data-tip="Drag to reorder · Click to sort · ${col.tip}"
-        title="Drag to reorder columns"
-      >${col.label} <span class="sort-ic ${custTableSort.col===col.key?'on':''}">${custTableSort.col===col.key?(custTableSort.dir==='asc'?'▲':'▼'):'⇅'}</span><span class="col-drag-hint">⠿</span></th>`).join('')}
+      ${activeCols.map((col,ci)=>{
+        const sorted=custTableSort.col===col.key;
+        return `<th
+          class="draggable-col ${sorted?'sorted':''}"
+          draggable="true"
+          data-ci="${ci}"
+          ondragstart="colDragStart(event,${ci})"
+          ondragover="colDragOver(event,${ci})"
+          ondragleave="colDragLeave(event)"
+          ondrop="colDrop(event,${ci})"
+          ondragend="colDragEnd()"
+          onclick="sortCustTable('${col.key}')"
+          title="⠿ Drag to reorder  |  Click to sort"
+        >${col.label} <span class="sort-ic ${sorted?'on':''}">${sorted?(custTableSort.dir==='asc'?'▲':'▼'):'⇅'}</span><span class="col-grip">⠿</span></th>`;
+      }).join('')}
       <th data-tip="Edit or delete this record">Actions</th>
     </tr></thead>
     <tbody>${rows}</tbody>
@@ -4118,58 +4119,59 @@ let _colDragSrc = null;
 function colDragStart(e, idx){
   _colDragSrc = idx;
   e.dataTransfer.effectAllowed = 'move';
-  e.dataTransfer.setData('text/plain', idx);
-  setTimeout(()=>{ const th=document.querySelector(`.draggable-col[data-colidx="${idx}"]`); if(th) th.classList.add('col-dragging'); }, 0);
+  e.dataTransfer.setData('text/plain', String(idx));
+  // Mark dragging header
+  setTimeout(()=>{
+    document.querySelectorAll('.draggable-col').forEach((th,i)=>{
+      if(i===idx) th.classList.add('col-dragging');
+    });
+  },0);
 }
 
 function colDragOver(e, idx){
   e.preventDefault();
+  e.stopPropagation();
   e.dataTransfer.dropEffect = 'move';
-  document.querySelectorAll('.draggable-col').forEach(th=>th.classList.remove('col-drag-over'));
-  const th=document.querySelector(`.draggable-col[data-colidx="${idx}"]`);
-  if(th && idx !== _colDragSrc) th.classList.add('col-drag-over');
+  document.querySelectorAll('.draggable-col').forEach((th,i)=>{
+    th.classList.toggle('col-drag-over', i===idx && idx!==_colDragSrc);
+  });
 }
 
 function colDragLeave(e){
-  if(e.target && e.target.classList) e.target.classList.remove('col-drag-over');
+  if(e.currentTarget) e.currentTarget.classList.remove('col-drag-over');
 }
 
 function colDrop(e, toIdx){
   e.preventDefault();
+  e.stopPropagation();
   const fromIdx = _colDragSrc;
-  if(fromIdx === null || fromIdx === toIdx) return;
-  // Reorder custTableCols array
+  if(fromIdx===null || fromIdx===toIdx) return;
+  // Reorder the active columns array
   const active = ALL_TABLE_COLS.filter(c=>custTableCols.includes(c.key)).map(c=>c.key);
-  const moved  = active.splice(fromIdx, 1)[0];
-  active.splice(toIdx, 0, moved);
-  // Rebuild custTableCols preserving any hidden cols at their positions
+  const [moved] = active.splice(fromIdx,1);
+  active.splice(toIdx,0,moved);
   custTableCols = active;
-  saveCustColOrder();
+  try{ localStorage.setItem('jvd_colorder', JSON.stringify(custTableCols)); }catch(ex){}
   renderCustomers();
 }
 
-function colDragEnd(e){
+function colDragEnd(){
   _colDragSrc = null;
   document.querySelectorAll('.draggable-col').forEach(th=>{
     th.classList.remove('col-dragging','col-drag-over');
   });
 }
 
-function saveCustColOrder(){
-  try{ localStorage.setItem('jvd_colorder', JSON.stringify(custTableCols)); }catch(e){}
-}
-
 function loadCustColOrder(){
   try{
-    const saved = localStorage.getItem('jvd_colorder');
-    if(saved){
-      const arr = JSON.parse(saved);
-      // Only keep keys that exist in ALL_TABLE_COLS
-      const valid = ALL_TABLE_COLS.map(c=>c.key);
-      const filtered = arr.filter(k=>valid.includes(k));
-      if(filtered.length > 0) custTableCols = filtered;
+    const s=localStorage.getItem('jvd_colorder');
+    if(s){
+      const arr=JSON.parse(s);
+      const valid=ALL_TABLE_COLS.map(c=>c.key);
+      const ok=arr.filter(k=>valid.includes(k));
+      if(ok.length>0) custTableCols=ok;
     }
-  }catch(e){}
+  }catch(ex){}
 }
 
 // ══════════════════════════════════════════════
