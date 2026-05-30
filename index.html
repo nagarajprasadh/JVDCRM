@@ -1524,7 +1524,7 @@ function buildDashWidget(id){
     const in30=new Date(today); in30.setDate(in30.getDate()+30);
     const fu=custs.filter(c=>{if(!c.expectedCloseDate||['Won','Lost'].includes(c.leadStatus))return false;const d=new Date(c.expectedCloseDate);return d>=today&&d<=in30;}).sort((a,b)=>new Date(a.expectedCloseDate)-new Date(b.expectedCloseDate)).slice(0,6);
     return `<div class="card" style="margin-bottom:16px"><div class="section-title" style="margin-bottom:10px">Upcoming Follow-ups (30 days)</div>
-    ${fu.length?fu.map(c=>{const diff=Math.ceil((new Date(c.expectedCloseDate)-today)/86400000);return '<div style="padding:8px 0;border-bottom:1px solid var(--border)"><div style="display:flex;align-items:center;gap:8px"><div style="width:4px;height:36px;border-radius:2px;background:'+(diff<=7?'var(--red)':diff<=14?'var(--gold)':'var(--green)')+';flex-shrink:0"></div><div style="flex:1"><b style="font-size:13px">'+c.firstName+' '+c.lastName+'</b><div style="font-size:11px;color:var(--text3)">'+c.pipelineStage+' · '+fmt(c.dealValue)+' · In '+diff+'d</div></div>'+waBtn(c,'padding:3px 8px;font-size:11px')+'</div></div>';}).join(''):'<div style="color:var(--text3);font-size:13px;padding:8px 0">No upcoming closes</div>'}</div>`;
+    ${fu.length?fu.map(c=>{const diff=Math.ceil((new Date(c.expectedCloseDate)-today)/86400000);return '<div style="padding:8px 0;border-bottom:1px solid var(--border)"><div style="display:flex;align-items:center;gap:8px"><div style="width:4px;height:36px;border-radius:2px;background:'+(diff<=7?'var(--red)':diff<=14?'var(--gold)':'var(--green)')+';flex-shrink:0"></div><div style="flex:1"><b style="font-size:13px">'+c.firstName+' '+c.lastName+'</b><div style="font-size:11px;color:var(--text3)">'+c.pipelineStage+' · '+fmt(c.dealValue)+' · In '+diff+'d</div></div>'+waBtn(c,'padding:3px 8px;font-size:11px')+lineBtn(c,'padding:3px 8px;font-size:11px')+viberCallBtn(c,'padding:3px 8px;font-size:11px')+'</div></div>';}).join(''):'<div style="color:var(--text3);font-size:13px;padding:8px 0">No upcoming closes</div>'}</div>`;
   }
 
   if(id==='recent_activity'){
@@ -1581,7 +1581,7 @@ function buildDashWidget(id){
         +'<span>'+(c.assignedTo||'?')+(c.assignedTo2?' & '+c.assignedTo2:'')+'</span>'
         +'</div>'
         +'<div style="font-size:11px;color:var(--text3);font-style:italic;margin-bottom:7px">'+lmsg+'</div>'
-        +'<div style="display:flex;gap:6px;flex-wrap:wrap">'+waBtn(c)+emailBtn(c)+callBtn(c)
+        +'<div style="display:flex;gap:6px;flex-wrap:wrap">'+waBtn(c)+lineBtn(c)+viberChatBtn(c)+viberCallBtn(c)+emailBtn(c)+callBtn(c)
         +'<button onclick="nav(\'customers\');selectedCustId=\''+c.id+'\';setTimeout(renderCustomers,0)" '
         +'class="btn btn-outline btn-xs" style="font-size:11px;padding:4px 9px">View</button>'
         +'</div></div></div></div>';
@@ -1825,6 +1825,7 @@ ${list.map(c=>`
     <div class="flex gap-2 mt-1" style="align-items:center">
       <input type="checkbox" class="row-cb" ${selectedCusts.has(c.id)?'checked':''} onclick="event.stopPropagation()" onchange="toggleCustSel('${c.id}',this.checked)" style="width:16px;height:16px;flex-shrink:0;cursor:pointer;accent-color:var(--gold);margin-right:4px">
       ${waNumber(c)?`<a href="${waLink(c)||'#'}" target="_blank" onclick="event.stopPropagation()" style="display:inline-flex;align-items:center;padding:4px 9px;background:#25D366;color:#fff;border-radius:6px;font-size:11px;font-weight:600;text-decoration:none">WA</a>`:''}
+      ${lineBtn(c,'padding:4px 9px;font-size:11px')} ${viberCallBtn(c,'padding:4px 9px;font-size:11px')}
       ${canEdit(c)?`<button class="btn btn-outline btn-sm" onclick="event.stopPropagation();openCustModal('${c.id}')">✏️ Edit</button>`:''}
       ${canEdit(c)?`<button class="btn btn-outline btn-sm" onclick="event.stopPropagation();deleteCust('${c.id}')">🗑</button>`:`<span style="font-size:11px;color:var(--text3)">👁 View only</span>`}
     </div>
@@ -1963,7 +1964,7 @@ function buildCustDetail(c){
       <button class="btn btn-outline btn-sm" onclick="selectedCustId=null;renderCustomers()">✕</button>
     </div>
     <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px">
-      ${waBtn(c)} ${emailBtn(c)} ${callBtn(c)}
+      ${waBtn(c)} ${lineBtn(c)} ${viberChatBtn(c)} ${viberCallBtn(c)} ${emailBtn(c)} ${callBtn(c)}
       <button class="btn btn-outline btn-sm" onclick="openCustModal('${c.id}')">Edit</button>
     </div>
     <div class="grid-2" style="gap:8px;margin-bottom:12px;font-size:12px">
@@ -4514,6 +4515,30 @@ function waLink(c,msg){var n=waNumber(c);if(!n)return null;msg=msg||('Dear '+(c.
 function waBtn(c,s){s=s||'';var l=waLink(c);if(!l)return '';return '<a href="'+l+'" target="_blank" rel="noopener" onclick="event.stopPropagation()" style="display:inline-flex;align-items:center;gap:4px;padding:5px 10px;background:#25D366;color:#fff;border-radius:7px;font-size:12px;font-weight:600;text-decoration:none;'+s+'">WhatsApp</a>';}
 function emailBtn(c,s){s=s||'';if(!c.email)return '';return '<a href="mailto:'+c.email+'" onclick="event.stopPropagation()" style="display:inline-flex;align-items:center;gap:4px;padding:5px 10px;background:var(--blue);color:#fff;border-radius:7px;font-size:12px;font-weight:600;text-decoration:none;'+s+'">Email</a>';}
 function callBtn(c,s){s=s||'';var n=c.phone||c.mobile;if(!n)return '';return '<a href="tel:'+n+'" onclick="event.stopPropagation()" style="display:inline-flex;align-items:center;gap:4px;padding:5px 10px;background:var(--green);color:#fff;border-radius:7px;font-size:12px;font-weight:600;text-decoration:none;'+s+'">Call</a>';}
+function lineBtn(c,s){
+  s=s||'';
+  var id=c.wechat||c.line||'';  // stored in wechat/line field
+  if(!id) return '';
+  // Line deep link: works on desktop+mobile with Line installed
+  var link='https://line.me/ti/p/~'+encodeURIComponent(id.replace(/^~/,''));
+  return '<a href="'+link+'" target="_blank" rel="noopener" onclick="event.stopPropagation()" style="display:inline-flex;align-items:center;gap:4px;padding:5px 10px;background:#00B900;color:#fff;border-radius:7px;font-size:12px;font-weight:600;text-decoration:none;'+s+'">LINE</a>';
+}
+function viberChatBtn(c,s){
+  s=s||'';
+  var n=(c.phone||c.mobile||'').replace(/[^0-9+]/g,'');
+  if(!n) return '';
+  // Viber chat link
+  var link='viber://chat?number='+encodeURIComponent(n);
+  return '<a href="'+link+'" onclick="event.stopPropagation()" style="display:inline-flex;align-items:center;gap:4px;padding:5px 10px;background:#7360F2;color:#fff;border-radius:7px;font-size:12px;font-weight:600;text-decoration:none;'+s+'">Viber</a>';
+}
+function viberCallBtn(c,s){
+  s=s||'';
+  var n=(c.phone||c.mobile||'').replace(/[^0-9+]/g,'');
+  if(!n) return '';
+  // Viber direct voice call — one tap dials
+  var link='viber://call?number='+encodeURIComponent(n);
+  return '<a href="'+link+'" onclick="event.stopPropagation()" style="display:inline-flex;align-items:center;gap:4px;padding:5px 10px;background:#59267c;color:#fff;border-radius:7px;font-size:12px;font-weight:600;text-decoration:none;'+s+'">Viber Call</a>';
+}
 
 // ── Search debounce — prevents focus loss on every keystroke ─────────────────
 let _searchDebounce = null;
@@ -5069,7 +5094,7 @@ function renderKYC(){
       <td>${docs.length?docs.map(d=>`<span style="font-size:11px;background:var(--bg2);border:1px solid var(--border);border-radius:5px;padding:2px 7px;margin-right:3px">${d.type}</span>`).join(''):'<span style="color:var(--text3);font-size:12px">None</span>'}</td>
       <td>${c.kycNextDate?`<span style="font-size:12px">${fmtDate(c.kycNextDate)}</span>`:'<span style="color:var(--text3);font-size:12px">Not set</span>'}</td>
       <td><span style="font-weight:700;font-size:12px;color:${kycStatusColor(st)}">${kycStatusLabel(st)}</span></td>
-      <td><div style="display:flex;gap:5px;flex-wrap:wrap">${waBtn(c,'padding:3px 8px;font-size:11px')}<button class="btn btn-outline btn-sm" onclick="event.stopPropagation();openKycModal('${c.id}')">Manage</button></div></td>
+      <td><div style="display:flex;gap:5px;flex-wrap:wrap">${waBtn(c,'padding:3px 8px;font-size:11px')}${lineBtn(c,'padding:3px 8px;font-size:11px')}${viberCallBtn(c,'padding:3px 8px;font-size:11px')}<button class="btn btn-outline btn-sm" onclick="event.stopPropagation();openKycModal('${c.id}')">Manage</button></div></td>
     </tr>`;
   }).join('');
 
