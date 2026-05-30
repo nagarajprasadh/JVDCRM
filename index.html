@@ -197,6 +197,26 @@ body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);displ
 .cust-card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:16px;cursor:pointer;transition:all .2s;position:relative}
 .cust-card:hover{border-color:var(--border2);box-shadow:0 4px 16px rgba(0,0,0,.08);transform:translateY(-1px)}
 .cust-card.selected{border-color:var(--gold);box-shadow:0 0 0 2px rgba(180,138,80,.2)}
+/* ── RBAC permission matrix ───────────────────── */
+.perm-matrix{width:100%;border-collapse:collapse;margin-top:8px}
+.perm-matrix th{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:var(--text3);padding:6px 8px;text-align:center;border-bottom:2px solid var(--border)}
+.perm-matrix th.mod-col{text-align:left}
+.perm-matrix td{padding:5px 8px;border-bottom:1px solid var(--border);vertical-align:middle}
+.perm-matrix tr:hover td{background:var(--hover)}
+.perm-cell{display:flex;align-items:center;justify-content:center}
+.perm-btn{width:72px;height:26px;border-radius:6px;border:1px solid var(--border);background:var(--card);color:var(--text3);font-size:10px;font-weight:600;cursor:pointer;transition:all .15s;letter-spacing:.3px}
+.perm-btn:hover{border-color:var(--gold);color:var(--gold)}
+.perm-btn.active-view{background:rgba(59,130,246,.15);border-color:#3b82f6;color:#3b82f6}
+.perm-btn.active-edit{background:rgba(201,169,110,.15);border-color:var(--gold);color:var(--gold)}
+.perm-btn.active-full{background:rgba(34,197,94,.15);border-color:var(--green);color:var(--green)}
+.mod-icon{font-size:14px;margin-right:6px}
+.mod-name{font-size:12px;font-weight:600;color:var(--text)}
+.perm-chip{display:inline-block;font-size:9px;font-weight:700;padding:1px 5px;border-radius:4px;margin:1px}
+.pc-view{background:rgba(59,130,246,.15);color:#3b82f6}
+.pc-edit{background:rgba(201,169,110,.15);color:var(--gold)}
+.pc-full{background:rgba(34,197,94,.15);color:var(--green)}
+.pc-none{background:var(--hover);color:var(--text3)}
+
 .cust-name{font-size:14px;font-weight:600;color:var(--text)}
 .cust-meta{font-size:12px;color:var(--text3);margin-top:3px}
 .cust-tags{display:flex;flex-wrap:wrap;gap:4px;margin-top:8px}
@@ -515,19 +535,19 @@ th[data-tip]{cursor:pointer}
     <div class="logo-sub">Sales CRM</div>
   </div>
   <div class="nav-section">Main</div>
-  <div class="nav-item active" onclick="nav('dashboard')"><span class="icon">📊</span>Dashboard</div>
-  <div class="nav-item" onclick="nav('customers')"><span class="icon">👥</span>Customers &amp; Leads<span class="badge" id="nb-cust">0</span></div>
-  <div class="nav-item" onclick="nav('pipeline')"><span class="icon">🔄</span>Sales Pipeline</div>
+  <div class="nav-item active" data-mod="dashboard" onclick="nav('dashboard')"><span class="icon">📊</span>Dashboard</div>
+  <div class="nav-item" data-mod="customers" onclick="nav('customers')"><span class="icon">👥</span>Customers &amp; Leads<span class="badge" id="nb-cust">0</span></div>
+  <div class="nav-item" data-mod="pipeline" onclick="nav('pipeline')"><span class="icon">🔄</span>Sales Pipeline</div>
   <div class="nav-section">Tools</div>
-  <div class="nav-item" onclick="nav('inventory')"><span class="icon">💍</span>Inventory Interest</div>
-  <div class="nav-item" onclick="nav('salespeople')"><span class="icon">👔</span>Salespeople</div>
-  <div class="nav-item" onclick="nav('reports')"><span class="icon">📈</span>Reports</div>
-  <div class="nav-item" onclick="nav('campaigns')"><span class="icon">📣</span>Campaigns<span class="badge" id="nb-camp">0</span></div>
-  <div class="nav-item" onclick="nav('bizcard')"><span class="icon">🪪</span>Business Cards<span class="badge" id="nb-bc">0</span></div>
-  <div class="nav-item" onclick="nav('accounting')"><span class="icon">🧾</span>Invoices & Payments<span class="badge" id="nb-inv">0</span></div>
+  <div class="nav-item" data-mod="inventory" onclick="nav('inventory')"><span class="icon">💍</span>Inventory Interest</div>
+  <div class="nav-item" data-mod="salespeople" onclick="nav('salespeople')"><span class="icon">👔</span>Salespeople</div>
+  <div class="nav-item" data-mod="reports" onclick="nav('reports')"><span class="icon">📈</span>Reports</div>
+  <div class="nav-item" data-mod="campaigns" onclick="nav('campaigns')"><span class="icon">📣</span>Campaigns<span class="badge" id="nb-camp">0</span></div>
+  <div class="nav-item" data-mod="bizcard" onclick="nav('bizcard')"><span class="icon">🪪</span>Business Cards<span class="badge" id="nb-bc">0</span></div>
+  <div class="nav-item" data-mod="accounting" onclick="nav('accounting')"><span class="icon">🧾</span>Invoices & Payments<span class="badge" id="nb-inv">0</span></div>
   <div class="nav-item" id="nav-users" onclick="nav('users')" style="display:none"><span class="icon">🔐</span>Users &amp; Access</div>
   <div class="nav-item" onclick="nav('help')"><span class="icon">❓</span>Help &amp; FAQ</div>
-  <div class="nav-item" onclick="nav('settings')" style="margin-top:auto"><span class="icon">⚙️</span>Settings</div>
+  <div class="nav-item" data-mod="settings" onclick="nav('settings')" style="margin-top:auto"><span class="icon">⚙️</span>Settings</div>
 </div>
 
 <!-- ══════════════════ MAIN ══════════════════ -->
@@ -622,6 +642,14 @@ function loadDB(){
   if(!db.savedReports)  db.savedReports  = [];
   if(!db.settings)      db.settings      = {};
   if(!db.users || !db.users.length) db.users = JSON.parse(JSON.stringify(DEMO_DB.users||[]));
+  // Seed RBAC permissions for any user that doesn't have them yet
+  (db.users||[]).forEach(u=>{
+    if(!u.permissions){
+      u.permissions = u.role==='admin'
+        ? Object.fromEntries(RBAC_MODULES.map(m=>[m.key,'full']))
+        : JSON.parse(JSON.stringify(RBAC_DEFAULT_USER));
+    }
+  });
 }
 function saveDB(){
   try{ localStorage.setItem(DB_KEY, JSON.stringify(db)); }catch(e){ console.log('[CRM] Could not persist data: '+e.message); }
@@ -686,6 +714,7 @@ function doLogin(){
   try{ sessionStorage.setItem(AUTH_KEY, JSON.stringify({id:user.id,username:user.username})); }catch(e){}
   document.getElementById('login-overlay').style.display='none';
   updateUserBadge();
+  applyNavPermissions();
   nav('dashboard');
 }
 
@@ -711,6 +740,7 @@ function isAdmin(){ return currentUser && currentUser.role==='admin'; }
 function canEdit(customer){
   if(!currentUser) return false;
   if(isAdmin()) return true;
+  if(!canEditModule('customers')) return false;
   const sp=(db.salespeople||[]).find(s=>s.id===currentUser.salespersonId);
   if(!sp) return false;
   return (customer.assignedTo||'').toLowerCase()===sp.name.toLowerCase() || customer.salespersonId===currentUser.salespersonId;
@@ -748,81 +778,188 @@ function tryAutoLogin(){
 function renderUsers(){
   if(!isAdmin()){ document.getElementById('content').innerHTML='<div class="empty-state"><div class="empty-icon">🔒</div><div>Admin access required.</div></div>'; return; }
   const users=db.users||[];
-  const spOptions=(db.salespeople||[]).map(s=>`<option value="${s.id}">${s.name}</option>`).join('');
   const rows=users.map(u=>{
     const sp=(db.salespeople||[]).find(s=>s.id===u.salespersonId);
     const isSelf=currentUser&&u.id===currentUser.id;
-    return `<tr>
-      <td><b>${u.username}</b>${isSelf?' <span style="font-size:10px;color:var(--gold)">(you)</span>':''}</td>
-      <td>${u.name}</td>
-      <td><span class="role-badge role-${u.role}">${u.role==='admin'?'Admin':'User'}</span></td>
-      <td>${sp?sp.name:'--'}</td>
-      <td><span style="color:${u.active!==false?'var(--green)':'var(--red)'}">●</span> ${u.active!==false?'Active':'Inactive'}</td>
-      <td>
-        <button class="btn btn-outline btn-xs" onclick="editUserModal('${u.id}')">Edit</button>
-        ${!isSelf?`<button class="btn btn-outline btn-xs" style="color:var(--red);margin-left:4px" onclick="deleteUser('${u.id}')">Delete</button>`:''}
-      </td>
-    </tr>`;
+    const perms = u.role==='admin' ? null : (u.permissions||RBAC_DEFAULT_USER);
+    // Build permission chips for display
+    const chips = u.role==='admin'
+      ? '<span class="perm-chip pc-full">Full Access — Admin</span>'
+      : RBAC_MODULES.map(m=>{
+          const p=perms?perms[m.key]:'full';
+          if(p==='none') return '';
+          return `<span class="perm-chip pc-${p}" title="${m.label}: ${p}">${m.icon}</span>`;
+        }).join('');
+    return `<div style="background:var(--card);border:1px solid var(--border);border-radius:10px;padding:14px 16px;margin-bottom:10px">
+      <div class="flex items-center gap-3" style="flex-wrap:wrap">
+        <div class="avatar" style="width:36px;height:36px;font-size:14px;flex-shrink:0">${(u.name||'?')[0]}</div>
+        <div style="flex:1;min-width:0">
+          <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+            <span style="font-size:13px;font-weight:700;color:var(--text)">${u.username}</span>
+            <span class="role-badge role-${u.role}">${u.role==='admin'?'Admin':'User'}</span>
+            ${isSelf?'<span style="font-size:10px;color:var(--gold)">(you)</span>':''}
+            <span style="font-size:11px;color:var(--text3)">${u.name}</span>
+            ${sp?`<span style="font-size:11px;color:var(--text3)">· ${sp.name}</span>`:''}
+          </div>
+          <div style="margin-top:5px;display:flex;flex-wrap:wrap;gap:2px">${chips}</div>
+        </div>
+        <div style="display:flex;gap:6px;flex-shrink:0">
+          <button class="btn btn-outline btn-sm" onclick="editUserModal('${u.id}')">✏️ Edit</button>
+          ${!isSelf?`<button class="btn btn-outline btn-sm" style="color:var(--red)" onclick="deleteUser('${u.id}')">🗑</button>`:''}
+        </div>
+      </div>
+    </div>`;
   }).join('');
+
   document.getElementById('content').innerHTML=`
-    <div style="padding:24px 28px">
+    <div>
       <div class="section-header" style="margin-bottom:20px">
-        <div><div class="section-title">Users &amp; Access</div><div class="section-sub">Manage CRM users, roles and salesperson assignments</div></div>
+        <div><div class="section-title">Users & Access</div>
+        <div class="section-sub">Manage users and granular module permissions</div></div>
         <button class="btn btn-gold" onclick="newUserModal()">+ Add User</button>
       </div>
-      <div class="card" style="padding:0;overflow:hidden">
-        <table class="user-table">
-          <thead><tr><th>Username</th><th>Full Name</th><th>Role</th><th>Salesperson</th><th>Status</th><th>Actions</th></tr></thead>
-          <tbody>${rows}</tbody>
-        </table>
-      </div>
-      <div class="card" style="margin-top:16px;background:var(--bg2)">
-        <div style="font-size:12px;color:var(--text2);line-height:1.8">
-          <b>Default passwords (first login):</b> Each user's default password is their username + "1234" (e.g. admin → admin1234).
-          Ask users to change passwords immediately in Settings → Change Password.
-          <br><b>Roles:</b> <span class="role-badge role-admin">Admin</span> -- full access, can manage users.
-          &nbsp;<span class="role-badge role-user">User</span> -- can view all records, but can only edit/delete their own assigned customers.
-        </div>
+      ${rows}
+      <div class="card" style="margin-top:16px;background:var(--bg2);padding:12px 16px;font-size:12px;color:var(--text2);line-height:1.8">
+        <b>Permission levels:</b>
+        <span class="perm-chip pc-none">None</span> Hidden from sidebar &nbsp;
+        <span class="perm-chip pc-view">View</span> Read-only access &nbsp;
+        <span class="perm-chip pc-edit">Edit</span> Can add &amp; edit records &nbsp;
+        <span class="perm-chip pc-full">Full</span> Full access including delete &nbsp;&nbsp;
+        Admins always have full access to all modules.
       </div>
     </div>`;
 }
 
 function newUserModal(){
-  const spOpts=(db.salespeople||[]).map(s=>`<option value="${s.id}">${s.name}</option>`).join('');
+  _openUserModal(null);
+}
+
+function editUserModal(id){
+  _openUserModal(id);
+}
+
+function _buildPermMatrix(perms, disabled){
+  if(disabled) return `<div style="font-size:12px;color:var(--text2);padding:8px 0">Admin accounts always have <b>Full</b> access to all modules. Permissions cannot be restricted for Admin users.</div>`;
+  return `
+  <table class="perm-matrix">
+    <thead><tr>
+      <th class="mod-col" style="width:200px">Module</th>
+      <th>None</th><th>View</th><th>Edit</th><th>Full</th>
+    </tr></thead>
+    <tbody>
+      ${RBAC_MODULES.map(m=>{
+        const cur=perms[m.key]||'none';
+        return `<tr>
+          <td><span class="mod-icon">${m.icon}</span><span class="mod-name">${m.label}</span></td>
+          ${['none','view','edit','full'].map(lvl=>`
+          <td class="perm-cell">
+            <button class="perm-btn ${cur===lvl?'active-'+lvl:''}" id="pb-${m.key}-${lvl}"
+              onclick="rbacSetPerm('${m.key}','${lvl}',this)">${lvl==='none'?'—':lvl.charAt(0).toUpperCase()+lvl.slice(1)}</button>
+          </td>`).join('')}
+        </tr>`;
+      }).join('')}
+    </tbody>
+  </table>`;
+}
+
+function _openUserModal(id){
+  const u = id ? (db.users||[]).find(x=>x.id===id) : null;
+  const isAdm = u ? u.role==='admin' : false;
+  const perms = u ? (u.permissions || (isAdm ? RBAC_DEFAULT_ADMIN : RBAC_DEFAULT_USER)) : JSON.parse(JSON.stringify(RBAC_DEFAULT_USER));
+  const spOpts=(db.salespeople||[]).map(s=>`<option value="${s.id}" ${u&&s.id===u.salespersonId?'selected':''}>${s.name}</option>`).join('');
+  const otherUsers=(db.users||[]).filter(x=>x.id!==id&&x.role!=='admin');
+
   document.getElementById('modal-users-body').innerHTML=`
-    <div class="fields" style="grid-template-columns:1fr 1fr">
-      <div class="field"><label>Username</label><input id="mu-username" placeholder="e.g. john"></div>
-      <div class="field"><label>Full Name</label><input id="mu-name" placeholder="e.g. John Smith"></div>
-      <div class="field"><label>Password</label><input id="mu-pwd" type="password" placeholder="Min 6 characters"></div>
-      <div class="field"><label>Role</label><select id="mu-role"><option value="user">User (Standard)</option><option value="admin">Admin</option></select></div>
-      <div class="field"><label>Linked Salesperson</label><select id="mu-sp"><option value="">-- None (Admin) --</option>${spOpts}</select></div>
-      <div class="field"><label>Status</label><select id="mu-active"><option value="true">Active</option><option value="false">Inactive</option></select></div>
+    <div class="fields" style="grid-template-columns:1fr 1fr;margin-bottom:16px">
+      <div class="field"><label>Username</label><input id="mu-username" value="${u?u.username:''}" placeholder="e.g. arjun"></div>
+      <div class="field"><label>Full Name</label><input id="mu-name" value="${u?u.name:''}" placeholder="e.g. Arjun Mehta"></div>
+      <div class="field"><label>Password ${u?'<span style="font-weight:400;color:var(--text3)">(blank = keep)</span>':''}</label>
+        <input id="mu-pwd" type="password" placeholder="${u?'Leave blank to keep current':'Min 6 characters'}"></div>
+      <div class="field"><label>Role</label>
+        <select id="mu-role" onchange="_rbacRoleChange(this.value)">
+          <option value="user" ${!isAdm?'selected':''}>User (Standard)</option>
+          <option value="admin" ${isAdm?'selected':''}>Admin</option>
+        </select></div>
+      <div class="field"><label>Linked Salesperson</label>
+        <select id="mu-sp"><option value="">-- None --</option>${spOpts}</select></div>
+      <div class="field"><label>Status</label>
+        <select id="mu-active"><option value="true" ${!u||u.active!==false?'selected':''}>Active</option><option value="false" ${u&&u.active===false?'selected':''}>Inactive</option></select></div>
     </div>
-    <div style="display:flex;gap:10px;margin-top:20px">
-      <button class="btn btn-gold" onclick="saveUser(null)">Create User</button>
+
+    <div style="border-top:1px solid var(--border);padding-top:14px;margin-bottom:14px">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;flex-wrap:wrap;gap:8px">
+        <div style="font-size:13px;font-weight:700;color:var(--text)">🔐 Module Permissions</div>
+        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+          ${otherUsers.length?`<select id="mu-copy-from" style="font-size:11px;padding:4px 8px;border:1px solid var(--border);border-radius:6px;background:var(--card);color:var(--text2)">
+            <option value="">Copy from user…</option>
+            ${otherUsers.map(x=>`<option value="${x.id}">${x.username}</option>`).join('')}
+          </select>
+          <button class="btn btn-outline btn-sm" onclick="rbacCopyPerms()">Copy</button>`:''}
+          <button class="btn btn-outline btn-sm" onclick="rbacResetPerms()">Reset to Default</button>
+        </div>
+      </div>
+      <div id="perm-matrix-wrap">${_buildPermMatrix(perms, isAdm)}</div>
+    </div>
+
+    <div style="display:flex;gap:10px">
+      <button class="btn btn-gold" onclick="saveUser(${id?`'${id}'`:'null'})">${id?'Save Changes':'Create User'}</button>
       <button class="btn btn-outline" onclick="closeModal('modal-users');renderUsers()">Cancel</button>
     </div>`;
   showModal('modal-users');
 }
 
-function editUserModal(id){
-  const u=(db.users||[]).find(x=>x.id===id);
-  if(!u) return;
-  const spOpts=(db.salespeople||[]).map(s=>`<option value="${s.id}" ${s.id===u.salespersonId?'selected':''}>${s.name}</option>`).join('');
-  document.getElementById('modal-users-body').innerHTML=`
-    <div class="fields" style="grid-template-columns:1fr 1fr">
-      <div class="field"><label>Username</label><input id="mu-username" value="${u.username}"></div>
-      <div class="field"><label>Full Name</label><input id="mu-name" value="${u.name}"></div>
-      <div class="field"><label>New Password <span style="font-weight:400;color:var(--text3)">(leave blank to keep)</span></label><input id="mu-pwd" type="password" placeholder="Leave blank to keep current"></div>
-      <div class="field"><label>Role</label><select id="mu-role"><option value="user" ${u.role==='user'?'selected':''}>User (Standard)</option><option value="admin" ${u.role==='admin'?'selected':''}>Admin</option></select></div>
-      <div class="field"><label>Linked Salesperson</label><select id="mu-sp"><option value="">-- None (Admin) --</option>${spOpts}</select></div>
-      <div class="field"><label>Status</label><select id="mu-active"><option value="true" ${u.active!==false?'selected':''}>Active</option><option value="false" ${u.active===false?'selected':''}>Inactive</option></select></div>
-    </div>
-    <div style="display:flex;gap:10px;margin-top:20px">
-      <button class="btn btn-gold" onclick="saveUser('${id}')">Save Changes</button>
-      <button class="btn btn-outline" onclick="closeModal('modal-users');renderUsers()">Cancel</button>
-    </div>`;
-  showModal('modal-users');
+// Current editing permissions state (mutated by rbacSetPerm)
+let _editingPerms = null;
+
+function rbacSetPerm(mod, level, btn){
+  // Find current active button for this module and deactivate
+  ['none','view','edit','full'].forEach(lvl=>{
+    const b=document.getElementById(`pb-${mod}-${lvl}`);
+    if(b) b.className='perm-btn';
+  });
+  // Activate this button
+  btn.className=`perm-btn active-${level}`;
+}
+
+function _rbacRoleChange(role){
+  const wrap=document.getElementById('perm-matrix-wrap');
+  if(!wrap) return;
+  if(role==='admin'){
+    wrap.innerHTML=_buildPermMatrix({},true);
+  } else {
+    // Rebuild matrix with current state
+    const current = _getCurrentPermsFromUI() || JSON.parse(JSON.stringify(RBAC_DEFAULT_USER));
+    wrap.innerHTML=_buildPermMatrix(current,false);
+  }
+}
+
+function _getCurrentPermsFromUI(){
+  const perms={};
+  RBAC_MODULES.forEach(m=>{
+    ['none','view','edit','full'].forEach(lvl=>{
+      const b=document.getElementById(`pb-${m.key}-${lvl}`);
+      if(b&&b.className.includes('active-')) perms[m.key]=lvl;
+    });
+    if(!perms[m.key]) perms[m.key]='none';
+  });
+  return perms;
+}
+
+function rbacCopyPerms(){
+  const sel=document.getElementById('mu-copy-from');
+  if(!sel||!sel.value) return;
+  const srcUser=(db.users||[]).find(u=>u.id===sel.value);
+  if(!srcUser||!srcUser.permissions) return;
+  const wrap=document.getElementById('perm-matrix-wrap');
+  wrap.innerHTML=_buildPermMatrix(srcUser.permissions,false);
+  alert(`Permissions copied from ${srcUser.username}. Click Save to apply.`);
+}
+
+function rbacResetPerms(){
+  const role=document.getElementById('mu-role').value;
+  const defaults = role==='admin' ? RBAC_DEFAULT_ADMIN : JSON.parse(JSON.stringify(RBAC_DEFAULT_USER));
+  const wrap=document.getElementById('perm-matrix-wrap');
+  wrap.innerHTML=_buildPermMatrix(defaults, role==='admin');
 }
 
 function saveUser(id){
@@ -835,20 +972,26 @@ function saveUser(id){
   if(!username||!name){ alert('Username and Full Name are required.'); return; }
   if(!id && !pwdRaw){ alert('Password is required for new users.'); return; }
   if(pwdRaw && pwdRaw.length<6){ alert('Password must be at least 6 characters.'); return; }
-  // Check username unique
   const existing=(db.users||[]).find(u=>u.username.toLowerCase()===username && u.id!==id);
-  if(existing){ alert('Username already exists. Please choose a different one.'); return; }
+  if(existing){ alert('Username already exists.'); return; }
+
+  // Collect permissions from matrix UI
+  const permissions = role==='admin' ? Object.fromEntries(RBAC_MODULES.map(m=>[m.key,'full'])) : _getCurrentPermsFromUI();
+
   if(!db.users) db.users=[];
   if(id){
     const idx=db.users.findIndex(u=>u.id===id);
     if(idx>-1){
-      db.users[idx].username=username; db.users[idx].name=name; db.users[idx].role=role;
-      db.users[idx].salespersonId=spId; db.users[idx].active=active;
+      Object.assign(db.users[idx],{username,name,role,salespersonId:spId,active,permissions});
       if(pwdRaw) db.users[idx].pwd=hashPwd(pwdRaw);
+      // Update currentUser session if editing self
+      if(currentUser&&currentUser.id===id){
+        currentUser.permissions=permissions;
+        applyNavPermissions();
+      }
     }
   } else {
-    const newId='u'+Date.now();
-    db.users.push({id:newId,username,pwd:hashPwd(pwdRaw),role,salespersonId:spId,name,active,createdAt:new Date().toISOString()});
+    db.users.push({id:'u'+Date.now(),username,pwd:hashPwd(pwdRaw),role,salespersonId:spId,name,active,permissions,createdAt:new Date().toISOString()});
   }
   saveDB(); closeModal('modal-users'); renderUsers();
 }
@@ -1076,7 +1219,18 @@ function nav(section){
   items.forEach(el=>{ if(el.getAttribute('onclick')===`nav('${section}')`) el.classList.add('active'); });
   document.getElementById('page-title').textContent = TITLES[section]||section;
   try{
-    const renders = { dashboard:renderDashboard, customers:renderCustomers, pipeline:renderPipeline,
+    // RBAC enforcement: non-admin users cannot access restricted modules
+  const modKey = section;
+  if(currentUser && currentUser.role!=='admin' && RBAC_MODULES.some(m=>m.key===modKey) && !canAccessModule(modKey)){
+    document.getElementById('content').innerHTML=`
+      <div class="empty-state" style="padding:48px">
+        <div class="empty-icon" style="font-size:48px">🔒</div>
+        <div style="font-size:18px;font-weight:700;color:var(--text);margin-bottom:8px">Access Restricted</div>
+        <div style="font-size:14px;color:var(--text2)">You do not have access to <b>${RBAC_MODULES.find(m=>m.key===modKey)?.label||section}</b>.<br>Contact your Administrator to request access.</div>
+      </div>`;
+    return;
+  }
+  const renders = { dashboard:renderDashboard, customers:renderCustomers, pipeline:renderPipeline,
       inventory:renderInventory, salespeople:renderSalespeople, reports:renderReports,
       campaigns:renderCampaigns, bizcard:renderBizcard, accounting:renderAccounting,
       settings:renderSettings, users:renderUsers, help:renderHelp };
@@ -4386,6 +4540,57 @@ function renderHelp(){
 `;
 }
 
+
+
+// ══════════════════════════════════════════════
+// RBAC — MODULE DEFINITIONS & DEFAULT PERMISSIONS
+// ══════════════════════════════════════════════
+const RBAC_MODULES = [
+  {key:'dashboard',   label:'Dashboard',          icon:'📊'},
+  {key:'customers',   label:'Customers & Leads',  icon:'👥'},
+  {key:'pipeline',    label:'Sales Pipeline',      icon:'🔄'},
+  {key:'inventory',   label:'Inventory Interest',  icon:'💍'},
+  {key:'salespeople', label:'Salespeople',         icon:'👔'},
+  {key:'reports',     label:'Reports',             icon:'📈'},
+  {key:'campaigns',   label:'Campaigns',           icon:'📣'},
+  {key:'bizcard',     label:'Business Cards',      icon:'🪪'},
+  {key:'accounting',  label:'Invoices & Payments', icon:'🧾'},
+  {key:'settings',    label:'Settings',            icon:'⚙️'},
+];
+
+// Levels: 'none' | 'view' | 'edit' | 'full'
+const RBAC_DEFAULT_ADMIN = Object.fromEntries(RBAC_MODULES.map(m=>[m.key,'full']));
+const RBAC_DEFAULT_USER  = {
+  dashboard:'view', customers:'edit', pipeline:'view', inventory:'view',
+  salespeople:'view', reports:'view', campaigns:'view', bizcard:'edit',
+  accounting:'view', settings:'view'
+};
+
+// Get effective permission for current user on a module
+function getUserPerm(mod){
+  if(!currentUser) return 'none';
+  if(currentUser.role==='admin') return 'full';
+  const perms = currentUser.permissions || RBAC_DEFAULT_USER;
+  return perms[mod] || 'none';
+}
+function canAccessModule(mod){return getUserPerm(mod)!=='none';}
+function canViewModule(mod){ const p=getUserPerm(mod); return p==='view'||p==='edit'||p==='full';}
+function canEditModule(mod){ const p=getUserPerm(mod); return p==='edit'||p==='full';}
+function canFullModule(mod){ return getUserPerm(mod)==='full';}
+
+// Apply sidebar visibility based on current user permissions
+function applyNavPermissions(){
+  if(!currentUser) return;
+  const isAdm = currentUser.role==='admin';
+  // Nav item IDs map to module keys via onclick='nav(key)'
+  document.querySelectorAll('.nav-item[data-mod]').forEach(el=>{
+    const mod = el.getAttribute('data-mod');
+    el.style.display = (isAdm || canAccessModule(mod)) ? '' : 'none';
+  });
+  // Users & Access: admin only
+  const navUsers = document.getElementById('nav-users');
+  if(navUsers) navUsers.style.display = isAdm ? '' : 'none';
+}
 
 // ── Last-Contacted freshness badge ───────────────────────────────────────────
 function daysSince(dateStr){
