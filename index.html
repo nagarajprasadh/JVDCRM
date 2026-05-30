@@ -1582,7 +1582,7 @@ function buildDashWidget(id){
         +'</div>'
         +'<div style="font-size:11px;color:var(--text3);font-style:italic;margin-bottom:7px">'+lmsg+'</div>'
         +'<div style="display:flex;gap:6px;flex-wrap:wrap">'+waBtn(c)+emailBtn(c)+callBtn(c)
-        +'<button onclick="nav('customers');selectedCustId=''+c.id+'';setTimeout(renderCustomers,0)" '
+        +'<button onclick="nav(\'customers\');selectedCustId=\''+c.id+'\';setTimeout(renderCustomers,0)" '
         +'class="btn btn-outline btn-xs" style="font-size:11px;padding:4px 9px">View</button>'
         +'</div></div></div></div>';
     }).join('');
@@ -1591,7 +1591,9 @@ function buildDashWidget(id){
       +'<div class="section-title">Not Contacted ('+days+'+ days)</div>'
       +'<span style="font-size:12px;color:var(--red);font-weight:600">'+overdue.length+' customers</span>'
       +'</div>'+(ncRows||'<div style="color:var(--green);font-size:13px;padding:8px 0">All recently contacted</div>')+'</div>';
-  }  return '';
+  }
+
+  return '';
 }
 
 function buildPipelineCharts(){ /* charts built inline in pipeline widget */ }
