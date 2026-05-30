@@ -1,0 +1,1177 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Diamond CRM — Interactive Walkthrough</title>
+<style>
+:root{
+  --bg:#0f0f1a;--card:#1a1a2e;--card2:#16213e;--border:#2a2a4a;
+  --gold:#B48A50;--gold2:#D4AA70;--gold3:#8A6030;
+  --text:#e8e8f0;--text2:#a8a8c0;--text3:#606080;
+  --green:#22c55e;--blue:#3b82f6;--amber:#f59e0b;--red:#ef4444;
+  --sidebar-bg:#0a0a18;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Segoe UI',Arial,sans-serif;background:var(--bg);color:var(--text);min-height:100vh;display:flex;flex-direction:column;overflow:hidden}
+
+/* ── TOP BAR ── */
+.top-bar{background:var(--sidebar-bg);border-bottom:1px solid var(--gold);padding:10px 24px;display:flex;align-items:center;gap:16px;flex-shrink:0}
+.top-title{font-size:18px;font-weight:700;color:var(--gold);flex:1}
+.top-subtitle{font-size:11px;color:var(--text3)}
+.step-counter{font-size:13px;color:var(--text2);font-weight:600}
+.progress-bar{flex:1;max-width:240px;height:4px;background:var(--border);border-radius:2px;overflow:hidden}
+.progress-fill{height:100%;background:var(--gold);border-radius:2px;transition:width .4s ease}
+
+/* ── LAYOUT ── */
+.layout{display:flex;flex:1;overflow:hidden}
+
+/* ── DEMO SIDEBAR ── */
+.demo-sidebar{width:220px;background:var(--sidebar-bg);border-right:1px solid var(--border);overflow-y:auto;flex-shrink:0}
+.toc-title{padding:14px 16px 8px;font-size:9px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:2px}
+.toc-item{padding:7px 16px;font-size:11.5px;color:var(--text3);cursor:pointer;border-left:2px solid transparent;transition:all .15s;line-height:1.4}
+.toc-item:hover{color:var(--text2);background:rgba(180,138,80,.05)}
+.toc-item.active{color:var(--gold);border-left-color:var(--gold);background:rgba(180,138,80,.08);font-weight:600}
+.toc-item.done{color:var(--green)}
+.toc-section{padding:12px 16px 4px;font-size:9px;font-weight:700;color:var(--gold3);text-transform:uppercase;letter-spacing:1.5px;margin-top:6px}
+
+/* ── STAGE ── */
+.stage{flex:1;display:flex;flex-direction:column;overflow:hidden;position:relative}
+.slide{flex:1;overflow-y:auto;padding:32px 40px;display:none;animation:fadeSlide .35s ease}
+.slide.active{display:block}
+@keyframes fadeSlide{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
+
+/* ── BOTTOM NAV ── */
+.bottom-nav{background:var(--sidebar-bg);border-top:1px solid var(--border);padding:14px 32px;display:flex;align-items:center;gap:16px;flex-shrink:0}
+.btn{padding:9px 20px;border-radius:8px;border:none;cursor:pointer;font-size:13px;font-weight:600;transition:all .15s}
+.btn-prev{background:var(--card);color:var(--text2);border:1px solid var(--border)}
+.btn-prev:hover{border-color:var(--gold);color:var(--gold)}
+.btn-next{background:var(--gold);color:#1a1a1a}
+.btn-next:hover{background:var(--gold2)}
+.btn-next:disabled{background:var(--border);color:var(--text3);cursor:not-allowed}
+.step-dots{display:flex;gap:5px;flex:1;justify-content:center;flex-wrap:wrap}
+.dot{width:7px;height:7px;border-radius:50%;background:var(--border);cursor:pointer;transition:all .2s}
+.dot.active{background:var(--gold);transform:scale(1.3)}
+.dot.done{background:var(--green)}
+
+/* ── SLIDE COMPONENTS ── */
+.slide-header{margin-bottom:28px}
+.slide-num{font-size:11px;font-weight:700;color:var(--gold);text-transform:uppercase;letter-spacing:2px;margin-bottom:6px}
+.slide-title{font-size:28px;font-weight:800;color:var(--text);line-height:1.2}
+.slide-sub{font-size:15px;color:var(--text2);margin-top:8px;line-height:1.6}
+.slide-body{display:flex;flex-direction:column;gap:18px}
+
+/* ── CRM MOCKUP ── */
+.crm-mock{background:var(--card);border:1px solid var(--border);border-radius:14px;overflow:hidden;box-shadow:0 8px 40px rgba(0,0,0,.4)}
+.mock-topbar{background:var(--sidebar-bg);border-bottom:1px solid var(--border);padding:10px 18px;display:flex;align-items:center;gap:12px}
+.mock-dots{display:flex;gap:5px}
+.mock-dot{width:9px;height:9px;border-radius:50%}
+.mock-title{font-size:13px;font-weight:600;color:var(--gold);flex:1}
+.mock-layout{display:flex;min-height:200px}
+.mock-sidebar{width:140px;background:var(--sidebar-bg);border-right:1px solid var(--border);padding:10px 0;flex-shrink:0}
+.mock-nav{padding:6px 12px;font-size:11px;color:var(--text3);border-radius:6px;margin:1px 6px;cursor:default;display:flex;align-items:center;gap:6px}
+.mock-nav.active{background:rgba(180,138,80,.12);color:var(--gold);font-weight:600}
+.mock-nav.highlight{background:rgba(180,138,80,.2);color:var(--gold2);font-weight:700;animation:pulse-gold 1.4s infinite}
+@keyframes pulse-gold{0%,100%{box-shadow:0 0 0 0 rgba(180,138,80,.4)}50%{box-shadow:0 0 0 5px rgba(180,138,80,0)}}
+.mock-content{flex:1;padding:16px;overflow:hidden}
+
+/* ── CARDS ROW ── */
+.kpi-row{display:flex;gap:10px;flex-wrap:wrap}
+.kpi-card{flex:1;min-width:100px;background:var(--card2);border:1px solid var(--border);border-radius:10px;padding:12px;text-align:center}
+.kpi-val{font-size:22px;font-weight:800;color:var(--gold)}
+.kpi-lbl{font-size:10px;color:var(--text3);margin-top:3px}
+
+/* ── TABLE MOCK ── */
+.mock-table{width:100%;border-collapse:collapse;font-size:11px}
+.mock-table th{background:rgba(180,138,80,.1);color:var(--gold);padding:6px 8px;text-align:left;font-weight:600}
+.mock-table td{padding:5px 8px;border-bottom:1px solid var(--border);color:var(--text2)}
+.mock-table tr:hover td{background:rgba(255,255,255,.03)}
+.tag{display:inline-block;padding:1px 7px;border-radius:10px;font-size:9px;font-weight:700}
+.tag-gold{background:rgba(180,138,80,.15);color:var(--gold)}
+.tag-green{background:rgba(34,197,94,.15);color:var(--green)}
+.tag-blue{background:rgba(59,130,246,.15);color:var(--blue)}
+.tag-red{background:rgba(239,68,68,.15);color:var(--red)}
+.tag-amber{background:rgba(245,158,11,.15);color:var(--amber)}
+
+/* ── KANBAN ── */
+.kanban-cols{display:flex;gap:8px;overflow-x:auto;padding-bottom:4px}
+.kanban-col{min-width:110px;background:rgba(255,255,255,.03);border:1px solid var(--border);border-radius:8px;padding:8px}
+.kanban-col-title{font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:1px;margin-bottom:8px}
+.kanban-card{background:var(--card2);border:1px solid var(--border);border-radius:6px;padding:7px 9px;margin-bottom:5px;font-size:10px;color:var(--text2)}
+.kanban-card.drag{border-color:var(--gold);background:rgba(180,138,80,.08);animation:pulse-gold 1s infinite}
+.kanban-card .name{font-weight:700;color:var(--text);font-size:11px}
+.kanban-card .val{color:var(--gold);font-size:10px;margin-top:2px}
+
+/* ── PIPELINE BARS ── */
+.pipe-bar{display:flex;align-items:center;gap:10px;margin-bottom:8px;font-size:11px}
+.pipe-lbl{width:90px;color:var(--text2);text-align:right;flex-shrink:0}
+.pipe-track{flex:1;height:14px;background:var(--border);border-radius:7px;overflow:hidden}
+.pipe-fill{height:100%;border-radius:7px;transition:width 1s ease}
+.pipe-val{width:30px;color:var(--text3);font-size:10px}
+
+/* ── PERMISSION MATRIX ── */
+.perm-matrix{background:var(--card2);border:1px solid var(--border);border-radius:10px;overflow:hidden;font-size:11px}
+.perm-header{display:grid;grid-template-columns:140px repeat(4,60px);background:rgba(180,138,80,.1);padding:8px 12px;font-size:10px;font-weight:700;color:var(--gold)}
+.perm-row{display:grid;grid-template-columns:140px repeat(4,60px);padding:7px 12px;border-top:1px solid var(--border);align-items:center}
+.perm-row:hover{background:rgba(255,255,255,.02)}
+.perm-mod{color:var(--text2);font-weight:600}
+.perm-btn{width:48px;height:24px;border-radius:5px;border:none;font-size:10px;font-weight:700;cursor:default;text-align:center;display:inline-flex;align-items:center;justify-content:center}
+.perm-none{background:rgba(100,100,120,.2);color:#888}
+.perm-view{background:rgba(59,130,246,.2);color:var(--blue)}
+.perm-edit{background:rgba(245,158,11,.2);color:var(--amber)}
+.perm-full{background:rgba(34,197,94,.2);color:var(--green)}
+.perm-active{box-shadow:0 0 0 2px var(--gold);transform:scale(1.1)}
+
+/* ── CHIP BADGES ── */
+.chip{display:inline-flex;align-items:center;gap:3px;padding:2px 8px;border-radius:10px;font-size:9px;font-weight:700;margin:1px}
+.chip-full{background:rgba(34,197,94,.15);color:var(--green)}
+.chip-edit{background:rgba(245,158,11,.15);color:var(--amber)}
+.chip-view{background:rgba(59,130,246,.15);color:var(--blue)}
+.chip-none{background:rgba(100,100,120,.15);color:#888}
+
+/* ── FAQ MOCK ── */
+.faq-item-mock{background:var(--card2);border:1px solid var(--border);border-radius:8px;margin-bottom:6px;overflow:hidden}
+.faq-q-mock{padding:9px 12px;font-size:11px;font-weight:600;color:var(--text);display:flex;align-items:center;gap:8px}
+.faq-a-mock{padding:8px 12px 10px;font-size:11px;color:var(--text2);line-height:1.6;border-top:1px solid var(--border)}
+.faq-arrow{transition:transform .3s}
+.faq-arrow.open{transform:rotate(90deg)}
+
+/* ── FEATURE LIST ── */
+.feature-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.feature-card{background:var(--card2);border:1px solid var(--border);border-radius:10px;padding:14px}
+.feature-icon{font-size:24px;margin-bottom:8px}
+.feature-title{font-size:13px;font-weight:700;color:var(--text);margin-bottom:4px}
+.feature-desc{font-size:12px;color:var(--text2);line-height:1.5}
+
+/* ── STEP LIST ── */
+.steps-list{display:flex;flex-direction:column;gap:10px}
+.step-row{display:flex;gap:12px;align-items:flex-start}
+.step-n{width:26px;height:26px;border-radius:50%;background:var(--gold);color:#1a1a1a;font-size:12px;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:1px}
+.step-text{font-size:13px;color:var(--text2);line-height:1.6}
+.step-text strong{color:var(--text)}
+
+/* ── NOTE BOX ── */
+.note{background:rgba(180,138,80,.08);border-left:3px solid var(--gold);border-radius:0 8px 8px 0;padding:10px 14px;font-size:12px;color:var(--text2);line-height:1.6}
+.note strong{color:var(--gold)}
+
+/* ── USER CARD MOCK ── */
+.user-card-mock{background:var(--card2);border:1px solid var(--border);border-radius:10px;padding:12px;display:flex;gap:12px;align-items:flex-start}
+.user-avatar{width:38px;height:38px;border-radius:50%;background:linear-gradient(135deg,var(--gold),var(--gold3));display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:800;color:#1a1a1a;flex-shrink:0}
+.user-name{font-size:13px;font-weight:700;color:var(--text)}
+.user-role{font-size:10px;color:var(--text3);margin-top:2px}
+.user-chips{display:flex;flex-wrap:wrap;gap:3px;margin-top:6px}
+
+/* ── TICKET MOCK ── */
+.ticket-mock{background:var(--card2);border:1px solid var(--border);border-radius:8px;padding:10px 14px;margin-bottom:8px;font-size:11px}
+.ticket-meta{color:var(--text3);margin-bottom:4px}
+.ticket-msg{color:var(--text2);line-height:1.5}
+.ticket-actions{display:flex;gap:8px;margin-top:8px}
+.ticket-btn{padding:3px 10px;border-radius:5px;border:none;font-size:10px;font-weight:700;cursor:default}
+
+/* ── TIP BANNER MOCK ── */
+.tip-banner-mock{background:linear-gradient(135deg,#2a1a0a,#1a0a2a);border:1px solid var(--gold);border-radius:10px;padding:12px 16px;display:flex;align-items:center;gap:12px;margin-bottom:12px}
+
+/* ── INVOICE MOCK ── */
+.inv-row{display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid var(--border);font-size:11px}
+.inv-row:last-child{border:none;font-weight:700;color:var(--gold)}
+
+/* ── ANIMATED CURSOR ── */
+.cursor{display:inline-block;width:14px;height:14px;background:var(--gold);border-radius:50%;box-shadow:0 0 0 3px rgba(180,138,80,.3);animation:cursor-pulse 1.2s infinite;vertical-align:middle;margin:0 4px}
+@keyframes cursor-pulse{0%,100%{transform:scale(1)}50%{transform:scale(1.3);box-shadow:0 0 0 6px rgba(180,138,80,.15)}}
+
+/* ── SCROLLBAR ── */
+::-webkit-scrollbar{width:5px}::-webkit-scrollbar-track{background:transparent}::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px}
+
+/* ── COMPLETE STATE ── */
+.complete-hero{text-align:center;padding:40px 20px}
+.complete-icon{font-size:72px;margin-bottom:16px;animation:bounce .8s ease infinite alternate}
+@keyframes bounce{from{transform:translateY(0)}to{transform:translateY(-12px)}}
+</style>
+</head>
+<body>
+
+<!-- TOP BAR -->
+<div class="top-bar">
+  <div>
+    <div class="top-title">💎 Diamond CRM — Interactive Walkthrough</div>
+    <div class="top-subtitle">Jay Vijay Diamond Co., Ltd. / Saraff Global · Bangkok</div>
+  </div>
+  <div class="step-counter" id="step-counter">Step 1 of 27</div>
+  <div class="progress-bar"><div class="progress-fill" id="progress-fill" style="width:3.7%"></div></div>
+</div>
+
+<!-- MAIN LAYOUT -->
+<div class="layout">
+
+  <!-- SIDEBAR TOC -->
+  <div class="demo-sidebar">
+    <div class="toc-title">Contents</div>
+
+    <div class="toc-section">Overview</div>
+    <div class="toc-item active" onclick="goTo(0)" id="toc-0">1. Welcome</div>
+    <div class="toc-item" onclick="goTo(1)" id="toc-1">2. Login</div>
+    <div class="toc-item" onclick="goTo(2)" id="toc-2">3. Dashboard</div>
+
+    <div class="toc-section">Core Modules</div>
+    <div class="toc-item" onclick="goTo(3)" id="toc-3">4. Customers & Leads</div>
+    <div class="toc-item" onclick="goTo(4)" id="toc-4">5. Add Customer</div>
+    <div class="toc-item" onclick="goTo(5)" id="toc-5">6. Sales Pipeline</div>
+    <div class="toc-item" onclick="goTo(6)" id="toc-6">7. Salespeople</div>
+    <div class="toc-item" onclick="goTo(7)" id="toc-7">8. Campaigns</div>
+    <div class="toc-item" onclick="goTo(8)" id="toc-8">9. Business Cards OCR</div>
+    <div class="toc-item" onclick="goTo(9)" id="toc-9">10. Invoices & Payments</div>
+    <div class="toc-item" onclick="goTo(10)" id="toc-10">11. Reports</div>
+    <div class="toc-item" onclick="goTo(11)" id="toc-11">12. Inventory Interest</div>
+
+    <div class="toc-section">Data</div>
+    <div class="toc-item" onclick="goTo(12)" id="toc-12">13. Excel Import</div>
+    <div class="toc-item" onclick="goTo(13)" id="toc-13">14. Export & Backup</div>
+
+    <div class="toc-section">Admin: Users & Access</div>
+    <div class="toc-item" onclick="goTo(14)" id="toc-14">15. User Accounts</div>
+    <div class="toc-item" onclick="goTo(15)" id="toc-15">16. RBAC Overview</div>
+    <div class="toc-item" onclick="goTo(16)" id="toc-16">17. Permission Levels</div>
+    <div class="toc-item" onclick="goTo(17)" id="toc-17">18. Editing Permissions</div>
+    <div class="toc-item" onclick="goTo(18)" id="toc-18">19. Module Chips</div>
+    <div class="toc-item" onclick="goTo(19)" id="toc-19">20. Copy & Reset</div>
+    <div class="toc-item" onclick="goTo(20)" id="toc-20">21. Enforcement</div>
+
+    <div class="toc-section">Settings</div>
+    <div class="toc-item" onclick="goTo(21)" id="toc-21">22. VIP Tiers</div>
+    <div class="toc-item" onclick="goTo(22)" id="toc-22">23. Data Management</div>
+
+    <div class="toc-section">Support & FAQ</div>
+    <div class="toc-item" onclick="goTo(23)" id="toc-23">24. Help & FAQ Page</div>
+    <div class="toc-item" onclick="goTo(24)" id="toc-24">25. Tip of the Day</div>
+    <div class="toc-item" onclick="goTo(25)" id="toc-25">26. Report a Problem</div>
+    <div class="toc-item" onclick="goTo(26)" id="toc-26">27. Complete!</div>
+  </div>
+
+  <!-- SLIDES -->
+  <div class="stage">
+
+    <!-- ─── SLIDE 1: Welcome ─────────────────────────────────────────── -->
+    <div class="slide active" id="slide-0">
+      <div class="slide-header">
+        <div class="slide-num">Step 1 of 27 · Overview</div>
+        <div class="slide-title">Welcome to Diamond CRM</div>
+        <div class="slide-sub">A complete, browser-based CRM built for Jay Vijay Diamond Co., Ltd. and Saraff Global. No installation. No server. All data stays in your browser.</div>
+      </div>
+      <div class="slide-body">
+        <div class="feature-grid">
+          <div class="feature-card"><div class="feature-icon">👥</div><div class="feature-title">Customers & Leads</div><div class="feature-desc">30+ customer fields, VIP tiers, pipeline stages, salesperson assignment and cross-sell insights.</div></div>
+          <div class="feature-card"><div class="feature-icon">🔄</div><div class="feature-title">Sales Pipeline</div><div class="feature-desc">7-stage Kanban board. Drag cards between stages — changes saved instantly.</div></div>
+          <div class="feature-card"><div class="feature-icon">🪪</div><div class="feature-title">Business Card OCR</div><div class="feature-desc">Drop a photo or multi-page PDF. Contacts extracted automatically. Batch scanning supported.</div></div>
+          <div class="feature-card"><div class="feature-icon">🧾</div><div class="feature-title">Invoices & Payments</div><div class="feature-desc">Multi-currency invoices with line items, discounts, VAT, crypto payment support and auto-status.</div></div>
+          <div class="feature-card"><div class="feature-icon">🔐</div><div class="feature-title">RBAC Permissions</div><div class="feature-desc">Per-user module access matrix: 10 modules × 4 levels. Enforced throughout the app.</div></div>
+          <div class="feature-card"><div class="feature-icon">❓</div><div class="feature-title">Support & FAQ</div><div class="feature-desc">20-item FAQ accordion, Tip of the Day rotator, Contact Admin button and support ticket form.</div></div>
+        </div>
+        <div class="note"><strong>This walkthrough covers all 12 modules</strong> — use the table of contents on the left or the Next button below to move through each section at your own pace.</div>
+      </div>
+    </div>
+
+    <!-- ─── SLIDE 2: Login ───────────────────────────────────────────── -->
+    <div class="slide" id="slide-1">
+      <div class="slide-header">
+        <div class="slide-num">Step 2 of 27 · Overview</div>
+        <div class="slide-title">Login & Authentication</div>
+        <div class="slide-sub">Every user has their own account. Sessions persist within the same browser tab.</div>
+      </div>
+      <div class="slide-body">
+        <div class="crm-mock">
+          <div class="mock-topbar"><div class="mock-dots"><div class="mock-dot" style="background:#ef4444"></div><div class="mock-dot" style="background:#f59e0b"></div><div class="mock-dot" style="background:#22c55e"></div></div><div class="mock-title">💎 Diamond CRM — Jay Vijay Diamond Co., Ltd.</div></div>
+          <div style="padding:32px;text-align:center;background:linear-gradient(135deg,#0a0a18,#16213e)">
+            <div style="font-size:32px;margin-bottom:12px">💎</div>
+            <div style="font-size:18px;font-weight:700;color:var(--gold);margin-bottom:4px">Jay Vijay Diamond Co., Ltd.</div>
+            <div style="font-size:12px;color:var(--text3);margin-bottom:20px">Saraff Global — Bangkok</div>
+            <div style="background:var(--card);border:1px solid var(--border);border-radius:12px;padding:20px;max-width:280px;margin:0 auto">
+              <div style="font-size:12px;color:var(--text3);text-align:left;margin-bottom:4px">Username</div>
+              <div style="background:var(--card2);border:1px solid var(--gold);border-radius:7px;padding:8px 12px;font-size:13px;color:var(--gold);margin-bottom:12px;text-align:left">admin <span class="cursor"></span></div>
+              <div style="font-size:12px;color:var(--text3);text-align:left;margin-bottom:4px">Password</div>
+              <div style="background:var(--card2);border:1px solid var(--border);border-radius:7px;padding:8px 12px;font-size:13px;color:var(--text3);margin-bottom:16px;text-align:left">••••••••</div>
+              <div style="background:var(--gold);color:#1a1a1a;font-weight:700;padding:9px;border-radius:7px;font-size:13px">Sign In</div>
+            </div>
+          </div>
+        </div>
+        <div class="steps-list">
+          <div class="step-row"><div class="step-n">1</div><div class="step-text">Navigate to <strong>nagarajprasadh.github.io/JVDCRM</strong> in Chrome (recommended).</div></div>
+          <div class="step-row"><div class="step-n">2</div><div class="step-text">Enter your username and password, then click <strong>Sign In</strong>.</div></div>
+          <div class="step-row"><div class="step-n">3</div><div class="step-text">Your session persists in the tab. Click <strong>Sign Out</strong> in the top-right to end it.</div></div>
+        </div>
+        <div class="note"><strong>Default admin credentials:</strong> username <code style="background:var(--card2);padding:1px 6px;border-radius:4px;color:var(--gold)">admin</code> / password <code style="background:var(--card2);padding:1px 6px;border-radius:4px;color:var(--gold)">admin1234</code>. Change all passwords after first login.</div>
+      </div>
+    </div>
+
+    <!-- ─── SLIDE 3: Dashboard ───────────────────────────────────────── -->
+    <div class="slide" id="slide-2">
+      <div class="slide-header">
+        <div class="slide-num">Step 3 of 27 · Overview</div>
+        <div class="slide-title">Dashboard</div>
+        <div class="slide-sub">Real-time KPI cards, pipeline summary, live gold/platinum price ticker and recent activity feed.</div>
+      </div>
+      <div class="slide-body">
+        <div class="crm-mock">
+          <div class="mock-topbar"><div class="mock-dots"><div class="mock-dot" style="background:#ef4444"></div><div class="mock-dot" style="background:#f59e0b"></div><div class="mock-dot" style="background:#22c55e"></div></div><div class="mock-title">📊 Dashboard</div></div>
+          <div class="mock-layout">
+            <div class="mock-sidebar">
+              <div class="mock-nav highlight">📊 <span>Dashboard</span></div>
+              <div class="mock-nav">👥 <span>Customers</span></div>
+              <div class="mock-nav">🔄 <span>Pipeline</span></div>
+              <div class="mock-nav">📈 <span>Reports</span></div>
+              <div class="mock-nav">⚙️ <span style="margin-top:auto">Settings</span></div>
+            </div>
+            <div class="mock-content">
+              <div class="kpi-row" style="margin-bottom:12px">
+                <div class="kpi-card"><div class="kpi-val">30</div><div class="kpi-lbl">Total Clients</div></div>
+                <div class="kpi-card"><div class="kpi-val" style="color:var(--green)">฿47.2M</div><div class="kpi-lbl">Pipeline Value</div></div>
+                <div class="kpi-card"><div class="kpi-val" style="color:var(--amber)">73%</div><div class="kpi-lbl">Win Rate</div></div>
+                <div class="kpi-card"><div class="kpi-val" style="color:var(--blue)">5</div><div class="kpi-lbl">Salespeople</div></div>
+              </div>
+              <div style="background:var(--card2);border:1px solid var(--border);border-radius:8px;padding:8px 12px;display:flex;align-items:center;gap:12px;font-size:10px">
+                <div>🥇 <span style="color:var(--gold);font-weight:700">XAU/USD</span> <span style="color:var(--green)">$3,284.50 ▲</span></div>
+                <div>💎 <span style="color:var(--text3)">XPT/USD</span> <span style="color:var(--green)">$1,089.20 ▲</span></div>
+                <div style="color:var(--text3);font-size:9px">Live · Updated 2m ago</div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="feature-grid">
+          <div class="feature-card"><div class="feature-icon">📊</div><div class="feature-title">KPI Cards</div><div class="feature-desc">Total clients, pipeline value, win rate, active deals — updated live from your data.</div></div>
+          <div class="feature-card"><div class="feature-icon">🥇</div><div class="feature-title">Live Spot Prices</div><div class="feature-desc">Gold (XAU/USD) and Platinum (XPT/USD) pulled from public metals API, refreshed every few minutes.</div></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ─── SLIDE 4: Customers List ──────────────────────────────────── -->
+    <div class="slide" id="slide-3">
+      <div class="slide-header">
+        <div class="slide-num">Step 4 of 27 · Core Modules</div>
+        <div class="slide-title">Customers & Leads</div>
+        <div class="slide-sub">The full customer database — search, filter by status/VIP/salesperson, switch between card and list view.</div>
+      </div>
+      <div class="slide-body">
+        <div class="crm-mock">
+          <div class="mock-topbar"><div class="mock-dots"><div class="mock-dot" style="background:#ef4444"></div><div class="mock-dot" style="background:#f59e0b"></div><div class="mock-dot" style="background:#22c55e"></div></div><div class="mock-title">👥 Customers & Leads · 30 records</div></div>
+          <div class="mock-content" style="padding:12px">
+            <div style="display:flex;gap:8px;margin-bottom:10px;align-items:center;flex-wrap:wrap">
+              <div style="flex:1;background:var(--card2);border:1px solid var(--border);border-radius:7px;padding:5px 10px;font-size:11px;color:var(--text3)">🔍 Search name, email, phone…</div>
+              <div style="background:var(--card2);border:1px solid var(--border);border-radius:7px;padding:5px 10px;font-size:10px;color:var(--text3)">Status ▾</div>
+              <div style="background:var(--card2);border:1px solid var(--border);border-radius:7px;padding:5px 10px;font-size:10px;color:var(--text3)">VIP ▾</div>
+              <div style="background:var(--gold);color:#1a1a1a;border-radius:7px;padding:5px 10px;font-size:10px;font-weight:700">+ Add Customer</div>
+            </div>
+            <table class="mock-table">
+              <thead><tr><th>Name</th><th>Status</th><th>VIP</th><th>Deal Value</th><th>Assigned</th></tr></thead>
+              <tbody>
+                <tr><td><strong>Rajesh Agarwal</strong></td><td><span class="tag tag-green">Won</span></td><td><span class="tag tag-gold">Platinum</span></td><td style="color:var(--gold)">฿2.85M</td><td>Arjun Mehta</td></tr>
+                <tr><td><strong>Ahmed Al-Mansoori</strong></td><td><span class="tag tag-green">Won</span></td><td><span class="tag tag-gold">Platinum</span></td><td style="color:var(--gold)">฿5.2M</td><td>Nadia Al-Rashid</td></tr>
+                <tr><td><strong>Vikram Malhotra</strong></td><td><span class="tag tag-amber">Proposal</span></td><td><span class="tag" style="background:rgba(180,138,80,.15);color:var(--gold2)">Gold</span></td><td style="color:var(--gold)">฿3.4M</td><td>Arjun Mehta</td></tr>
+                <tr><td><strong>Jennifer Wu</strong></td><td><span class="tag tag-green">Won</span></td><td><span class="tag" style="background:rgba(180,138,80,.15);color:var(--gold2)">Gold</span></td><td style="color:var(--gold)">฿1.65M</td><td>David Lim</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+        <div class="steps-list">
+          <div class="step-row"><div class="step-n">1</div><div class="step-text">Use the <strong>search box</strong> to find any customer by name, email, phone or company.</div></div>
+          <div class="step-row"><div class="step-n">2</div><div class="step-text">Filter by <strong>Status, Stage, VIP level</strong> and <strong>Assigned Salesperson</strong> using the dropdowns.</div></div>
+          <div class="step-row"><div class="step-n">3</div><div class="step-text">Toggle between <strong>Card View</strong> and <strong>List View</strong> using the icons top-right of the toolbar.</div></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ─── SLIDE 5: Add Customer ────────────────────────────────────── -->
+    <div class="slide" id="slide-4">
+      <div class="slide-header">
+        <div class="slide-num">Step 5 of 27 · Core Modules</div>
+        <div class="slide-title">Adding a Customer</div>
+        <div class="slide-sub">Over 30 fields covering contact info, diamond preferences, budget, communication and VIP data.</div>
+      </div>
+      <div class="slide-body">
+        <div class="crm-mock">
+          <div class="mock-topbar"><div class="mock-dots"><div class="mock-dot" style="background:#ef4444"></div><div class="mock-dot" style="background:#f59e0b"></div><div class="mock-dot" style="background:#22c55e"></div></div><div class="mock-title">➕ Add Customer</div></div>
+          <div class="mock-content" style="padding:14px">
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;font-size:11px">
+              <div><div style="color:var(--text3);margin-bottom:3px">First Name *</div><div style="background:var(--card2);border:1px solid var(--gold);border-radius:6px;padding:6px 10px;color:var(--text)">Siriporn <span class="cursor"></span></div></div>
+              <div><div style="color:var(--text3);margin-bottom:3px">Last Name *</div><div style="background:var(--card2);border:1px solid var(--border);border-radius:6px;padding:6px 10px;color:var(--text)">Charoenwong</div></div>
+              <div><div style="color:var(--text3);margin-bottom:3px">Email</div><div style="background:var(--card2);border:1px solid var(--border);border-radius:6px;padding:6px 10px;color:var(--text2)">siriporn@outlook.com</div></div>
+              <div><div style="color:var(--text3);margin-bottom:3px">Lead Status</div><div style="background:var(--card2);border:1px solid var(--border);border-radius:6px;padding:6px 10px;color:var(--amber)">Proposal ▾</div></div>
+              <div><div style="color:var(--text3);margin-bottom:3px">Assigned To</div><div style="background:var(--card2);border:1px solid var(--border);border-radius:6px;padding:6px 10px;color:var(--text2)">Kanokwan Thana ▾</div></div>
+              <div><div style="color:var(--text3);margin-bottom:3px">Diamond Preference</div><div style="background:var(--card2);border:1px solid var(--border);border-radius:6px;padding:6px 10px;color:var(--text2)">Oval, Cushion</div></div>
+            </div>
+            <div style="margin-top:12px;display:flex;justify-content:flex-end;gap:8px">
+              <div style="background:var(--card2);border:1px solid var(--border);border-radius:7px;padding:6px 14px;font-size:11px;color:var(--text3)">Cancel</div>
+              <div style="background:var(--gold);color:#1a1a1a;border-radius:7px;padding:6px 14px;font-size:11px;font-weight:700">💾 Save</div>
+            </div>
+          </div>
+        </div>
+        <div class="steps-list">
+          <div class="step-row"><div class="step-n">1</div><div class="step-text">Click <strong>+ Add Customer</strong> in the Customers toolbar.</div></div>
+          <div class="step-row"><div class="step-n">2</div><div class="step-text">Required minimum: <strong>First Name</strong> + either Email or Phone.</div></div>
+          <div class="step-row"><div class="step-n">3</div><div class="step-text">Set <strong>Lead Status</strong>, <strong>Assigned To</strong>, diamond preferences, budget range and communication preferences.</div></div>
+          <div class="step-row"><div class="step-n">4</div><div class="step-text">Click <strong>Save</strong> — the record appears immediately in the list and on the Kanban board.</div></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ─── SLIDE 6: Pipeline ────────────────────────────────────────── -->
+    <div class="slide" id="slide-5">
+      <div class="slide-header">
+        <div class="slide-num">Step 6 of 27 · Core Modules</div>
+        <div class="slide-title">Sales Pipeline Kanban</div>
+        <div class="slide-sub">7-stage drag-and-drop board. Drag a card between columns to update the deal stage instantly.</div>
+      </div>
+      <div class="slide-body">
+        <div class="crm-mock">
+          <div class="mock-topbar"><div class="mock-dots"><div class="mock-dot" style="background:#ef4444"></div><div class="mock-dot" style="background:#f59e0b"></div><div class="mock-dot" style="background:#22c55e"></div></div><div class="mock-title">🔄 Sales Pipeline</div></div>
+          <div class="mock-content">
+            <div class="kanban-cols">
+              <div class="kanban-col"><div class="kanban-col-title">Awareness</div><div class="kanban-card"><div class="name">Mehmet Y.</div><div class="val">฿900K</div></div><div class="kanban-card"><div class="name">Shreya P.</div><div class="val">฿320K</div></div></div>
+              <div class="kanban-col"><div class="kanban-col-title">Interest</div><div class="kanban-card"><div class="name">Omar A.</div><div class="val">฿1.2M</div></div></div>
+              <div class="kanban-col"><div class="kanban-col-title">Evaluation</div><div class="kanban-card"><div class="name">Sanjay K.</div><div class="val">฿4.8M</div></div></div>
+              <div class="kanban-col"><div class="kanban-col-title">Proposal</div><div class="kanban-card drag"><div class="name">Vikram M. ✊</div><div class="val">฿3.4M</div></div></div>
+              <div class="kanban-col" style="border-color:var(--gold)"><div class="kanban-col-title" style="color:var(--gold)">Negotiation ←</div></div>
+              <div class="kanban-col"><div class="kanban-col-title" style="color:var(--green)">Won</div><div class="kanban-card"><div class="name">Rajesh A.</div><div class="val">฿2.85M</div></div></div>
+              <div class="kanban-col"><div class="kanban-col-title" style="color:var(--red)">Lost</div></div>
+            </div>
+          </div>
+        </div>
+        <div class="note"><strong>Vikram Malhotra</strong> is being dragged from <em>Proposal</em> → <em>Negotiation</em>. Stage and pipeline value update the moment you drop the card. No save button needed.</div>
+      </div>
+    </div>
+
+    <!-- ─── SLIDE 7: Salespeople ─────────────────────────────────────── -->
+    <div class="slide" id="slide-6">
+      <div class="slide-header">
+        <div class="slide-num">Step 7 of 27 · Core Modules</div>
+        <div class="slide-title">Salespeople</div>
+        <div class="slide-sub">Team roster with auto-calculated performance metrics — deal count, total value and win rate per salesperson.</div>
+      </div>
+      <div class="slide-body">
+        <div class="crm-mock">
+          <div class="mock-topbar"><div class="mock-dots"><div class="mock-dot" style="background:#ef4444"></div><div class="mock-dot" style="background:#f59e0b"></div><div class="mock-dot" style="background:#22c55e"></div></div><div class="mock-title">👔 Salespeople</div></div>
+          <div class="mock-content">
+            <table class="mock-table">
+              <thead><tr><th>Name</th><th>Role</th><th>Leads</th><th>Total Value</th><th>Won</th><th>Rate</th></tr></thead>
+              <tbody>
+                <tr><td><strong>Arjun Mehta</strong></td><td>Senior Sales</td><td>8</td><td style="color:var(--gold)">฿14.2M</td><td><span class="tag tag-green">5</span></td><td>63%</td></tr>
+                <tr><td><strong>Kanokwan Thana</strong></td><td>Manager</td><td>7</td><td style="color:var(--gold)">฿9.8M</td><td><span class="tag tag-green">5</span></td><td>71%</td></tr>
+                <tr><td><strong>Nadia Al-Rashid</strong></td><td>Senior Sales</td><td>6</td><td style="color:var(--gold)">฿11.3M</td><td><span class="tag tag-green">3</span></td><td>50%</td></tr>
+                <tr><td><strong>David Lim</strong></td><td>Sales Consultant</td><td>5</td><td style="color:var(--gold)">฿7.1M</td><td><span class="tag tag-green">3</span></td><td>60%</td></tr>
+                <tr><td><strong>Priya Sharma</strong></td><td>Sales Consultant</td><td>5</td><td style="color:var(--gold)">฿4.4M</td><td><span class="tag tag-green">2</span></td><td>40%</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+        <div class="note">Performance metrics are <strong>calculated live</strong> from the customer database. As deals are won or values change, the numbers update automatically — no manual entry needed.</div>
+      </div>
+    </div>
+
+    <!-- ─── SLIDE 8: Campaigns ───────────────────────────────────────── -->
+    <div class="slide" id="slide-7">
+      <div class="slide-header">
+        <div class="slide-num">Step 8 of 27 · Core Modules</div>
+        <div class="slide-title">Campaigns</div>
+        <div class="slide-sub">Create and track WhatsApp, email and in-person campaigns with budget, open rates and reply counts.</div>
+      </div>
+      <div class="slide-body">
+        <div class="crm-mock">
+          <div class="mock-topbar"><div class="mock-dots"><div class="mock-dot" style="background:#ef4444"></div><div class="mock-dot" style="background:#f59e0b"></div><div class="mock-dot" style="background:#22c55e"></div></div><div class="mock-title">📣 Campaigns</div></div>
+          <div class="mock-content">
+            <table class="mock-table">
+              <thead><tr><th>Campaign</th><th>Type</th><th>Sent</th><th>Opens</th><th>Replies</th><th>Status</th></tr></thead>
+              <tbody>
+                <tr><td><strong>Valentine's Drive 2026</strong></td><td>WhatsApp</td><td>148</td><td>112</td><td>34</td><td><span class="tag tag-green">Active</span></td></tr>
+                <tr><td><strong>Songkran VIP Preview</strong></td><td>In-Person</td><td>42</td><td>42</td><td>35</td><td><span class="tag tag-green">Active</span></td></tr>
+                <tr><td><strong>Lab-Grown Showcase</strong></td><td>Email</td><td>220</td><td>165</td><td>28</td><td><span class="tag tag-green">Active</span></td></tr>
+                <tr><td><strong>Diwali Collection 2025</strong></td><td>WhatsApp</td><td>310</td><td>248</td><td>67</td><td><span class="tag tag-blue">Completed</span></td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+        <div class="note">Campaign ROI is automatically included in the <strong>Reports</strong> module. The Songkran VIP Preview closed 8 deals on the night — that revenue links back to this campaign automatically.</div>
+      </div>
+    </div>
+
+    <!-- ─── SLIDE 9: Business Cards ──────────────────────────────────── -->
+    <div class="slide" id="slide-8">
+      <div class="slide-header">
+        <div class="slide-num">Step 9 of 27 · Core Modules</div>
+        <div class="slide-title">Business Cards & OCR</div>
+        <div class="slide-sub">Drop a JPG, PNG or multi-page PDF — name, company, email, phone, website and address extracted automatically.</div>
+      </div>
+      <div class="slide-body">
+        <div class="crm-mock">
+          <div class="mock-topbar"><div class="mock-dots"><div class="mock-dot" style="background:#ef4444"></div><div class="mock-dot" style="background:#f59e0b"></div><div class="mock-dot" style="background:#22c55e"></div></div><div class="mock-title">🪪 Business Cards</div></div>
+          <div class="mock-content">
+            <div style="border:2px dashed var(--gold);border-radius:10px;padding:20px;text-align:center;margin-bottom:12px;background:rgba(180,138,80,.04)">
+              <div style="font-size:28px;margin-bottom:6px">📤</div>
+              <div style="font-size:12px;color:var(--gold);font-weight:600">Drop card image or PDF here</div>
+              <div style="font-size:10px;color:var(--text3);margin-top:3px">JPG · PNG · Multi-page PDF</div>
+            </div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:11px">
+              <div style="background:var(--card2);border:1px solid var(--border);border-radius:8px;padding:10px">
+                <div style="color:var(--gold);font-weight:700;margin-bottom:6px">✓ Extracted</div>
+                <div style="color:var(--text2)">Thomas Bergmann</div>
+                <div style="color:var(--text3)">Senior Diamond Trader</div>
+                <div style="color:var(--text3)">Antwerp Diamond Bourse</div>
+                <div style="color:var(--text3)">t.bergmann@adb.be</div>
+                <div style="color:var(--text3)">+32 3 222 0594</div>
+              </div>
+              <div style="background:var(--card2);border:1px solid var(--border);border-radius:8px;padding:10px">
+                <div style="color:var(--gold);font-weight:700;margin-bottom:6px">✓ Extracted</div>
+                <div style="color:var(--text2)">Zhang Wei</div>
+                <div style="color:var(--text3)">Procurement Director</div>
+                <div style="color:var(--text3)">Luk Fook Jewellery HK</div>
+                <div style="color:var(--text3)">zhang.wei@lukfook.com</div>
+                <div style="color:var(--text3)">+852 2128 0900</div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="steps-list">
+          <div class="step-row"><div class="step-n">1</div><div class="step-text">Go to 🪪 <strong>Business Cards</strong>, click <strong>Scan / Upload Cards</strong>.</div></div>
+          <div class="step-row"><div class="step-n">2</div><div class="step-text">Drop a photo or PDF. For batch scanning, use a multi-page PDF — <strong>one page = one card</strong>.</div></div>
+          <div class="step-row"><div class="step-n">3</div><div class="step-text">Review the extracted fields (all editable), then click <strong>Save Contact</strong>.</div></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ─── SLIDE 10: Invoices ───────────────────────────────────────── -->
+    <div class="slide" id="slide-9">
+      <div class="slide-header">
+        <div class="slide-num">Step 10 of 27 · Core Modules</div>
+        <div class="slide-title">Invoices & Payments</div>
+        <div class="slide-sub">Multi-currency invoices with line items, discounts, VAT, crypto payment references and auto-status tracking.</div>
+      </div>
+      <div class="slide-body">
+        <div class="crm-mock">
+          <div class="mock-topbar"><div class="mock-dots"><div class="mock-dot" style="background:#ef4444"></div><div class="mock-dot" style="background:#f59e0b"></div><div class="mock-dot" style="background:#22c55e"></div></div><div class="mock-title">🧾 JV-0006 — Chalit Pornprasert</div></div>
+          <div class="mock-content">
+            <div style="font-size:11px">
+              <div class="inv-row"><span>3.1ct F/VS1 Round Brilliant — GIA #9901234556</span><span style="color:var(--text)">฿1,950,000</span></div>
+              <div class="inv-row"><span>Platinum Solitaire Setting — 4-claw basket</span><span style="color:var(--text)">฿165,000</span></div>
+              <div class="inv-row"><span>Ring Sizing & Polishing</span><span style="color:var(--text)">฿3,500</span></div>
+              <div class="inv-row" style="color:var(--text3)"><span>VAT 7%</span><span>฿148,295</span></div>
+              <div class="inv-row"><span>TOTAL</span><span>฿2,266,795</span></div>
+            </div>
+            <div style="margin-top:10px;display:flex;gap:8px">
+              <div style="background:rgba(34,197,94,.1);border:1px solid var(--green);border-radius:6px;padding:5px 12px;font-size:10px;color:var(--green)">+ Record Payment</div>
+              <div style="background:rgba(180,138,80,.1);border:1px solid var(--gold);border-radius:6px;padding:5px 12px;font-size:10px;color:var(--gold)">🖨 Print PDF</div>
+              <div style="background:var(--card2);border:1px solid var(--border);border-radius:6px;padding:5px 10px;font-size:10px;color:var(--amber)">⚠ Sent</div>
+            </div>
+          </div>
+        </div>
+        <div class="steps-list">
+          <div class="step-row"><div class="step-n">1</div><div class="step-text">Click <strong>+ New Invoice</strong>, select client and document type (Invoice / Proforma / Quote).</div></div>
+          <div class="step-row"><div class="step-n">2</div><div class="step-text">Add line items, apply per-item discounts, document discount % and VAT.</div></div>
+          <div class="step-row"><div class="step-n">3</div><div class="step-text">Click <strong>+ Record Payment</strong> to log deposits or full payment — status updates automatically: Draft → Sent → Partial → Paid.</div></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ─── SLIDE 11: Reports ────────────────────────────────────────── -->
+    <div class="slide" id="slide-10">
+      <div class="slide-header">
+        <div class="slide-num">Step 11 of 27 · Core Modules</div>
+        <div class="slide-title">Reports</div>
+        <div class="slide-sub">Pre-built charts with date filtering, plus AI-style cross-sell suggestions from purchase history patterns.</div>
+      </div>
+      <div class="slide-body">
+        <div class="crm-mock">
+          <div class="mock-topbar"><div class="mock-dots"><div class="mock-dot" style="background:#ef4444"></div><div class="mock-dot" style="background:#f59e0b"></div><div class="mock-dot" style="background:#22c55e"></div></div><div class="mock-title">📈 Reports</div></div>
+          <div class="mock-content">
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;font-size:10px">
+              <div style="background:var(--card2);border:1px solid var(--border);border-radius:8px;padding:10px">
+                <div style="color:var(--text3);font-weight:700;margin-bottom:8px">Pipeline by Stage</div>
+                <div class="pipe-bar"><div class="pipe-lbl">Won</div><div class="pipe-track"><div class="pipe-fill" style="width:65%;background:var(--green)"></div></div><div class="pipe-val">฿18M</div></div>
+                <div class="pipe-bar"><div class="pipe-lbl">Negotiation</div><div class="pipe-track"><div class="pipe-fill" style="width:45%;background:var(--amber)"></div></div><div class="pipe-val">฿8M</div></div>
+                <div class="pipe-bar"><div class="pipe-lbl">Proposal</div><div class="pipe-track"><div class="pipe-fill" style="width:35%;background:var(--blue)"></div></div><div class="pipe-val">฿6M</div></div>
+                <div class="pipe-bar"><div class="pipe-lbl">Evaluation</div><div class="pipe-track"><div class="pipe-fill" style="width:25%;background:var(--text3)"></div></div><div class="pipe-val">฿5M</div></div>
+              </div>
+              <div style="background:var(--card2);border:1px solid var(--border);border-radius:8px;padding:10px">
+                <div style="color:var(--text3);font-weight:700;margin-bottom:8px">Top Salespeople</div>
+                <div class="pipe-bar"><div class="pipe-lbl">Arjun M.</div><div class="pipe-track"><div class="pipe-fill" style="width:80%;background:var(--gold)"></div></div><div class="pipe-val">฿14M</div></div>
+                <div class="pipe-bar"><div class="pipe-lbl">Nadia A.</div><div class="pipe-track"><div class="pipe-fill" style="width:60%;background:var(--gold)"></div></div><div class="pipe-val">฿11M</div></div>
+                <div class="pipe-bar"><div class="pipe-lbl">Kanokwan</div><div class="pipe-track"><div class="pipe-fill" style="width:50%;background:var(--gold)"></div></div><div class="pipe-val">฿9M</div></div>
+              </div>
+            </div>
+            <div style="background:rgba(180,138,80,.06);border:1px solid var(--gold);border-radius:8px;padding:8px 12px;margin-top:10px;font-size:10px">
+              <div style="color:var(--gold);font-weight:700;margin-bottom:3px">💡 Cross-Sell Insight</div>
+              <div style="color:var(--text2)">Clients who bought <strong>Oval cuts</strong> also frequently enquire about <strong>Pear shapes</strong> — 73% overlap in your data.</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ─── SLIDE 12: Inventory ──────────────────────────────────────── -->
+    <div class="slide" id="slide-11">
+      <div class="slide-header">
+        <div class="slide-num">Step 12 of 27 · Core Modules</div>
+        <div class="slide-title">Inventory Interest</div>
+        <div class="slide-sub">Track which diamond categories, shapes and styles your customers have shown interest in — useful for stock planning.</div>
+      </div>
+      <div class="slide-body">
+        <div class="crm-mock">
+          <div class="mock-topbar"><div class="mock-dots"><div class="mock-dot" style="background:#ef4444"></div><div class="mock-dot" style="background:#f59e0b"></div><div class="mock-dot" style="background:#22c55e"></div></div><div class="mock-title">💍 Inventory Interest</div></div>
+          <div class="mock-content">
+            <div class="kpi-row">
+              <div class="kpi-card"><div class="kpi-val">Round</div><div class="kpi-lbl">Most Requested</div></div>
+              <div class="kpi-card"><div class="kpi-val">14</div><div class="kpi-lbl">Oval Enquiries</div></div>
+              <div class="kpi-card"><div class="kpi-val">GIA</div><div class="kpi-lbl">Top Certification</div></div>
+              <div class="kpi-card"><div class="kpi-val">3–5ct</div><div class="kpi-lbl">Most Wanted Size</div></div>
+            </div>
+          </div>
+        </div>
+        <div class="note">Interest data is pulled automatically from customer records — no separate entry needed. Use this alongside the cross-sell insights in Reports to anticipate demand.</div>
+      </div>
+    </div>
+
+    <!-- ─── SLIDE 13: Excel Import ───────────────────────────────────── -->
+    <div class="slide" id="slide-12">
+      <div class="slide-header">
+        <div class="slide-num">Step 13 of 27 · Data</div>
+        <div class="slide-title">Excel Import</div>
+        <div class="slide-sub">Import customer lists from .xlsx or .csv files. Duplicate detection by email + phone. Preview before confirming.</div>
+      </div>
+      <div class="slide-body">
+        <div class="steps-list">
+          <div class="step-row"><div class="step-n">1</div><div class="step-text">In Customers, click <strong>📥 Import Excel</strong> in the toolbar.</div></div>
+          <div class="step-row"><div class="step-n">2</div><div class="step-text">Download the <strong>template</strong> to get the exact column headers the system expects.</div></div>
+          <div class="step-row"><div class="step-n">3</div><div class="step-text">Upload your filled .xlsx or .csv file. The system shows new vs. duplicate records.</div></div>
+          <div class="step-row"><div class="step-n">4</div><div class="step-text">Choose to <strong>skip duplicates</strong> or <strong>overwrite</strong> them, then confirm the import.</div></div>
+        </div>
+        <div class="note"><strong>Duplicate detection:</strong> matches on both email AND phone. If your file uses placeholder values like "N/A" for all rows, they will all match — use unique values or leave the field blank instead.</div>
+      </div>
+    </div>
+
+    <!-- ─── SLIDE 14: Export ─────────────────────────────────────────── -->
+    <div class="slide" id="slide-13">
+      <div class="slide-header">
+        <div class="slide-num">Step 14 of 27 · Data</div>
+        <div class="slide-title">Export & Backup</div>
+        <div class="slide-sub">All data lives in your browser's localStorage. Export regularly to a shared drive as insurance.</div>
+      </div>
+      <div class="slide-body">
+        <div class="steps-list">
+          <div class="step-row"><div class="step-n">1</div><div class="step-text">Go to <strong>⚙️ Settings → Data Management</strong>.</div></div>
+          <div class="step-row"><div class="step-n">2</div><div class="step-text">Click <strong>Export Data</strong> — a JSON file downloads containing all customers, invoices, campaigns, business cards and salespeople.</div></div>
+          <div class="step-row"><div class="step-n">3</div><div class="step-text">Store in a <strong>shared drive or cloud folder</strong>. Aim to export at least once per week.</div></div>
+          <div class="step-row"><div class="step-n">4</div><div class="step-text">To restore: Settings → <strong>Import Data</strong>, select your JSON file.</div></div>
+        </div>
+        <div class="note"><strong>⚠ Warning:</strong> Clearing browser data (cookies/cache) deletes all CRM data. Always export first. Avoid Private/Incognito mode — localStorage is wiped when the window closes.</div>
+      </div>
+    </div>
+
+    <!-- ─── SLIDE 15: User Accounts ──────────────────────────────────── -->
+    <div class="slide" id="slide-14">
+      <div class="slide-header">
+        <div class="slide-num">Step 15 of 27 · Admin: Users & Access</div>
+        <div class="slide-title">User Account Management</div>
+        <div class="slide-sub">Admin-only section. Create, edit and deactivate user accounts. Each user gets their own login and permissions.</div>
+      </div>
+      <div class="slide-body">
+        <div class="crm-mock">
+          <div class="mock-topbar"><div class="mock-dots"><div class="mock-dot" style="background:#ef4444"></div><div class="mock-dot" style="background:#f59e0b"></div><div class="mock-dot" style="background:#22c55e"></div></div><div class="mock-title">🔐 Users & Access</div></div>
+          <div class="mock-content">
+            <div style="display:flex;gap:10px;flex-wrap:wrap">
+              <div class="user-card-mock" style="flex:1;min-width:200px">
+                <div class="user-avatar">A</div>
+                <div style="flex:1">
+                  <div class="user-name">Administrator</div>
+                  <div class="user-role">admin · All modules: Full</div>
+                  <div class="user-chips">
+                    <span class="chip chip-full">Dashboard</span><span class="chip chip-full">Customers</span><span class="chip chip-full">Pipeline</span><span class="chip chip-full">Settings</span>
+                  </div>
+                </div>
+              </div>
+              <div class="user-card-mock" style="flex:1;min-width:200px">
+                <div class="user-avatar" style="background:linear-gradient(135deg,#3b82f6,#1d4ed8)">A</div>
+                <div style="flex:1">
+                  <div class="user-name">Arjun Mehta</div>
+                  <div class="user-role">user · SP-001</div>
+                  <div class="user-chips">
+                    <span class="chip chip-view">Dashboard</span><span class="chip chip-edit">Customers</span><span class="chip chip-view">Pipeline</span><span class="chip chip-none">Settings</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="steps-list">
+          <div class="step-row"><div class="step-n">1</div><div class="step-text">Click <strong>🔐 Users & Access</strong> in the sidebar (visible to admins only).</div></div>
+          <div class="step-row"><div class="step-n">2</div><div class="step-text">Click <strong>+ Add User</strong> to create a new account, or <strong>✏️ Edit</strong> on an existing card.</div></div>
+          <div class="step-row"><div class="step-n">3</div><div class="step-text">Set username, display name, password, role (<strong>Admin</strong> or <strong>User</strong>) and linked salesperson.</div></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ─── SLIDE 16: RBAC Overview ──────────────────────────────────── -->
+    <div class="slide" id="slide-15">
+      <div class="slide-header">
+        <div class="slide-num">Step 16 of 27 · Admin: Users & Access</div>
+        <div class="slide-title">RBAC — What Is It?</div>
+        <div class="slide-sub">Role-Based Access Control. Every User account has a permission matrix: 10 modules × 4 levels. Admins always have full access.</div>
+      </div>
+      <div class="slide-body">
+        <div class="feature-grid">
+          <div class="feature-card">
+            <div class="feature-icon">🔐</div>
+            <div class="feature-title">Why RBAC?</div>
+            <div class="feature-desc">Different team members need different access. A junior sales consultant doesn't need to see Settings or delete invoices. RBAC lets you control this precisely.</div>
+          </div>
+          <div class="feature-card">
+            <div class="feature-icon">📊</div>
+            <div class="feature-title">10 Modules Covered</div>
+            <div class="feature-desc">Dashboard, Customers, Pipeline, Inventory, Salespeople, Reports, Campaigns, Business Cards, Invoices, Settings — each controllable independently.</div>
+          </div>
+          <div class="feature-card">
+            <div class="feature-icon">🎯</div>
+            <div class="feature-title">4 Levels Per Module</div>
+            <div class="feature-desc">None (hidden), View (read-only), Edit (add/edit), Full (add/edit/delete + admin actions). Mix and match per module per user.</div>
+          </div>
+          <div class="feature-card">
+            <div class="feature-icon">⚡</div>
+            <div class="feature-title">Instant Enforcement</div>
+            <div class="feature-desc">Changes take effect on next navigation — no logout required. Sidebar items hide immediately; function-level checks prevent direct URL access too.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ─── SLIDE 17: Permission Levels ─────────────────────────────── -->
+    <div class="slide" id="slide-16">
+      <div class="slide-header">
+        <div class="slide-num">Step 17 of 27 · Admin: Users & Access</div>
+        <div class="slide-title">The Four Permission Levels</div>
+        <div class="slide-sub">Each module can be set to one of four levels independently for each user.</div>
+      </div>
+      <div class="slide-body">
+        <div class="crm-mock">
+          <div class="mock-topbar"><div class="mock-dots"><div class="mock-dot" style="background:#ef4444"></div><div class="mock-dot" style="background:#f59e0b"></div><div class="mock-dot" style="background:#22c55e"></div></div><div class="mock-title">Module Permission Levels</div></div>
+          <div class="mock-content">
+            <div class="perm-matrix">
+              <div class="perm-header"><span>Module</span><span>None</span><span>View</span><span>Edit</span><span>Full</span></div>
+              <div class="perm-row"><span class="perm-mod">👥 Customers</span><span><button class="perm-btn perm-none">None</button></span><span><button class="perm-btn perm-view">View</button></span><span><button class="perm-btn perm-edit">Edit</button></span><span><button class="perm-btn perm-full perm-active">Full</button></span></div>
+              <div class="perm-row"><span class="perm-mod">📈 Reports</span><span><button class="perm-btn perm-none">None</button></span><span><button class="perm-btn perm-view perm-active">View</button></span><span><button class="perm-btn perm-edit">Edit</button></span><span><button class="perm-btn perm-full">Full</button></span></div>
+              <div class="perm-row"><span class="perm-mod">⚙️ Settings</span><span><button class="perm-btn perm-none perm-active">None</button></span><span><button class="perm-btn perm-view">View</button></span><span><button class="perm-btn perm-edit">Edit</button></span><span><button class="perm-btn perm-full">Full</button></span></div>
+            </div>
+          </div>
+        </div>
+        <div class="feature-grid">
+          <div class="feature-card"><div style="display:flex;align-items:center;gap:8px;margin-bottom:6px"><button class="perm-btn perm-none" style="cursor:default">None</button><div class="feature-title" style="margin:0">None</div></div><div class="feature-desc">Module hidden from sidebar. User cannot navigate to it — even by typing the URL.</div></div>
+          <div class="feature-card"><div style="display:flex;align-items:center;gap:8px;margin-bottom:6px"><button class="perm-btn perm-view" style="cursor:default">View</button><div class="feature-title" style="margin:0">View</div></div><div class="feature-desc">Open and read only. No Add, Edit or Delete buttons visible.</div></div>
+          <div class="feature-card"><div style="display:flex;align-items:center;gap:8px;margin-bottom:6px"><button class="perm-btn perm-edit" style="cursor:default">Edit</button><div class="feature-title" style="margin:0">Edit</div></div><div class="feature-desc">Add and edit records. Delete is locked. Admin actions hidden.</div></div>
+          <div class="feature-card"><div style="display:flex;align-items:center;gap:8px;margin-bottom:6px"><button class="perm-btn perm-full" style="cursor:default">Full</button><div class="feature-title" style="margin:0">Full</div></div><div class="feature-desc">Complete control — add, edit, delete and all admin-level actions in that module.</div></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ─── SLIDE 18: Editing Permissions ───────────────────────────── -->
+    <div class="slide" id="slide-17">
+      <div class="slide-header">
+        <div class="slide-num">Step 18 of 27 · Admin: Users & Access</div>
+        <div class="slide-title">Editing a User's Permissions</div>
+        <div class="slide-sub">Click any cell in the matrix to change a permission level. Watch it highlight in gold.</div>
+      </div>
+      <div class="slide-body">
+        <div class="crm-mock">
+          <div class="mock-topbar"><div class="mock-dots"><div class="mock-dot" style="background:#ef4444"></div><div class="mock-dot" style="background:#f59e0b"></div><div class="mock-dot" style="background:#22c55e"></div></div><div class="mock-title">✏️ Edit User — Arjun Mehta</div></div>
+          <div class="mock-content">
+            <div style="font-size:11px;color:var(--text3);margin-bottom:8px;font-weight:600">MODULE PERMISSIONS</div>
+            <div class="perm-matrix">
+              <div class="perm-header"><span>Module</span><span>None</span><span>View</span><span>Edit</span><span>Full</span></div>
+              <div class="perm-row"><span class="perm-mod">📊 Dashboard</span><span><button class="perm-btn perm-none">None</button></span><span><button class="perm-btn perm-view perm-active">View</button></span><span><button class="perm-btn perm-edit">Edit</button></span><span><button class="perm-btn perm-full">Full</button></span></div>
+              <div class="perm-row"><span class="perm-mod">👥 Customers</span><span><button class="perm-btn perm-none">None</button></span><span><button class="perm-btn perm-view">View</button></span><span><button class="perm-btn perm-edit perm-active">Edit</button></span><span><button class="perm-btn perm-full" style="animation:pulse-gold 1s infinite">Full ←<span class="cursor" style="width:8px;height:8px"></span></button></span></div>
+              <div class="perm-row"><span class="perm-mod">⚙️ Settings</span><span><button class="perm-btn perm-none perm-active">None</button></span><span><button class="perm-btn perm-view">View</button></span><span><button class="perm-btn perm-edit">Edit</button></span><span><button class="perm-btn perm-full">Full</button></span></div>
+            </div>
+            <div style="margin-top:10px;font-size:10px;color:var(--gold)">Admin is clicking <strong>Full</strong> on Customers for Arjun — upgrading from Edit.</div>
+          </div>
+        </div>
+        <div class="steps-list">
+          <div class="step-row"><div class="step-n">1</div><div class="step-text">In Users & Access, click <strong>✏️ Edit</strong> on a user card.</div></div>
+          <div class="step-row"><div class="step-n">2</div><div class="step-text">Scroll down to <strong>Module Permissions</strong> — one row per module, four coloured buttons per row.</div></div>
+          <div class="step-row"><div class="step-n">3</div><div class="step-text">Click any button to select that level. The selected button glows gold.</div></div>
+          <div class="step-row"><div class="step-n">4</div><div class="step-text">Click <strong>Save</strong> at the bottom. Changes take effect on next navigation — no logout needed.</div></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ─── SLIDE 19: Module Chips ───────────────────────────────────── -->
+    <div class="slide" id="slide-18">
+      <div class="slide-header">
+        <div class="slide-num">Step 19 of 27 · Admin: Users & Access</div>
+        <div class="slide-title">Module Chip Badges</div>
+        <div class="slide-sub">Coloured chips on each user card give an instant at-a-glance summary of that user's permissions.</div>
+      </div>
+      <div class="slide-body">
+        <div class="crm-mock">
+          <div class="mock-topbar"><div class="mock-dots"><div class="mock-dot" style="background:#ef4444"></div><div class="mock-dot" style="background:#f59e0b"></div><div class="mock-dot" style="background:#22c55e"></div></div><div class="mock-title">🔐 Users & Access — User Cards</div></div>
+          <div class="mock-content" style="display:flex;flex-direction:column;gap:10px">
+            <div class="user-card-mock">
+              <div class="user-avatar" style="background:linear-gradient(135deg,#3b82f6,#1d4ed8)">A</div>
+              <div style="flex:1">
+                <div class="user-name">Arjun Mehta <span style="font-size:9px;color:var(--text3)">(SP-001 · Senior Sales)</span></div>
+                <div class="user-chips" style="margin-top:6px">
+                  <span class="chip chip-view">📊 View</span>
+                  <span class="chip chip-full">👥 Full</span>
+                  <span class="chip chip-view">🔄 View</span>
+                  <span class="chip chip-view">📈 View</span>
+                  <span class="chip chip-edit">🪪 Edit</span>
+                  <span class="chip chip-view">🧾 View</span>
+                  <span class="chip chip-none">⚙️ None</span>
+                </div>
+              </div>
+            </div>
+            <div class="user-card-mock">
+              <div class="user-avatar" style="background:linear-gradient(135deg,#22c55e,#15803d)">K</div>
+              <div style="flex:1">
+                <div class="user-name">Kanokwan Thana <span style="font-size:9px;color:var(--text3)">(SP-003 · Manager)</span></div>
+                <div class="user-chips" style="margin-top:6px">
+                  <span class="chip chip-full">📊 Full</span>
+                  <span class="chip chip-full">👥 Full</span>
+                  <span class="chip chip-edit">🔄 Edit</span>
+                  <span class="chip chip-view">📈 View</span>
+                  <span class="chip chip-edit">🪪 Edit</span>
+                  <span class="chip chip-view">🧾 View</span>
+                  <span class="chip chip-view">⚙️ View</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="feature-grid">
+          <div class="feature-card"><div style="background:rgba(34,197,94,.15);color:var(--green);font-weight:700;padding:4px 10px;border-radius:8px;display:inline-block;margin-bottom:6px">Green = Full</div><div class="feature-desc">User has complete control of this module, including delete.</div></div>
+          <div class="feature-card"><div style="background:rgba(245,158,11,.15);color:var(--amber);font-weight:700;padding:4px 10px;border-radius:8px;display:inline-block;margin-bottom:6px">Amber = Edit</div><div class="feature-desc">User can add and edit but not delete.</div></div>
+          <div class="feature-card"><div style="background:rgba(59,130,246,.15);color:var(--blue);font-weight:700;padding:4px 10px;border-radius:8px;display:inline-block;margin-bottom:6px">Blue = View</div><div class="feature-desc">Read-only access. No modification controls.</div></div>
+          <div class="feature-card"><div style="background:rgba(100,100,120,.15);color:#888;font-weight:700;padding:4px 10px;border-radius:8px;display:inline-block;margin-bottom:6px">Grey = None</div><div class="feature-desc">Module completely hidden from this user.</div></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ─── SLIDE 20: Copy & Reset ───────────────────────────────────── -->
+    <div class="slide" id="slide-19">
+      <div class="slide-header">
+        <div class="slide-num">Step 20 of 27 · Admin: Users & Access</div>
+        <div class="slide-title">Copy Permissions & Reset to Default</div>
+        <div class="slide-sub">Speed up user setup by copying an existing user's permission set as a starting point.</div>
+      </div>
+      <div class="slide-body">
+        <div class="crm-mock">
+          <div class="mock-topbar"><div class="mock-dots"><div class="mock-dot" style="background:#ef4444"></div><div class="mock-dot" style="background:#f59e0b"></div><div class="mock-dot" style="background:#22c55e"></div></div><div class="mock-title">✏️ Edit User — Priya Sharma</div></div>
+          <div class="mock-content">
+            <div style="background:rgba(180,138,80,.06);border:1px solid var(--gold);border-radius:8px;padding:10px 14px;margin-bottom:10px;font-size:11px">
+              <div style="color:var(--gold);font-weight:700;margin-bottom:6px">⚡ Quick Setup</div>
+              <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+                <span style="color:var(--text2)">Copy permissions from:</span>
+                <div style="background:var(--card2);border:1px solid var(--gold);border-radius:6px;padding:5px 12px;color:var(--gold);font-size:11px">Arjun Mehta ▾ <span class="cursor" style="width:8px;height:8px"></span></div>
+                <div style="background:var(--gold);color:#1a1a1a;border-radius:6px;padding:5px 12px;font-size:10px;font-weight:700">Copy →</div>
+                <div style="background:var(--card2);border:1px solid var(--border);border-radius:6px;padding:5px 12px;font-size:10px;color:var(--text3)">↺ Reset to Default</div>
+              </div>
+            </div>
+            <div style="font-size:10px;color:var(--text3);margin-bottom:4px">Default user permissions (applied by Reset to Default):</div>
+            <div style="display:flex;flex-wrap:wrap;gap:4px">
+              <span class="chip chip-view">Dashboard: View</span>
+              <span class="chip chip-edit">Customers: Edit</span>
+              <span class="chip chip-view">Pipeline: View</span>
+              <span class="chip chip-view">Reports: View</span>
+              <span class="chip chip-edit">Biz Cards: Edit</span>
+              <span class="chip chip-view">Invoices: View</span>
+              <span class="chip chip-none">Settings: None</span>
+            </div>
+          </div>
+        </div>
+        <div class="steps-list">
+          <div class="step-row"><div class="step-n">1</div><div class="step-text">In Edit User, find the <strong>"Copy from user"</strong> dropdown at the top of the permissions grid.</div></div>
+          <div class="step-row"><div class="step-n">2</div><div class="step-text">Select a colleague — their entire permission set is applied as a starting point. Adjust as needed.</div></div>
+          <div class="step-row"><div class="step-n">3</div><div class="step-text">Or click <strong>Reset to Default</strong> to restore the standard user permissions (View on most, Edit on Customers and Business Cards).</div></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ─── SLIDE 21: Enforcement ────────────────────────────────────── -->
+    <div class="slide" id="slide-20">
+      <div class="slide-header">
+        <div class="slide-num">Step 21 of 27 · Admin: Users & Access</div>
+        <div class="slide-title">How Permissions Are Enforced</div>
+        <div class="slide-sub">Two layers of enforcement ensure users can't bypass their permissions — even by typing URLs directly.</div>
+      </div>
+      <div class="slide-body">
+        <div class="crm-mock">
+          <div class="mock-topbar"><div class="mock-dots"><div class="mock-dot" style="background:#ef4444"></div><div class="mock-dot" style="background:#f59e0b"></div><div class="mock-dot" style="background:#22c55e"></div></div><div class="mock-title">Sidebar — Arjun Mehta (Settings: None)</div></div>
+          <div class="mock-layout">
+            <div class="mock-sidebar">
+              <div class="mock-nav active">📊 <span>Dashboard</span></div>
+              <div class="mock-nav">👥 <span>Customers</span></div>
+              <div class="mock-nav">🔄 <span>Pipeline</span></div>
+              <div class="mock-nav">📈 <span>Reports</span></div>
+              <div class="mock-nav">🪪 <span>Biz Cards</span></div>
+              <div style="padding:6px 12px;font-size:10px;color:var(--text3);margin:1px 6px;font-style:italic">⚙️ Settings — hidden</div>
+            </div>
+            <div class="mock-content" style="display:flex;align-items:center;justify-content:center;flex-direction:column;gap:6px">
+              <div style="font-size:24px">🔒</div>
+              <div style="font-size:12px;font-weight:600;color:var(--text)">Access Restricted</div>
+              <div style="font-size:11px;color:var(--text3);text-align:center">You do not have access to Settings.<br>Contact your Administrator.</div>
+            </div>
+          </div>
+        </div>
+        <div class="feature-grid">
+          <div class="feature-card"><div class="feature-icon">🔍</div><div class="feature-title">Layer 1 — Sidebar</div><div class="feature-desc">Nav items for modules set to "None" are removed from the sidebar entirely. Users don't even see the option.</div></div>
+          <div class="feature-card"><div class="feature-icon">🛡️</div><div class="feature-title">Layer 2 — Function Guards</div><div class="feature-desc">canViewModule(), canEditModule(), canFullModule() are checked before rendering any content — bypassing via URL shows the Access Restricted screen.</div></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ─── SLIDE 22: VIP Tiers ──────────────────────────────────────── -->
+    <div class="slide" id="slide-21">
+      <div class="slide-header">
+        <div class="slide-num">Step 22 of 27 · Settings</div>
+        <div class="slide-title">VIP Tier Thresholds</div>
+        <div class="slide-sub">Automatically assigns Bronze/Silver/Gold/Platinum badges based on total paid invoices. Thresholds fully configurable.</div>
+      </div>
+      <div class="slide-body">
+        <div class="crm-mock">
+          <div class="mock-topbar"><div class="mock-dots"><div class="mock-dot" style="background:#ef4444"></div><div class="mock-dot" style="background:#f59e0b"></div><div class="mock-dot" style="background:#22c55e"></div></div><div class="mock-title">⚙️ Settings — VIP Thresholds</div></div>
+          <div class="mock-content">
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:11px">
+              <div style="background:var(--card2);border:1px solid var(--border);border-radius:8px;padding:10px"><div style="color:#CD7F32;font-weight:700">🥉 Bronze</div><div style="color:var(--text3);font-size:10px;margin:3px 0">Entry level</div><div style="color:var(--gold);font-weight:700;font-size:14px">฿100,000+</div></div>
+              <div style="background:var(--card2);border:1px solid var(--border);border-radius:8px;padding:10px"><div style="color:#9EA0A8;font-weight:700">🥈 Silver</div><div style="color:var(--text3);font-size:10px;margin:3px 0">Regular buyers</div><div style="color:var(--gold);font-weight:700;font-size:14px">฿500,000+</div></div>
+              <div style="background:var(--card2);border:1px solid var(--border);border-radius:8px;padding:10px"><div style="color:var(--gold);font-weight:700">🥇 Gold</div><div style="color:var(--text3);font-size:10px;margin:3px 0">High-value clients</div><div style="color:var(--gold);font-weight:700;font-size:14px">฿1,000,000+</div></div>
+              <div style="background:var(--card2);border:1px solid var(--border);border-radius:8px;padding:10px"><div style="color:#5B7FA6;font-weight:700">💎 Platinum</div><div style="color:var(--text3);font-size:10px;margin:3px 0">Top-tier</div><div style="color:var(--gold);font-weight:700;font-size:14px">฿3,000,000+</div></div>
+            </div>
+            <div style="margin-top:10px;background:var(--gold);color:#1a1a1a;border-radius:7px;padding:8px;font-size:11px;font-weight:700;text-align:center">💾 Save & Recalculate All VIP Levels</div>
+          </div>
+        </div>
+        <div class="note">VIP tiers recalculate across <strong>all 30+ customers</strong> the moment you save — no manual updates needed. Tiers also update automatically each time a payment is recorded on any invoice.</div>
+      </div>
+    </div>
+
+    <!-- ─── SLIDE 23: Data Management ───────────────────────────────── -->
+    <div class="slide" id="slide-22">
+      <div class="slide-header">
+        <div class="slide-num">Step 23 of 27 · Settings</div>
+        <div class="slide-title">Data Management & Support Tickets</div>
+        <div class="slide-sub">Reload demo data, clear all data, and review support tickets submitted by users.</div>
+      </div>
+      <div class="slide-body">
+        <div class="crm-mock">
+          <div class="mock-topbar"><div class="mock-dots"><div class="mock-dot" style="background:#ef4444"></div><div class="mock-dot" style="background:#f59e0b"></div><div class="mock-dot" style="background:#22c55e"></div></div><div class="mock-title">⚙️ Settings — Support Tickets (Admin)</div></div>
+          <div class="mock-content">
+            <div class="ticket-mock">
+              <div class="ticket-meta">👤 <strong>arjun</strong> &nbsp;·&nbsp; 🕐 30 May 2026, 09:14</div>
+              <div class="ticket-msg">The Reports page is not loading after I filtered by date range and then switched to Campaigns and back.</div>
+              <div class="ticket-actions">
+                <button class="ticket-btn" style="background:#0f2a0f;border:1px solid #22c55e;color:#22c55e">✓ Resolve</button>
+                <button class="ticket-btn" style="background:#2a0f0f;border:1px solid #ef4444;color:#ef4444">🗑 Delete</button>
+              </div>
+            </div>
+            <div class="ticket-mock" style="border-color:#22c55e33">
+              <div class="ticket-meta">👤 <strong>priya</strong> &nbsp;·&nbsp; 🕐 28 May 2026, 15:32 &nbsp;<span style="color:var(--green);font-size:10px;font-weight:700">✓ Resolved</span></div>
+              <div class="ticket-msg">Can you give me Edit access to the Reports module?</div>
+            </div>
+          </div>
+        </div>
+        <div class="note"><strong>Support Tickets</strong> are submitted by users via Help &amp; FAQ → Report a Problem. Admins can review, resolve and delete tickets here. Tickets appear newest-first.</div>
+      </div>
+    </div>
+
+    <!-- ─── SLIDE 24: Help & FAQ Page ────────────────────────────────── -->
+    <div class="slide" id="slide-23">
+      <div class="slide-header">
+        <div class="slide-num">Step 24 of 27 · Support & FAQ</div>
+        <div class="slide-title">Help & FAQ Module</div>
+        <div class="slide-sub">Accessible to all users regardless of permissions. Contains 20 FAQ items, tips, contact button and support form.</div>
+      </div>
+      <div class="slide-body">
+        <div class="crm-mock">
+          <div class="mock-topbar"><div class="mock-dots"><div class="mock-dot" style="background:#ef4444"></div><div class="mock-dot" style="background:#f59e0b"></div><div class="mock-dot" style="background:#22c55e"></div></div><div class="mock-title">❓ Help & FAQ</div></div>
+          <div class="mock-content">
+            <div style="display:flex;gap:8px;margin-bottom:10px;align-items:center">
+              <div style="flex:1;background:var(--card2);border:1px solid var(--border);border-radius:7px;padding:5px 10px;font-size:11px;color:var(--text3)">🔍 Search FAQ…</div>
+              <div style="background:var(--gold);color:#1a1a1a;border-radius:7px;padding:5px 12px;font-size:10px;font-weight:700">📧 Contact Admin</div>
+            </div>
+            <div class="faq-item-mock">
+              <div class="faq-q-mock"><span style="color:var(--gold)">▼</span> I forgot my password. How do I reset it?</div>
+              <div class="faq-a-mock">Ask the admin to go to Users & Access, click Edit on your account, and set a new password.</div>
+            </div>
+            <div class="faq-item-mock">
+              <div class="faq-q-mock"><span style="color:var(--text3)">▶</span> I can't see a module in the sidebar. Why?</div>
+            </div>
+            <div class="faq-item-mock">
+              <div class="faq-q-mock"><span style="color:var(--text3)">▶</span> How do I add a new customer or lead?</div>
+            </div>
+          </div>
+        </div>
+        <div class="feature-grid">
+          <div class="feature-card"><div class="feature-icon">❓</div><div class="feature-title">20 FAQ Items</div><div class="feature-desc">Click any question to expand/collapse the answer. Covers passwords, permissions, invoices, campaigns, data backup and more.</div></div>
+          <div class="feature-card"><div class="feature-icon">🔍</div><div class="feature-title">Live Search</div><div class="feature-desc">Type any keyword in the search box to instantly filter FAQ sections — no page reload.</div></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ─── SLIDE 25: Tip of the Day ────────────────────────────────── -->
+    <div class="slide" id="slide-24">
+      <div class="slide-header">
+        <div class="slide-num">Step 25 of 27 · Support & FAQ</div>
+        <div class="slide-title">Tip of the Day Banner</div>
+        <div class="slide-sub">Rotates through 10 tips every 8 seconds. Use ‹ / › to browse manually.</div>
+      </div>
+      <div class="slide-body">
+        <div class="crm-mock">
+          <div class="mock-topbar"><div class="mock-dots"><div class="mock-dot" style="background:#ef4444"></div><div class="mock-dot" style="background:#f59e0b"></div><div class="mock-dot" style="background:#22c55e"></div></div><div class="mock-title">❓ Help & FAQ — Tip of the Day</div></div>
+          <div class="mock-content">
+            <div class="tip-banner-mock">
+              <div style="font-size:22px">✨</div>
+              <div style="flex:1">
+                <div style="font-size:9px;font-weight:700;color:var(--gold);text-transform:uppercase;letter-spacing:1px;margin-bottom:3px">Tip of the Day</div>
+                <div id="demo-tip" style="font-size:11px;color:var(--text2);transition:opacity .4s">💡 Use the top search bar to instantly find any customer by name, email, phone or company.</div>
+              </div>
+              <div style="display:flex;gap:4px">
+                <button onclick="demoTipPrev()" style="background:rgba(180,138,80,.15);border:1px solid var(--gold);border-radius:4px;color:var(--gold);padding:2px 8px;cursor:pointer;font-size:13px">‹</button>
+                <button onclick="demoTipNext()" style="background:rgba(180,138,80,.15);border:1px solid var(--gold);border-radius:4px;color:var(--gold);padding:2px 8px;cursor:pointer;font-size:13px">›</button>
+              </div>
+            </div>
+            <div style="font-size:10px;color:var(--text3);text-align:center">← Try clicking the ‹ › buttons above to browse tips</div>
+          </div>
+        </div>
+        <div class="note">The Tip of the Day is <strong>interactive in the live CRM</strong>. 10 tips covering search, pipeline, export, OCR, VIP tiers, RBAC, campaigns, gold pricing, invoices and OCR best practices.</div>
+      </div>
+    </div>
+
+    <!-- ─── SLIDE 26: Report a Problem ──────────────────────────────── -->
+    <div class="slide" id="slide-25">
+      <div class="slide-header">
+        <div class="slide-num">Step 26 of 27 · Support & FAQ</div>
+        <div class="slide-title">Report a Problem</div>
+        <div class="slide-sub">Users submit support tickets directly from the Help & FAQ page. Admins review them in Settings.</div>
+      </div>
+      <div class="slide-body">
+        <div class="crm-mock">
+          <div class="mock-topbar"><div class="mock-dots"><div class="mock-dot" style="background:#ef4444"></div><div class="mock-dot" style="background:#f59e0b"></div><div class="mock-dot" style="background:#22c55e"></div></div><div class="mock-title">❓ Help & FAQ — Report a Problem</div></div>
+          <div class="mock-content">
+            <div style="font-size:11px;color:var(--text2);margin-bottom:8px">Use this form to log a technical issue or feedback. The admin will see your ticket in Settings → Support Tickets.</div>
+            <div style="background:var(--card2);border:1px solid var(--border);border-radius:8px;padding:10px;font-size:11px;color:var(--text3);min-height:70px;margin-bottom:10px">
+              The Reports page is not loading after I filtered by date range… <span class="cursor"></span>
+            </div>
+            <div style="background:var(--gold);color:#1a1a1a;border-radius:7px;padding:7px 16px;font-size:11px;font-weight:700;display:inline-block">📩 Submit Ticket</div>
+          </div>
+        </div>
+        <div class="steps-list">
+          <div class="step-row"><div class="step-n">1</div><div class="step-text"><strong>User</strong> goes to ❓ Help & FAQ, scrolls to <em>Report a Problem</em>.</div></div>
+          <div class="step-row"><div class="step-n">2</div><div class="step-text">Types their issue and clicks <strong>📩 Submit Ticket</strong> — saved to localStorage instantly.</div></div>
+          <div class="step-row"><div class="step-n">3</div><div class="step-text"><strong>Admin</strong> sees all tickets in ⚙️ Settings → Support Tickets, with username, timestamp and message.</div></div>
+          <div class="step-row"><div class="step-n">4</div><div class="step-text">Admin clicks <strong>✓ Resolve</strong> (turns ticket green) or <strong>🗑 Delete</strong> when done.</div></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ─── SLIDE 27: Complete ───────────────────────────────────────── -->
+    <div class="slide" id="slide-26">
+      <div class="complete-hero">
+        <div class="complete-icon">🎉</div>
+        <div style="font-size:32px;font-weight:800;color:var(--gold);margin-bottom:8px">Walkthrough Complete!</div>
+        <div style="font-size:16px;color:var(--text2);margin-bottom:24px;line-height:1.6">You've covered all 12 modules, the RBAC permission system and the Support & FAQ features.<br>The live CRM is at:</div>
+        <a href="https://nagarajprasadh.github.io/JVDCRM" target="_blank" style="display:inline-block;background:var(--gold);color:#1a1a1a;font-weight:700;font-size:15px;padding:12px 28px;border-radius:10px;text-decoration:none;margin-bottom:24px">🚀 Open Live CRM →</a>
+        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;max-width:600px;margin:0 auto;text-align:left">
+          <div class="feature-card"><div class="feature-icon">📊</div><div class="feature-title">Dashboard</div></div>
+          <div class="feature-card"><div class="feature-icon">👥</div><div class="feature-title">Customers</div></div>
+          <div class="feature-card"><div class="feature-icon">🔄</div><div class="feature-title">Pipeline</div></div>
+          <div class="feature-card"><div class="feature-icon">🪪</div><div class="feature-title">Biz Cards OCR</div></div>
+          <div class="feature-card"><div class="feature-icon">🧾</div><div class="feature-title">Invoices</div></div>
+          <div class="feature-card"><div class="feature-icon">🔐</div><div class="feature-title">RBAC Access</div></div>
+          <div class="feature-card"><div class="feature-icon">❓</div><div class="feature-title">Support & FAQ</div></div>
+          <div class="feature-card"><div class="feature-icon">📈</div><div class="feature-title">Reports</div></div>
+          <div class="feature-card"><div class="feature-icon">⚙️</div><div class="feature-title">Settings</div></div>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- end .stage -->
+</div><!-- end .layout -->
+
+<!-- BOTTOM NAV -->
+<div class="bottom-nav">
+  <button class="btn btn-prev" onclick="prev()" id="btn-prev" disabled>← Prev</button>
+  <div class="step-dots" id="dots"></div>
+  <button class="btn btn-next" onclick="next()" id="btn-next">Next →</button>
+</div>
+
+<script>
+const TOTAL = 27;
+let current = 0;
+
+const DEMO_TIPS = [
+  '💡 Use the top search bar to instantly find any customer by name, email, phone or company.',
+  '💡 Export data regularly from Settings to keep a safe JSON backup on a shared drive.',
+  '💡 Business Card scanner supports multi-page PDFs — drop a whole card stack at once.',
+  '💡 Set VIP thresholds in Settings so tier badges update automatically on every payment.',
+  '💡 Use "Copy from user" in Users & Access to clone permission sets across team members.',
+  '💡 Campaign ROI is calculated automatically — track open rates and revenue in Reports.',
+  '💡 The gold/platinum price ticker on the Dashboard updates live from public market APIs.',
+  '💡 Invoices support THB, USD, AED, HKD and more — set per invoice at creation time.',
+  '💡 Drag Kanban cards between pipeline stages — changes save with no button needed.',
+  '💡 For best OCR results, photograph business cards on a plain background under good lighting.'
+];
+let demoTipIdx = 0;
+
+function demoTipNext(){
+  demoTipIdx = (demoTipIdx+1)%DEMO_TIPS.length;
+  const el = document.getElementById('demo-tip');
+  if(el){ el.style.opacity='0'; setTimeout(()=>{ el.textContent=DEMO_TIPS[demoTipIdx]; el.style.opacity='1'; },200); }
+}
+function demoTipPrev(){
+  demoTipIdx = (demoTipIdx-1+DEMO_TIPS.length)%DEMO_TIPS.length;
+  const el = document.getElementById('demo-tip');
+  if(el){ el.style.opacity='0'; setTimeout(()=>{ el.textContent=DEMO_TIPS[demoTipIdx]; el.style.opacity='1'; },200); }
+}
+
+function buildDots(){
+  const d = document.getElementById('dots');
+  d.innerHTML='';
+  for(let i=0;i<TOTAL;i++){
+    const dot=document.createElement('div');
+    dot.className='dot'+(i===current?' active':i<current?' done':'');
+    dot.onclick=(()=>{const idx=i;return ()=>goTo(idx);})();
+    d.appendChild(dot);
+  }
+}
+
+function updateTOC(){
+  for(let i=0;i<TOTAL;i++){
+    const el=document.getElementById('toc-'+i);
+    if(!el) continue;
+    el.className='toc-item'+(i===current?' active':i<current?' done':'');
+  }
+}
+
+function goTo(idx){
+  if(idx<0||idx>=TOTAL) return;
+  document.getElementById('slide-'+current).classList.remove('active');
+  current=idx;
+  document.getElementById('slide-'+current).classList.add('active');
+  document.getElementById('step-counter').textContent='Step '+(current+1)+' of '+TOTAL;
+  document.getElementById('progress-fill').style.width=((current+1)/TOTAL*100).toFixed(1)+'%';
+  document.getElementById('btn-prev').disabled=(current===0);
+  document.getElementById('btn-next').textContent=current===TOTAL-1?'Finish ✓':'Next →';
+  document.getElementById('btn-next').disabled=false;
+  buildDots();
+  updateTOC();
+  // scroll TOC item into view
+  const tocEl=document.getElementById('toc-'+current);
+  if(tocEl) tocEl.scrollIntoView({block:'nearest',behavior:'smooth'});
+}
+
+function next(){ if(current<TOTAL-1) goTo(current+1); }
+function prev(){ if(current>0) goTo(current-1); }
+
+// keyboard nav
+document.addEventListener('keydown',e=>{
+  if(e.key==='ArrowRight'||e.key==='ArrowDown') next();
+  if(e.key==='ArrowLeft'||e.key==='ArrowUp') prev();
+});
+
+// init
+buildDots();
+updateTOC();
+</script>
+</body>
+</html>
