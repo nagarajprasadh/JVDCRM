@@ -1524,7 +1524,7 @@ function buildDashWidget(id){
     const in30=new Date(today); in30.setDate(in30.getDate()+30);
     const fu=custs.filter(c=>{if(!c.expectedCloseDate||['Won','Lost'].includes(c.leadStatus))return false;const d=new Date(c.expectedCloseDate);return d>=today&&d<=in30;}).sort((a,b)=>new Date(a.expectedCloseDate)-new Date(b.expectedCloseDate)).slice(0,6);
     return `<div class="card" style="margin-bottom:16px"><div class="section-title" style="margin-bottom:10px">Upcoming Follow-ups (30 days)</div>
-    ${fu.length?fu.map(c=>{const diff=Math.ceil((new Date(c.expectedCloseDate)-today)/86400000);return `<div style="display:flex;align-items:center;gap:10px;padding:7px 0;border-bottom:1px solid var(--border)"><div style="width:4px;height:32px;border-radius:2px;background:${diff<=7?'var(--red)':diff<=14?'var(--gold)':'var(--green)'};flex-shrink:0"></div><div style="flex:1"><div style="font-size:13px;font-weight:600">${c.firstName} ${c.lastName}</div><div style="font-size:11px;color:var(--text3)">${c.pipelineStage} · ${fmt(c.dealValue)}</div></div><div style="font-size:11px;color:var(--gold)">In ${diff}d</div></div>`;}).join(''):'<div style="color:var(--text3);font-size:13px;padding:8px 0">No upcoming closes</div>'}</div>`;
+    ${fu.length?fu.map(c=>{const diff=Math.ceil((new Date(c.expectedCloseDate)-today)/86400000);return '<div style="padding:8px 0;border-bottom:1px solid var(--border)"><div style="display:flex;align-items:center;gap:8px"><div style="width:4px;height:36px;border-radius:2px;background:'+(diff<=7?'var(--red)':diff<=14?'var(--gold)':'var(--green)')+';flex-shrink:0"></div><div style="flex:1"><b style="font-size:13px">'+c.firstName+' '+c.lastName+'</b><div style="font-size:11px;color:var(--text3)">'+c.pipelineStage+' · '+fmt(c.dealValue)+' · In '+diff+'d</div></div>'+waBtn(c,'padding:3px 8px;font-size:11px')+'</div></div>';}).join(''):'<div style="color:var(--text3);font-size:13px;padding:8px 0">No upcoming closes</div>'}</div>`;
   }
 
   if(id==='recent_activity'){
@@ -1554,13 +1554,44 @@ function buildDashWidget(id){
   }
 
   if(id==='not_contacted'){
-    const days=30;
-    const overdue=custs.filter(c=>!['Won','Lost'].includes(c.leadStatus)).map(c=>({...c,_d:daysSince(c.lastContactedDate)})).filter(c=>c._d===null||c._d>days).sort((a,b)=>(b._d||999)-(a._d||999)).slice(0,6);
-    return `<div class="card" style="margin-bottom:16px"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px"><div class="section-title">Not Contacted (${days}+ days)</div><span style="font-size:12px;color:var(--red);font-weight:600">${overdue.length} customers</span></div>
-    ${overdue.length?overdue.map(c=>`<div style="display:flex;align-items:center;gap:10px;padding:7px 0;border-bottom:1px solid var(--border)"><div style="flex:1"><div style="font-size:13px;font-weight:600">${c.firstName} ${c.lastName}</div><div style="font-size:11px;color:var(--text3)">${c.assignedTo||'Unassigned'}</div></div><span style="font-size:11px;font-weight:700;color:var(--red)">${c._d===null?'Never':c._d+'d ago'}</span></div>`).join(''):'<div style="color:var(--green);font-size:13px;padding:8px 0">✅ All customers recently contacted</div>'}</div>`;
-  }
-
-  return '';
+    var days=30;
+    var overdue=custs.filter(function(c){return!['Won','Lost'].includes(c.leadStatus);})
+      .map(function(c){return Object.assign({},c,{_d:daysSince(c.lastContactedDate)});})
+      .filter(function(c){return c._d===null||c._d>days;})
+      .sort(function(a,b){return(b._d||999)-(a._d||999);}).slice(0,8);
+    var ncRows=overdue.map(function(c){
+      var urg=c._d===null||c._d>60?'var(--red)':c._d>30?'#f59e0b':'#888';
+      var ln=(c.activityLog||[]).slice(-1)[0];
+      var lmsg=ln?ln.type+': '+ln.note.substring(0,50)+(ln.note.length>50?'...':''):'No activity logged';
+      return '<div style="padding:10px 0;border-bottom:1px solid var(--border)"><div style="display:flex;gap:8px">'
+        +'<div style="width:4px;min-height:52px;border-radius:2px;background:'+urg+';flex-shrink:0;margin-top:2px"></div>'
+        +'<div style="flex:1;min-width:0">'
+        +'<div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:3px">'
+        +'<b style="font-size:13px">'+c.firstName+' '+c.lastName+'</b>'
+        +(c.vipLevel&&c.vipLevel!=='None'?'<span class="badge badge-vip-'+c.vipLevel.toLowerCase()+'" style="font-size:10px">'+c.vipLevel+'</span>':'')
+        +'<span class="badge badge-'+(c.leadStatus||'new').toLowerCase().replace(' ','-')+'" style="font-size:10px">'+(c.leadStatus||'New')+'</span>'
+        +'<span style="font-size:11px;font-weight:700;color:'+urg+';margin-left:auto">'+(c._d===null?'Never':c._d+'d ago')+'</span>'
+        +'</div>'
+        +'<div style="font-size:11px;color:var(--text3);margin-bottom:3px;display:flex;gap:10px;flex-wrap:wrap">'
+        +(c.email?'<span>'+c.email+'</span>':'')
+        +(waNumber(c)?'<span>'+waNumber(c)+'</span>':'')
+        +(c.company?'<span>'+c.company+'</span>':'')
+        +(c.nationality?'<span>'+c.nationality+'</span>':'')
+        +'<span>'+fmt(c.dealValue)+'</span>'
+        +'<span>'+(c.assignedTo||'?')+(c.assignedTo2?' & '+c.assignedTo2:'')+'</span>'
+        +'</div>'
+        +'<div style="font-size:11px;color:var(--text3);font-style:italic;margin-bottom:7px">'+lmsg+'</div>'
+        +'<div style="display:flex;gap:6px;flex-wrap:wrap">'+waBtn(c)+emailBtn(c)+callBtn(c)
+        +'<button onclick="nav('customers');selectedCustId=''+c.id+'';setTimeout(renderCustomers,0)" '
+        +'class="btn btn-outline btn-xs" style="font-size:11px;padding:4px 9px">View</button>'
+        +'</div></div></div></div>';
+    }).join('');
+    return '<div class="card" style="margin-bottom:16px">'
+      +'<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">'
+      +'<div class="section-title">Not Contacted ('+days+'+ days)</div>'
+      +'<span style="font-size:12px;color:var(--red);font-weight:600">'+overdue.length+' customers</span>'
+      +'</div>'+(ncRows||'<div style="color:var(--green);font-size:13px;padding:8px 0">All recently contacted</div>')+'</div>';
+  }  return '';
 }
 
 function buildPipelineCharts(){ /* charts built inline in pipeline widget */ }
@@ -1791,6 +1822,7 @@ ${list.map(c=>`
     ${c.tags&&c.tags.length?`<div class="cust-tags">${c.tags.slice(0,4).map(t=>`<span class="tag">${t}</span>`).join('')}</div>`:''}
     <div class="flex gap-2 mt-1" style="align-items:center">
       <input type="checkbox" class="row-cb" ${selectedCusts.has(c.id)?'checked':''} onclick="event.stopPropagation()" onchange="toggleCustSel('${c.id}',this.checked)" style="width:16px;height:16px;flex-shrink:0;cursor:pointer;accent-color:var(--gold);margin-right:4px">
+      ${waNumber(c)?`<a href="${waLink(c)||'#'}" target="_blank" onclick="event.stopPropagation()" style="display:inline-flex;align-items:center;padding:4px 9px;background:#25D366;color:#fff;border-radius:6px;font-size:11px;font-weight:600;text-decoration:none">WA</a>`:''}
       ${canEdit(c)?`<button class="btn btn-outline btn-sm" onclick="event.stopPropagation();openCustModal('${c.id}')">✏️ Edit</button>`:''}
       ${canEdit(c)?`<button class="btn btn-outline btn-sm" onclick="event.stopPropagation();deleteCust('${c.id}')">🗑</button>`:`<span style="font-size:11px;color:var(--text3)">👁 View only</span>`}
     </div>
@@ -1927,6 +1959,10 @@ function buildCustDetail(c){
         <div class="text-xs">${c.email||''} ${c.phone?'· '+c.phone:''}</div>
       </div>
       <button class="btn btn-outline btn-sm" onclick="selectedCustId=null;renderCustomers()">✕</button>
+    </div>
+    <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px">
+      ${waBtn(c)} ${emailBtn(c)} ${callBtn(c)}
+      <button class="btn btn-outline btn-sm" onclick="openCustModal('${c.id}')">Edit</button>
     </div>
     <div class="grid-2" style="gap:8px;margin-bottom:12px;font-size:12px">
       ${[['Status',`<span class="badge badge-${(c.leadStatus||'new').toLowerCase()}" data-tip="Lead status: ${c.leadStatus||'New'}">${c.leadStatus||'New'}</span>`],
@@ -4366,6 +4402,13 @@ function toggleAdvFilters(){
   if(p.style.display==='block'&&(!custFilter.advFilters||!custFilter.advFilters.length)) addAdvFilter();
 }
 
+
+// WA helpers
+function waNumber(c){return(c.whatsapp||c.mobile||c.phone||'').replace(/[^0-9+]/g,'');}
+function waLink(c,msg){var n=waNumber(c);if(!n)return null;msg=msg||('Dear '+(c.firstName||'there')+', greetings from Jay Vijay Diamond Co., Ltd. Following up on your enquiry. Let us know if you have questions!');return 'https://wa.me/'+n.replace('+','')+'?text='+encodeURIComponent(msg);}
+function waBtn(c,s){s=s||'';var l=waLink(c);if(!l)return '';return '<a href="'+l+'" target="_blank" rel="noopener" onclick="event.stopPropagation()" style="display:inline-flex;align-items:center;gap:4px;padding:5px 10px;background:#25D366;color:#fff;border-radius:7px;font-size:12px;font-weight:600;text-decoration:none;'+s+'">WhatsApp</a>';}
+function emailBtn(c,s){s=s||'';if(!c.email)return '';return '<a href="mailto:'+c.email+'" onclick="event.stopPropagation()" style="display:inline-flex;align-items:center;gap:4px;padding:5px 10px;background:var(--blue);color:#fff;border-radius:7px;font-size:12px;font-weight:600;text-decoration:none;'+s+'">Email</a>';}
+function callBtn(c,s){s=s||'';var n=c.phone||c.mobile;if(!n)return '';return '<a href="tel:'+n+'" onclick="event.stopPropagation()" style="display:inline-flex;align-items:center;gap:4px;padding:5px 10px;background:var(--green);color:#fff;border-radius:7px;font-size:12px;font-weight:600;text-decoration:none;'+s+'">Call</a>';}
 // ══════════════════════════════════════════════
 // GLOBAL SEARCH
 // ══════════════════════════════════════════════
@@ -4907,7 +4950,7 @@ function renderKYC(){
       <td>${docs.length?docs.map(d=>`<span style="font-size:11px;background:var(--bg2);border:1px solid var(--border);border-radius:5px;padding:2px 7px;margin-right:3px">${d.type}</span>`).join(''):'<span style="color:var(--text3);font-size:12px">None</span>'}</td>
       <td>${c.kycNextDate?`<span style="font-size:12px">${fmtDate(c.kycNextDate)}</span>`:'<span style="color:var(--text3);font-size:12px">Not set</span>'}</td>
       <td><span style="font-weight:700;font-size:12px;color:${kycStatusColor(st)}">${kycStatusLabel(st)}</span></td>
-      <td><button class="btn btn-outline btn-sm" onclick="event.stopPropagation();openKycModal('${c.id}')">Manage</button></td>
+      <td><div style="display:flex;gap:5px;flex-wrap:wrap">${waBtn(c,'padding:3px 8px;font-size:11px')}<button class="btn btn-outline btn-sm" onclick="event.stopPropagation();openKycModal('${c.id}')">Manage</button></div></td>
     </tr>`;
   }).join('');
 
