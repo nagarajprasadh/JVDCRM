@@ -1819,6 +1819,7 @@ function renderCustTableHTML(list){
     <tbody id="cust-table-body">${rows}</tbody>
   </table>
 </div>`;
+  setTimeout(initColDrag,0);
 }
 
 function selectAllVisibleCards(){
@@ -4794,7 +4795,6 @@ function saveVipSettings(){
   t.style.cssText='position:fixed;bottom:24px;right:24px;background:var(--gold);color:#fff;padding:12px 20px;border-radius:10px;font-size:13px;font-weight:600;z-index:9999;box-shadow:0 4px 20px rgba(0,0,0,.2)';
   document.body.appendChild(t);
   setTimeout(()=>t.remove(),3000);
-  if(custViewMode==='table') setTimeout(initColDrag,0);
 }
 
 </script>
