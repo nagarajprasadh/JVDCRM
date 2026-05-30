@@ -325,6 +325,14 @@ th[data-tip]{cursor:pointer}
 .salesperson-card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:18px;transition:all .2s}
 .salesperson-card:hover{border-color:var(--border2);box-shadow:0 4px 16px rgba(0,0,0,.07)}
 .inv-pref-row{display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--border)}
+
+/* ── Draggable column headers ── */
+.cust-table th.draggable-col{cursor:grab;user-select:none;transition:background .15s,opacity .15s}
+.cust-table th.draggable-col:active{cursor:grabbing}
+.cust-table th.col-drag-over{background:rgba(180,138,80,.18)!important;border-left:2px solid var(--gold)!important}
+.cust-table th.col-dragging{opacity:.35}
+.col-drag-hint{font-size:10px;color:var(--text3);margin-left:4px;opacity:.5;letter-spacing:.5px}
+
 /* scrollbar */
 ::-webkit-scrollbar{width:5px;height:5px}
 ::-webkit-scrollbar-track{background:transparent;border-radius:3px}
@@ -1804,7 +1812,20 @@ function renderCustTableHTML(list){
       <th style="width:36px;text-align:center" data-tip="Select all rows">
         <input type="checkbox" class="row-cb" ${allChecked?'checked':''} onchange="toggleAllCusts(this.checked,${JSON.stringify(list.map(c=>c.id)).replace(/"/g,"'")})">
       </th>
-      ${activeCols.map(col=>`<th class="${custTableSort.col===col.key?'sorted':''}" onclick="sortCustTable('${col.key}')" data-tip="${col.tip} -- click to sort">${col.label} <span class="sort-ic ${custTableSort.col===col.key?'on':''}">${custTableSort.col===col.key?(custTableSort.dir==='asc'?'▲':'▼'):'⇅'}</span></th>`).join('')}
+      ${activeCols.map((col,ci)=>`<th
+        class="draggable-col ${custTableSort.col===col.key?'sorted':''}"
+        draggable="true"
+        data-colidx="${ci}"
+        data-colkey="${col.key}"
+        ondragstart="colDragStart(event,${ci})"
+        ondragover="colDragOver(event,${ci})"
+        ondragleave="colDragLeave(event)"
+        ondrop="colDrop(event,${ci})"
+        ondragend="colDragEnd(event)"
+        onclick="sortCustTable('${col.key}')"
+        data-tip="Drag to reorder · Click to sort · ${col.tip}"
+        title="Drag to reorder columns"
+      >${col.label} <span class="sort-ic ${custTableSort.col===col.key?'on':''}">${custTableSort.col===col.key?(custTableSort.dir==='asc'?'▲':'▼'):'⇅'}</span><span class="col-drag-hint">⠿</span></th>`).join('')}
       <th data-tip="Edit or delete this record">Actions</th>
     </tr></thead>
     <tbody>${rows}</tbody>
@@ -2303,7 +2324,7 @@ function saveCust(){
     salutation:g('f-sal'), firstName:fn, lastName:g('f-ln'), nickname:g('f-nick'),
     email:g('f-email'), phone:g('f-phone'), whatsapp:g('f-wa'),
     nationality:g('f-nat'), language:g('f-lang'), dob:g('f-dob'),
-    city:g('f-city'), country:g('f-country'), company:g('f-company'), designation:g('f-desig'),
+    city:g('f-city'), country:g('f-country'), company:g('f-co'), designation:g('f-desig'),
     leadSource:g('f-src'), referredBy:g('f-ref'), assignedTo:g('f-sp'),
     leadStatus:g('f-stat'), pipelineStage:g('f-stage'),
     dealValue:gn('f-deal'), probability:gn('f-prob'),
@@ -2321,7 +2342,7 @@ function saveCust(){
     budgetMin:gn('f-bmin'), budgetMax:gn('f-bmax'),
     currency:g('f-cur'), totalLifetimeValue:gn('f-ltv'),
     paymentPreference:payPref, purchaseUrgency:g('f-urg'),
-    clientBankDetails:'', cryptoCoin:'', cryptoWallet:'',
+    clientBankDetails:g('f-bankdetails'), cryptoCoin:g('f-crypto-coin'), cryptoWallet:g('f-crypto-addr'),
     conflictFreePriority:g('f-cfp'), envConcern:g('f-env'), originPreference:g('f-orig'),
     commPreference:formData.commPreference||[],
     notes:g('f-notes'), tags,
@@ -4090,6 +4111,67 @@ function exportInvCSV(){
   const a=document.createElement('a'); a.href='data:text/csv;charset=utf-8,'+encodeURIComponent(csv); a.download='invoices.csv'; a.click();
 }
 
+
+// ── Column drag-to-reorder ───────────────────────────────────────────────────
+let _colDragSrc = null;
+
+function colDragStart(e, idx){
+  _colDragSrc = idx;
+  e.dataTransfer.effectAllowed = 'move';
+  e.dataTransfer.setData('text/plain', idx);
+  setTimeout(()=>{ const th=document.querySelector(`.draggable-col[data-colidx="${idx}"]`); if(th) th.classList.add('col-dragging'); }, 0);
+}
+
+function colDragOver(e, idx){
+  e.preventDefault();
+  e.dataTransfer.dropEffect = 'move';
+  document.querySelectorAll('.draggable-col').forEach(th=>th.classList.remove('col-drag-over'));
+  const th=document.querySelector(`.draggable-col[data-colidx="${idx}"]`);
+  if(th && idx !== _colDragSrc) th.classList.add('col-drag-over');
+}
+
+function colDragLeave(e){
+  if(e.target && e.target.classList) e.target.classList.remove('col-drag-over');
+}
+
+function colDrop(e, toIdx){
+  e.preventDefault();
+  const fromIdx = _colDragSrc;
+  if(fromIdx === null || fromIdx === toIdx) return;
+  // Reorder custTableCols array
+  const active = ALL_TABLE_COLS.filter(c=>custTableCols.includes(c.key)).map(c=>c.key);
+  const moved  = active.splice(fromIdx, 1)[0];
+  active.splice(toIdx, 0, moved);
+  // Rebuild custTableCols preserving any hidden cols at their positions
+  custTableCols = active;
+  saveCustColOrder();
+  renderCustomers();
+}
+
+function colDragEnd(e){
+  _colDragSrc = null;
+  document.querySelectorAll('.draggable-col').forEach(th=>{
+    th.classList.remove('col-dragging','col-drag-over');
+  });
+}
+
+function saveCustColOrder(){
+  try{ localStorage.setItem('jvd_colorder', JSON.stringify(custTableCols)); }catch(e){}
+}
+
+function loadCustColOrder(){
+  try{
+    const saved = localStorage.getItem('jvd_colorder');
+    if(saved){
+      const arr = JSON.parse(saved);
+      // Only keep keys that exist in ALL_TABLE_COLS
+      const valid = ALL_TABLE_COLS.map(c=>c.key);
+      const filtered = arr.filter(k=>valid.includes(k));
+      if(filtered.length > 0) custTableCols = filtered;
+    }
+  }catch(e){}
+}
+
 // ══════════════════════════════════════════════
 // GLOBAL SEARCH
 // ══════════════════════════════════════════════
@@ -4174,6 +4256,7 @@ setInterval(loadTickerData,5*60*1000);
 
 
 loadDB();
+loadCustColOrder();
 // Recalculate VIP from invoice data; if db is empty just update badges
 if(db.customers && db.customers.length > 0){ recalcAllVip(); } else { updateBadges(); }
 nav('dashboard');
