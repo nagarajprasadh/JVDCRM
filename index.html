@@ -3569,6 +3569,36 @@ function buildMCEditForm(i, f){
         placeholder="Your own notes about this contact…"
         oninput="updateParsedCard(${i},'notes',this.value)">${f.notes||''}</textarea>
     </div>
+
+  ${isAdmin() ? `
+  <div class="card" id="support-tickets-section">
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px">
+      <span style="font-size:22px">🎫</span>
+      <div>
+        <div style="font-size:15px;font-weight:700;color:var(--text)">Support Tickets <span style="font-size:12px;font-weight:400;color:var(--text3)">(Admin only)</span></div>
+        <div style="font-size:12px;color:var(--text3)">Issues reported by users via Help &amp; FAQ → Report a Problem.</div>
+      </div>
+    </div>
+    ${(()=>{
+      const tks = JSON.parse(localStorage.getItem('supportTickets')||'[]');
+      if(!tks.length) return '<div style="font-size:13px;color:var(--text3);padding:12px 0">No support tickets yet.</div>';
+      return tks.slice().reverse().map(function(t){
+        const safe = t.message.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+        const color = t.resolved ? '#22c55e33' : 'var(--border)';
+        const ts = new Date(t.timestamp).toLocaleString();
+        return '<div style="background:var(--bg2);border:1px solid '+color+';border-radius:10px;padding:12px 14px;margin-bottom:10px">'
+          +'<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px;flex-wrap:wrap">'
+          +'<div style="flex:1">'
+          +'<div style="font-size:12px;color:var(--text3);margin-bottom:4px">👤 <b>'+t.user+'</b> &nbsp;·&nbsp; 🕐 '+ts+(t.resolved?' &nbsp;<span style="color:#22c55e;font-weight:700;font-size:11px">✓ Resolved</span>':'')+'</div>'
+          +'<div style="font-size:13px;color:var(--text);line-height:1.6">'+safe+'</div>'
+          +'</div>'
+          +'<div style="display:flex;gap:6px;flex-shrink:0">'
+          +(!t.resolved ? '<button class="btn" onclick="resolveTicket(\''+t.id+'\')" style="background:#0f2a0f;border:1px solid #22c55e;color:#22c55e;font-size:12px;padding:5px 12px">✓ Resolve</button>' : '')
+          +'<button class="btn" onclick="deleteTicket(\''+t.id+'\')" style="background:#2a0f0f;border:1px solid #ef4444;color:#ef4444;font-size:12px;padding:5px 10px">🗑</button>'
+          +'</div></div></div>';
+      }).join('');
+    })()}
+  </div>` : ''}
   </div>`;
 }
 
@@ -4151,392 +4181,260 @@ nav('dashboard');
 // ══════════════════════════════════════════════
 // HELP & FAQ
 // ══════════════════════════════════════════════
+const HELP_TIPS = [
+  '💡 Use the top search bar to instantly find any customer by name, email, phone or company.',
+  '💡 Drag cards between stages on the Sales Pipeline Kanban to update deal progression in one click.',
+  '💡 Export your data regularly from Settings → Data Management to keep a safe JSON backup.',
+  '💡 Business Card scanner supports multi-page PDFs — drop a whole card stack and extract all at once.',
+  '💡 Set VIP thresholds in Settings so tier badges update automatically when payments are recorded.',
+  '💡 Use the "Copy from user" dropdown in Users & Access to clone permission sets across team members.',
+  '💡 Campaign ROI is calculated automatically — track open rates, reply rates and revenue in Reports.',
+  '💡 The gold/platinum price ticker on the Dashboard updates live from public market APIs.',
+  '💡 Invoices support multiple currencies (THB, USD, AED, HKD) — set per invoice at creation time.',
+  '💡 For best OCR results, photograph business cards on a plain background under good lighting.'
+];
+let _helpTipTimer = null;
+
 function renderHelp(){
+  if(_helpTipTimer) clearInterval(_helpTipTimer);
   document.getElementById('content').innerHTML=`
 <div style="max-width:860px;margin:0 auto;padding-bottom:48px">
 
-<!-- ── search ── -->
-<div style="margin-bottom:22px">
-  <input id="help-search" class="search-box" style="width:100%;max-width:420px;font-size:14px"
-    placeholder="🔍 Search the manual…" oninput="helpSearch(this.value)">
+<!-- Tip of the Day banner -->
+<div id="tip-banner" style="background:linear-gradient(135deg,#2a1a0a 0%,#1a0a2a 100%);border:1px solid var(--gold);border-radius:14px;padding:16px 24px;margin-bottom:22px;display:flex;align-items:center;gap:14px;position:relative;overflow:hidden">
+  <div style="position:absolute;right:20px;top:50%;transform:translateY(-50%);font-size:56px;opacity:.1;pointer-events:none">💎</div>
+  <div style="font-size:26px;flex-shrink:0">✨</div>
+  <div style="flex:1">
+    <div style="font-size:11px;font-weight:700;color:var(--gold);text-transform:uppercase;letter-spacing:1px;margin-bottom:4px">Tip of the Day</div>
+    <div id="tip-text" style="font-size:13px;color:var(--text2);line-height:1.6;transition:opacity .4s"></div>
+  </div>
+  <div style="display:flex;gap:6px;flex-shrink:0">
+    <button onclick="prevTip()" style="background:rgba(180,138,80,.15);border:1px solid var(--gold);border-radius:6px;color:var(--gold);padding:4px 10px;cursor:pointer;font-size:14px">&#8249;</button>
+    <button onclick="nextTip()" style="background:rgba(180,138,80,.15);border:1px solid var(--gold);border-radius:6px;color:var(--gold);padding:4px 10px;cursor:pointer;font-size:14px">&#8250;</button>
+  </div>
 </div>
 
-<!-- ── hero ── -->
+<!-- search + contact admin -->
+<div style="margin-bottom:22px;display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+  <input id="help-search" class="search-box" style="flex:1;min-width:200px;max-width:420px;font-size:14px"
+    placeholder="🔍 Search FAQ…" oninput="helpSearch(this.value)">
+  <a href="mailto:admin@saraff.co.th?subject=CRM%20Support%20Request" style="display:inline-flex;align-items:center;gap:6px;background:var(--gold);color:#1a1a1a;font-weight:700;font-size:13px;padding:9px 18px;border-radius:8px;text-decoration:none">
+    📧 Contact Admin
+  </a>
+</div>
+
+<!-- hero -->
 <div style="background:linear-gradient(120deg,var(--sidebar-bg) 0%,#2a1a4a 100%);border-radius:16px;padding:28px 32px;margin-bottom:28px;color:#fff;position:relative;overflow:hidden">
   <div style="position:absolute;right:24px;top:50%;transform:translateY(-50%);font-size:72px;opacity:.13;line-height:1">💎</div>
-  <div style="font-size:22px;font-weight:700;color:var(--gold);margin-bottom:6px">Diamond CRM -- User Manual</div>
+  <div style="font-size:22px;font-weight:700;color:var(--gold);margin-bottom:6px">Diamond CRM — Support &amp; FAQ</div>
   <div style="font-size:13px;opacity:.8;margin-bottom:4px">Version 3.0 &nbsp;·&nbsp; Jay Vijay Diamond Co., Ltd. / Saraff Global &nbsp;·&nbsp; Bangkok</div>
-  <div style="font-size:12px;opacity:.6">Confidential -- Internal Use Only</div>
+  <div style="font-size:12px;opacity:.6">Confidential — Internal Use Only</div>
 </div>
 
-<!-- ── quick-nav pills ── -->
+<!-- quick-nav pills -->
 <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:28px" id="help-toc">
   ${[['#h-start','Getting Started'],['#h-login','Login'],['#h-nav','Navigation'],['#h-customers','Customers'],
-     ['#h-pipeline','Sales Pipeline'],['#h-import','Excel Import'],['#h-users','Users & Access'],
-     ['#h-roles','Role Control'],['#h-other','Other Sections'],['#h-bizcard','Business Cards'],
-     ['#h-data','Data & Backup'],['#h-creds','Credentials'],['#h-faq','FAQ']]
+     ['#h-pipeline','Sales Pipeline'],['#h-users','Users & Access'],['#h-rbac','RBAC Permissions'],
+     ['#h-other','Other Sections'],['#h-bizcard','Business Cards'],
+     ['#h-data','Data & Backup'],['#h-faq','FAQ'],['#h-report','Report a Problem']]
     .map(([href,label])=>`<a href="${href}" style="padding:5px 14px;border-radius:20px;background:var(--card);border:1px solid var(--border);font-size:12px;color:var(--text);text-decoration:none;transition:all .15s" onmouseover="this.style.borderColor='var(--gold)';this.style.color='var(--gold)'" onmouseout="this.style.borderColor='var(--border)';this.style.color='var(--text)'">${label}</a>`)
     .join('')}
 </div>
 
-<!-- ═══════════════════ SECTION: Getting Started ═══════════════════ -->
+<!-- Getting Started -->
 <div class="help-section" id="h-start">
   <div class="help-h1">1. Getting Started</div>
-  <p class="help-p">The Diamond CRM is a self-contained, browser-based tool that runs entirely from a single HTML file -- <b>no installation, no internet connection, no server required</b>. All data is stored locally in your browser.</p>
+  <p class="help-p">The Diamond CRM is a self-contained, browser-based tool — <b>no installation, no internet connection, no server required</b>. All data is stored locally in your browser.</p>
   <div class="help-steps">
-    <div class="help-step"><span class="help-step-n">1</span>Locate <b>diamond_crm.html</b> on your computer.</div>
-    <div class="help-step"><span class="help-step-n">2</span>Double-click it, or right-click → <b>Open with → Google Chrome</b> (recommended).</div>
-    <div class="help-step"><span class="help-step-n">3</span>The login screen appears. Enter your username and password, then click <b>Sign In</b>.</div>
+    <div class="help-step"><span class="help-step-n">1</span>Open the CRM at <b>nagarajprasadh.github.io/JVDCRM</b> or double-click the local HTML file.</div>
+    <div class="help-step"><span class="help-step-n">2</span>The login screen appears. Enter your username and password.</div>
+    <div class="help-step"><span class="help-step-n">3</span>Click <b>Sign In</b>. You'll land on the Dashboard.</div>
   </div>
-  <div class="help-note">💡 Always keep the file in a stable folder. Avoid storing it in Downloads -- that folder may be auto-cleared.</div>
+  <div class="help-note">💡 Use Google Chrome for best compatibility. Avoid storing the file in Downloads — that folder may be auto-cleared.</div>
 </div>
 
-<!-- ═══════════════════ SECTION: Login ═══════════════════ -->
+<!-- Login -->
 <div class="help-section" id="h-login">
-  <div class="help-h1">2. Login &amp; Authentication <span class="help-new">NEW in v3</span></div>
-  <p class="help-p">Every user has their own account. You must sign in before accessing any part of the CRM. If your credentials are wrong, an error appears in the login panel -- the page does not reload.</p>
-
-  <div class="help-h2">Session persistence</div>
-  <p class="help-p">Your session is remembered within the same browser tab. If you reload the page it restores automatically. To fully sign out, click <b>Sign Out</b> in the top-right corner.</p>
-
+  <div class="help-h1">2. Login &amp; Authentication</div>
+  <p class="help-p">Every user has their own account. If your credentials are wrong, an error appears on the login panel — the page does not reload.</p>
   <div class="help-h2">Default credentials</div>
-  <p class="help-p" style="color:#e76f51;font-weight:600">⚠️ Change all passwords after first login. Contact your admin to reset a forgotten password.</p>
+  <p class="help-p" style="color:#e76f51;font-weight:600">⚠️ Change all passwords after first login.</p>
   <table class="help-table">
-    <thead><tr><th>Username</th><th>Default Password</th><th>Role</th><th>Linked Salesperson</th></tr></thead>
+    <thead><tr><th>Username</th><th>Default Password</th><th>Role</th></tr></thead>
     <tbody>
-      <tr><td><code>admin</code></td><td><code>admin1234</code></td><td><span class="role-badge role-admin">Admin</span></td><td>-- (full access)</td></tr>
-      <tr><td><code>arjun</code></td><td><code>arjun1234</code></td><td><span class="role-badge role-user">User</span></td><td>Arjun Sharma (SP-001)</td></tr>
-      <tr><td><code>priya</code></td><td><code>priya1234</code></td><td><span class="role-badge role-user">User</span></td><td>Priya Mehta (SP-002)</td></tr>
-      <tr><td><code>kanokwan</code></td><td><code>kanok1234</code></td><td><span class="role-badge role-user">User</span></td><td>Kanokwan T. (SP-003)</td></tr>
-      <tr><td><code>david</code></td><td><code>david1234</code></td><td><span class="role-badge role-user">User</span></td><td>David Chen (SP-004)</td></tr>
-      <tr><td><code>nadia</code></td><td><code>nadia1234</code></td><td><span class="role-badge role-user">User</span></td><td>Nadia Al-Rashid (SP-005)</td></tr>
+      <tr><td><code>admin</code></td><td><code>admin1234</code></td><td><span class="role-badge role-admin">Admin</span></td></tr>
+      <tr><td><code>arjun</code></td><td><code>arjun1234</code></td><td><span class="role-badge role-user">User</span></td></tr>
+      <tr><td><code>priya</code></td><td><code>priya1234</code></td><td><span class="role-badge role-user">User</span></td></tr>
+      <tr><td><code>kanokwan</code></td><td><code>kanok1234</code></td><td><span class="role-badge role-user">User</span></td></tr>
+      <tr><td><code>david</code></td><td><code>david1234</code></td><td><span class="role-badge role-user">User</span></td></tr>
+      <tr><td><code>nadia</code></td><td><code>nadia1234</code></td><td><span class="role-badge role-user">User</span></td></tr>
     </tbody>
   </table>
 </div>
 
-<!-- ═══════════════════ SECTION: Navigation ═══════════════════ -->
+<!-- Navigation -->
 <div class="help-section" id="h-nav">
   <div class="help-h1">3. Navigation</div>
-  <div class="help-h2">Desktop sidebar</div>
-  <p class="help-p">A fixed sidebar on the left contains links to every section. Click any item to navigate.</p>
-  <table class="help-table">
-    <thead><tr><th>Section</th><th>Purpose</th></tr></thead>
-    <tbody>
-      <tr><td>📊 Dashboard</td><td>KPI cards, pipeline summary, top salespeople, recent activity</td></tr>
-      <tr><td>👥 Customers &amp; Leads</td><td>Full customer database -- add, edit, search, filter, import Excel</td></tr>
-      <tr><td>🚀 Sales Pipeline</td><td>7-stage Kanban board for deal progression</td></tr>
-      <tr><td>💎 Inventory Interest</td><td>Diamond styles/categories customers have enquired about</td></tr>
-      <tr><td>🤝 Salespeople</td><td>Roster with auto-calculated performance metrics</td></tr>
-      <tr><td>📈 Reports</td><td>Revenue charts, conversion funnel, campaign ROI</td></tr>
-      <tr><td>📣 Campaigns</td><td>Marketing campaign management and customer linkage</td></tr>
-      <tr><td>🪪 Business Cards</td><td>OCR card scanner -- drop a photo or multi-page PDF; contacts extracted automatically and saved as leads</td></tr>
-      <tr><td>🧾 Invoices &amp; Payments</td><td>Invoice creation, payment recording, balance tracking</td></tr>
-      <tr><td>🔐 Users &amp; Access</td><td><b>Admin only</b> -- manage user accounts &amp; roles</td></tr>
-      <tr><td>❓ Help &amp; FAQ</td><td>This screen -- full user manual</td></tr>
-      <tr><td>⚙️ Settings</td><td>Company details, VIP thresholds, export/import database</td></tr>
-    </tbody>
-  </table>
-
-  <div class="help-h2">Mobile navigation <span class="help-new">NEW in v3</span></div>
-  <p class="help-p">On screens ≤ 768px the sidebar hides automatically. Tap the <b>☰</b> hamburger button (top-left) to slide it in. Tap the dark backdrop or ☰ again to close it. The sidebar also closes when you tap a section link.</p>
-  <div class="help-note">💡 On phones the top search bar is hidden. Use the search &amp; filter controls inside each section instead.</div>
+  <p class="help-p">The fixed left sidebar contains links to every module. Modules hidden from your view have been restricted by your admin via the RBAC permission matrix.</p>
+  <div class="help-note">💡 On mobile, tap the ☰ hamburger button (top-left) to open the sidebar. Tap a section link or the dark backdrop to close it.</div>
 </div>
 
-<!-- ═══════════════════ SECTION: Customers ═══════════════════ -->
+<!-- Customers -->
 <div class="help-section" id="h-customers">
   <div class="help-h1">4. Customers &amp; Leads</div>
-  <div class="help-h2">Viewing &amp; filtering</div>
-  <p class="help-p">Toggle between <b>Card View</b> (default) and <b>List View</b> using the icons top-right of the toolbar. Use the Search box and the Status / Stage / VIP / Salesperson dropdowns to filter records.</p>
-
-  <div class="help-h2">Adding a customer</div>
-  <p class="help-p">Click <b>+ Add Customer</b> (visible in the top bar on every screen). Fill in personal details, lead status, pipeline stage, assigned salesperson, budget, diamond preferences, and tags. Click <b>Save</b>.</p>
-
-  <div class="help-h2">Editing &amp; deleting</div>
-  <p class="help-p">Click any card to open the detail panel. Edit / Delete buttons appear on cards -- availability depends on your role (see Role-Based Access below).</p>
-
-  <div class="help-h2">Customer &amp; Lead photos <span class="help-new">NEW</span></div>
-  <p class="help-p">Each customer or lead card can have a profile photo. To add one:</p>
-  <div class="help-steps">
-    <div class="help-step"><span class="help-step-n">1</span>Click <b>+ Add Customer</b> or <b>✏️ Edit</b> on an existing record.</div>
-    <div class="help-step"><span class="help-step-n">2</span>In the form, click the photo area (or the camera icon) and select a JPG/PNG image from your device. Maximum size is <b>3 MB</b>.</div>
-    <div class="help-step"><span class="help-step-n">3</span>A preview appears immediately. Click <b>✕ Remove</b> to clear it. Save the record to store the photo.</div>
+  <p class="help-p">Toggle between <b>Card View</b> and <b>List View</b> using the icons in the toolbar. Filter by Status, Stage, VIP level and Assigned Salesperson. Click <b>+ Add Customer</b> to create a new record — minimum fields are first name plus either email or phone.</p>
+  <div id="h-pipeline" style="margin-top:12px">
+    <div class="help-h2">Sales Pipeline</div>
+    <p class="help-p">Drag customer cards across the 7-stage Kanban (Awareness → Interest → Evaluation → Proposal → Negotiation → Won → Lost). Stage changes are saved immediately.</p>
   </div>
-  <p class="help-p">Photos are stored as part of the record in localStorage and are included in all data backups. If no photo is set, the card displays the contact's initial letter as before.</p>
-  <div class="help-note">💡 For best results use square portrait images under 1 MB. Very large photos will still work but increase the localStorage footprint.</div>
 </div>
 
-<!-- ═══════════════════ SECTION: Sales Pipeline ═══════════════════ -->
-<div class="help-section" id="h-pipeline">
-  <div class="help-h1">5. Sales Pipeline <span class="help-new">NEW in v3</span></div>
-  <p class="help-p">A horizontal Kanban board divided into <b>7 stage columns</b>. Customer cards appear in the column matching their current pipeline stage. A summary strip at the top shows total active deals and combined deal value.</p>
-  <table class="help-table">
-    <thead><tr><th>Stage</th><th>Meaning</th></tr></thead>
-    <tbody>
-      <tr><td><b>Awareness</b></td><td>Customer knows about the business; no active engagement yet</td></tr>
-      <tr><td><b>Interest</b></td><td>Initial contact made; customer has expressed interest</td></tr>
-      <tr><td><b>Evaluation</b></td><td>Customer comparing options or requesting information</td></tr>
-      <tr><td><b>Proposal</b></td><td>Formal quote or proposal has been sent</td></tr>
-      <tr><td><b>Negotiation</b></td><td>Active price / terms negotiation underway</td></tr>
-      <tr><td><b>Won</b></td><td>Deal closed successfully</td></tr>
-      <tr><td><b>Lost</b></td><td>Deal not proceeding</td></tr>
-    </tbody>
-  </table>
-  <p class="help-p">Click any pipeline card to jump to that customer's full detail in Customers &amp; Leads. To move a customer to a different stage, edit their record and change the <b>Pipeline Stage</b> field.</p>
-</div>
-
-<!-- ═══════════════════ SECTION: Excel Import ═══════════════════ -->
-<div class="help-section" id="h-import">
-  <div class="help-h1">6. Excel / CSV Import <span class="help-new">NEW in v3</span></div>
-  <p class="help-p">Bulk-import customers from an offline spreadsheet -- no manual data entry needed.</p>
-  <div class="help-steps">
-    <div class="help-step"><span class="help-step-n">1</span>Go to <b>Customers &amp; Leads</b> and click <b>📥 Import Excel</b> in the toolbar.</div>
-    <div class="help-step"><span class="help-step-n">2</span>Optionally click <b>Download Template</b> to get a pre-formatted .xlsx file with the correct headers.</div>
-    <div class="help-step"><span class="help-step-n">3</span>Fill in your data and save the file (or use your own Excel/CSV).</div>
-    <div class="help-step"><span class="help-step-n">4</span>Click <b>Choose File</b>, select your file, and review the preview table.</div>
-    <div class="help-step"><span class="help-step-n">5</span>Click <b>Confirm Import</b>. New records are added; duplicates are automatically skipped.</div>
-  </div>
-
-  <div class="help-h2">Duplicate detection</div>
-  <p class="help-p">Each incoming record is compared against existing customers using <b>email address</b> and <b>phone number</b>. Matches are flagged with a <span style="background:#fff3cd;color:#856404;padding:1px 6px;border-radius:4px;font-size:12px">Duplicate</span> label in the preview. Only genuinely new records are imported.</p>
-
-  <div class="help-h2">Recognised column headers</div>
-  <table class="help-table">
-    <thead><tr><th>CRM Field</th><th>Accepted column header names</th></tr></thead>
-    <tbody>
-      <tr><td>First Name</td><td>First Name, FirstName, Given Name, first_name</td></tr>
-      <tr><td>Last Name</td><td>Last Name, LastName, Surname, Family Name</td></tr>
-      <tr><td>Email</td><td>Email, Email Address, e-mail</td></tr>
-      <tr><td>Phone</td><td>Phone, Mobile, Tel, Cell</td></tr>
-      <tr><td>Lead Status</td><td>Status, Lead Status, Stage Status</td></tr>
-      <tr><td>Pipeline Stage</td><td>Pipeline, Pipeline Stage, Deal Stage, Stage</td></tr>
-      <tr><td>Assigned To</td><td>Assigned To, Salesperson, Owner, Rep</td></tr>
-      <tr><td>Budget Min</td><td>Budget, Budget Min, Min Budget</td></tr>
-      <tr><td>Budget Max</td><td>Budget Max, Max Budget</td></tr>
-      <tr><td>Deal Value</td><td>Deal Value, Value, Amount</td></tr>
-      <tr><td>Notes</td><td>Notes, Comments, Remarks</td></tr>
-      <tr><td>Tags</td><td>Tags, Labels, Categories</td></tr>
-    </tbody>
-  </table>
-  <div class="help-note">💡 Columns whose headers don't match any recognised variant are silently skipped.</div>
-</div>
-
-<!-- ═══════════════════ SECTION: Users & Access ═══════════════════ -->
+<!-- Users & Access / RBAC -->
 <div class="help-section" id="h-users">
-  <div class="help-h1">7. Users &amp; Access -- Admin Portal <span class="help-new">NEW in v3</span></div>
-  <p class="help-p">Visible in the sidebar <b>only when logged in as Admin</b>. Manage all CRM user accounts from this screen.</p>
-  <table class="help-table">
-    <thead><tr><th>Column</th><th>Description</th></tr></thead>
-    <tbody>
-      <tr><td>Username</td><td>The login name used for authentication</td></tr>
-      <tr><td>Display Name</td><td>Name shown in the top-right badge and activity logs</td></tr>
-      <tr><td>Role</td><td>Admin or User</td></tr>
-      <tr><td>Linked Salesperson</td><td>Determines which customers this user can edit</td></tr>
-      <tr><td>Actions</td><td>✏️ Edit &nbsp;&nbsp; 🗑 Delete</td></tr>
-    </tbody>
-  </table>
-
-  <div class="help-h2">Adding a user</div>
-  <p class="help-p">Click <b>+ Add User</b>. Fill in username (must be unique), display name, password, role, and linked salesperson. Click Save. The new user can log in immediately.</p>
-
-  <div class="help-h2">Editing a user</div>
-  <p class="help-p">Click ✏️ on any row. Leave the password field blank to keep the existing password unchanged.</p>
-
-  <div class="help-h2">Deleting a user</div>
-  <p class="help-p">Click 🗑 and confirm. The login account is removed; all customer records remain intact.</p>
-  <div class="help-note">⚠️ You cannot delete or demote your own account while logged in. Always keep at least one Admin account.</div>
+  <div class="help-h1">5. Users &amp; Access</div>
+  <p class="help-p">Admin accounts can create, edit and deactivate user accounts. Go to <b>🔐 Users &amp; Access</b> in the sidebar. Each user card shows their role, linked salesperson and coloured module permission chips.</p>
 </div>
 
-<!-- ═══════════════════ SECTION: Role-Based Access ═══════════════════ -->
-<div class="help-section" id="h-roles">
-  <div class="help-h1">8. Role-Based Access Control <span class="help-new">NEW in v3</span></div>
+<div class="help-section" id="h-rbac">
+  <div class="help-h1">6. RBAC Permission Matrix <span class="help-new">NEW in v3</span></div>
+  <p class="help-p">The Role-Based Access Control matrix lets admins set exactly what each user can see and do in every module. Click <b>✏️ Edit</b> on any user card, then scroll to <b>Module Permissions</b>.</p>
+  <div class="help-h2">Permission levels</div>
   <table class="help-table">
-    <thead><tr><th>Permission</th><th>Admin</th><th>Standard User</th></tr></thead>
+    <thead><tr><th>Level</th><th>What it allows</th></tr></thead>
     <tbody>
-      <tr><td>View all customers &amp; leads</td><td>✅</td><td>✅</td></tr>
-      <tr><td>View full Sales Pipeline board</td><td>✅</td><td>✅</td></tr>
-      <tr><td>Edit / delete own assigned customers</td><td>✅</td><td>✅</td></tr>
-      <tr><td>Edit / delete other salespeople's customers</td><td>✅</td><td>❌</td></tr>
-      <tr><td>Add new customers</td><td>✅</td><td>✅</td></tr>
-      <tr><td>Import Excel / CSV</td><td>✅</td><td>✅</td></tr>
-      <tr><td>Users &amp; Access section</td><td>✅</td><td>❌ (hidden)</td></tr>
-      <tr><td>View Reports, Campaigns, Salespeople</td><td>✅</td><td>✅</td></tr>
-      <tr><td>Settings / export &amp; import database</td><td>✅</td><td>✅</td></tr>
+      <tr><td><b style="color:#888">None</b></td><td>Module is hidden from sidebar — user cannot navigate to it.</td></tr>
+      <tr><td><b style="color:#3b82f6">View</b></td><td>User can open and read the module but cannot add, edit or delete.</td></tr>
+      <tr><td><b style="color:#f59e0b">Edit</b></td><td>User can add and edit records but cannot delete.</td></tr>
+      <tr><td><b style="color:#22c55e">Full</b></td><td>Full control including delete and admin-level actions in that module.</td></tr>
     </tbody>
   </table>
-  <p class="help-p" style="margin-top:12px">When a standard user views a customer assigned to a different salesperson, the Edit and Delete buttons are replaced with a <b>👁 View only</b> label.</p>
-  <div class="help-note">💡 A customer is "owned" by a user if the <b>Assigned To</b> field matches the salesperson linked to that user's account.</div>
+  <div class="help-h2">Shortcuts</div>
+  <p class="help-p"><b>Copy from user:</b> the dropdown at the top of the permissions grid copies another user's exact permission set as a starting point. <b>Reset to Default:</b> restores the standard user permission set.</p>
+  <div class="help-note">💡 Admin accounts always have full access to everything — the RBAC matrix only applies to standard User accounts.</div>
 </div>
 
-<!-- ═══════════════════ SECTION: Other Sections ═══════════════════ -->
+<!-- Other Sections -->
 <div class="help-section" id="h-other">
-  <div class="help-h1">9. Other Sections</div>
-  <div class="help-h2">💎 Inventory Interest</div>
-  <p class="help-p">Track which diamond categories, shapes, and quality tiers customers have enquired about. Aggregated data shows which product types are most in demand.</p>
-  <div class="help-h2">🤝 Salespeople</div>
-  <p class="help-p">Lists all sales staff with IDs, contact details, and auto-calculated performance metrics (customers managed, won deals, total deal value). Only admins can add or remove salespeople.</p>
-  <div class="help-h2">📈 Reports</div>
-  <p class="help-p">Charts and tables: deal value by salesperson, customer conversion funnel, status distribution, campaign ROI. Charts can be printed via File → Print.</p>
-  <div class="help-h2">📣 Campaigns</div>
-  <p class="help-p">Create campaigns (Email, WhatsApp, Event, etc.), set budgets and dates, link customers. View engagement metrics and estimated ROI.</p>
-  <div class="help-h2">🪪 Business Cards</div>
-  <p class="help-p">OCR-powered contact scanner. Drop any business card photo or multi-page PDF and the CRM automatically reads the text and fills in contact fields. See the dedicated section below for full details.</p>
-  <div class="help-h2">🧾 Invoices &amp; Payments</div>
-  <p class="help-p">Create invoices linked to customer records. Track Paid / Pending / Overdue status and view a running total of outstanding amounts.</p>
-  <div class="help-h2">⚙️ Settings</div>
-  <p class="help-p">Configure company details used on business cards and invoices, set VIP deal value thresholds (Bronze / Silver / Gold / Platinum), export the full database as a JSON backup, or import a previous backup.</p>
+  <div class="help-h1">7. Other Sections</div>
+  <div class="help-h2">Campaigns</div>
+  <p class="help-p">Create campaigns (WhatsApp, Email, In-Person Event), set budget, date range and target audience. Track sent/open/reply counts. Campaign ROI is auto-included in Reports.</p>
+  <div class="help-h2">Invoices &amp; Payments</div>
+  <p class="help-p">Generate Invoices, Proforma Invoices and Quotes. Add line items with per-item discounts, document-level discount % and VAT. Record multiple partial payments — balance and status update automatically.</p>
+  <div class="help-h2">Reports</div>
+  <p class="help-p">Pre-built charts: Revenue over time, Pipeline funnel, Top salespeople, Campaign ROI, VIP distribution. Cross-sell suggestions appear based on purchase history patterns. Use the date filter to change the reporting period.</p>
 </div>
 
-<!-- ═══════════════════ SECTION: Business Card Scanner ═══════════════════ -->
+<!-- Business Cards -->
 <div class="help-section" id="h-bizcard">
-  <div class="help-h1">10. Business Card Scanner <span class="help-new">NEW</span></div>
-  <p class="help-p">The Business Cards section uses on-device OCR (Tesseract.js) to read physical business cards from photos or PDFs -- no internet connection required. Extracted contacts can be saved to the card library or converted directly to Leads.</p>
-
-  <div class="help-h2">Uploading a card</div>
-  <div class="help-steps">
-    <div class="help-step"><span class="help-step-n">1</span>Navigate to <b>🪪 Business Cards</b> in the sidebar.</div>
-    <div class="help-step"><span class="help-step-n">2</span>Drag a file onto the drop zone, or click the zone to browse. Accepted formats: <b>JPG, PNG, PDF</b>.</div>
-    <div class="help-step"><span class="help-step-n">3</span>OCR runs automatically. A progress bar shows the status. When complete, extracted cards appear in the gallery below.</div>
-    <div class="help-step"><span class="help-step-n">4</span>Review and correct any fields in the edit form, then click <b>💾 Save Selected</b> or <b>➕ Convert Selected to Leads</b>.</div>
-  </div>
-
-  <div class="help-h2">Multiple cards in one photo <span class="help-new">NEW</span></div>
-  <p class="help-p">If you photograph several cards lying on a table, the CRM automatically detects how many cards are present (by counting email addresses found in the OCR text) and splits the image into equal horizontal strips -- each strip is OCR'd separately as its own card.</p>
-  <p class="help-p">After extraction a <b>re-split bar</b> appears below "Extracted Cards":</p>
-  <div style="background:var(--hover);border:1px dashed var(--border);border-radius:8px;padding:10px 14px;font-size:12px;color:var(--text2);margin:8px 0">
-    📷 Photo with multiple cards? &nbsp; Split into: &nbsp; <b>1 · 2 · 3 · 4 · 5</b> cards
-  </div>
-  <p class="help-p">The currently active count is highlighted in gold. Tap any number to re-split the image without re-uploading. Use this if auto-detection got the count wrong (e.g. a card had no email address).</p>
-  <div class="help-note">💡 For best results, arrange cards in a single vertical column when photographing. Lay them flat, ensure good lighting, and avoid overlapping edges.</div>
-
-  <div class="help-h2">Multi-page PDF <span class="help-new">NEW</span></div>
-  <p class="help-p">If each card has been scanned as a separate page in one PDF, upload the PDF and the CRM processes <b>every page independently</b> -- one card per page. A single shared OCR engine is used for all pages, so even 10+ page PDFs complete reliably without errors.</p>
-
-  <div class="help-h2">Handwritten notes capture <span class="help-new">NEW</span></div>
-  <p class="help-p">OCR often picks up handwritten text on cards (e.g. a mobile number jotted in pen). Any text that doesn't match a known field pattern -- name, company, email, phone -- is automatically placed in the <b>✍️ Handwritten Notes</b> field for that card. You can freely edit this before saving.</p>
-  <p class="help-p">When saved, handwritten notes are combined with any internal notes and stored on the contact record. They also appear on the saved card tile in the right panel.</p>
-
-  <div class="help-h2">Edit form fields</div>
-  <table class="help-table">
-    <thead><tr><th>Field</th><th>Auto-filled from OCR?</th><th>Notes</th></tr></thead>
-    <tbody>
-      <tr><td>Full Name</td><td>✅ Yes</td><td>First capitalised line that isn't a known company/title pattern</td></tr>
-      <tr><td>Company</td><td>✅ Yes</td><td>Matched against "PCL", "Co.", "Ltd", "Bank" and similar keywords</td></tr>
-      <tr><td>Title</td><td>✅ Yes</td><td>VP, President, Manager, Director, Head of… etc.</td></tr>
-      <tr><td>Email</td><td>✅ Yes</td><td>Standard email pattern</td></tr>
-      <tr><td>Phone / Mobile / Fax</td><td>✅ Yes</td><td>Labelled lines with T / M / F prefixes or +66 / 66x patterns</td></tr>
-      <tr><td>Website</td><td>✅ Yes</td><td>Lines starting with www. or http</td></tr>
-      <tr><td>Line / WeChat</td><td>✅ Yes</td><td>Lines containing "line:" or "wechat:"</td></tr>
-      <tr><td>Address</td><td>✅ Yes</td><td>Lines with road/floor/building/Bangkok keywords</td></tr>
-      <tr><td>✍️ Handwritten Notes</td><td>✅ Auto-detected</td><td>Residual unmatched OCR text -- edit freely</td></tr>
-      <tr><td>Internal Notes</td><td>❌ Manual</td><td>Your own private notes about this contact</td></tr>
-    </tbody>
-  </table>
-
-  <div class="help-h2">Saving &amp; converting</div>
-  <p class="help-p">Use the checkboxes on each card to select which ones to action. Then choose:</p>
-  <table class="help-table">
-    <thead><tr><th>Button</th><th>What it does</th></tr></thead>
-    <tbody>
-      <tr><td>💾 Save Selected</td><td>Saves cards to the right-hand Saved Cards list for future reference</td></tr>
-      <tr><td>➕ Convert Selected to Leads</td><td>Creates a new Lead in Customers &amp; Leads for each selected card, pre-filled with all extracted fields</td></tr>
-    </tbody>
-  </table>
-  <div class="help-note">💡 OCR accuracy depends on photo quality. Blurry images, poor lighting, or very small fonts will reduce accuracy. Always review the extracted fields before saving -- the edit form lets you fix anything.</div>
+  <div class="help-h1">8. Business Cards &amp; OCR</div>
+  <p class="help-p">Drop a JPG, PNG or multi-page PDF onto the upload area. The OCR engine extracts name, company, title, email, phone, website and address. All fields are editable before saving. Each page of a PDF becomes one extracted contact.</p>
 </div>
 
-<!-- ═══════════════════ SECTION: Data & Backup ═══════════════════ -->
+<!-- Data & Backup -->
 <div class="help-section" id="h-data">
-  <div class="help-h1">11. Data Management &amp; Backup</div>
-  <div class="help-h2">How data is stored</div>
-  <p class="help-p">All CRM data is stored in your browser's <b>localStorage</b> under the key <code>diamondCRM_v2</code>. It persists until the browser cache is cleared. Session info is in <code>sessionStorage</code> and clears when the tab is closed.</p>
-  <div class="help-h2">Exporting a backup</div>
-  <p class="help-p">Settings → <b>Export Data</b> downloads a complete JSON snapshot of all records and user accounts. Save it somewhere safe.</p>
-  <div class="help-h2">Restoring from backup</div>
-  <p class="help-p">Settings → <b>Import Data</b>, then select a previously exported JSON file. <b>This overwrites the current database -- it cannot be undone.</b></p>
-  <div class="help-note">⚠️ Back up regularly (at least weekly). If a team member clears their browser data, a recent export is the only way to recover.</div>
+  <div class="help-h1">9. Data &amp; Backup</div>
+  <p class="help-p">All data is stored in <b>localStorage</b> (key: <code>diamondCRM_v2</code>). Export regularly via <b>Settings → Export Data</b>. Restore from a JSON backup via <b>Settings → Import Data</b>. The GitHub-hosted code is always safe — only your local browser data is at risk if browser storage is cleared.</p>
+  <div class="help-note">⚠️ Clearing browser data (cookies/cache) erases all CRM data. Always export before clearing. Private/Incognito mode clears localStorage when the window closes — avoid it for CRM use.</div>
 </div>
 
-<!-- ═══════════════════ SECTION: Quick Credentials ═══════════════════ -->
-<div class="help-section" id="h-creds">
-  <div class="help-h1">12. Quick Credentials Reference</div>
-  <table class="help-table">
-    <thead><tr><th>Username</th><th>Default Password</th><th>Role</th><th>Linked Salesperson</th></tr></thead>
-    <tbody>
-      <tr style="background:#fff9e6"><td><code>admin</code></td><td><code>admin1234</code></td><td><span class="role-badge role-admin">Admin</span></td><td>Full access -- all customers</td></tr>
-      <tr><td><code>arjun</code></td><td><code>arjun1234</code></td><td><span class="role-badge role-user">User</span></td><td>Arjun Sharma (SP-001)</td></tr>
-      <tr><td><code>priya</code></td><td><code>priya1234</code></td><td><span class="role-badge role-user">User</span></td><td>Priya Mehta (SP-002)</td></tr>
-      <tr><td><code>kanokwan</code></td><td><code>kanok1234</code></td><td><span class="role-badge role-user">User</span></td><td>Kanokwan T. (SP-003)</td></tr>
-      <tr><td><code>david</code></td><td><code>david1234</code></td><td><span class="role-badge role-user">User</span></td><td>David Chen (SP-004)</td></tr>
-      <tr><td><code>nadia</code></td><td><code>nadia1234</code></td><td><span class="role-badge role-user">User</span></td><td>Nadia Al-Rashid (SP-005)</td></tr>
-    </tbody>
-  </table>
-  <p class="help-p" style="color:#e76f51;font-weight:600;margin-top:12px">⚠️ Passwords are one-way hashed -- they cannot be recovered. Ask the admin to set a new password via Users &amp; Access if forgotten.</p>
-</div>
-
-<!-- ═══════════════════ SECTION: FAQ ═══════════════════ -->
+<!-- FAQ -->
 <div class="help-section" id="h-faq">
-  <div class="help-h1">13. Frequently Asked Questions</div>
+  <div class="help-h1">10. Frequently Asked Questions</div>
 
-  <div class="faq-item">
-    <div class="faq-q" onclick="toggleFaq(this)">▶ I cleared my browser data -- is the CRM data gone?</div>
-    <div class="faq-a">Yes -- all data is stored in localStorage, which is cleared with browser data. This is why regular exports from Settings → Export Data are essential. Restore from your latest JSON backup via Settings → Import Data.</div>
-  </div>
   <div class="faq-item">
     <div class="faq-q" onclick="toggleFaq(this)">▶ I forgot my password. How do I reset it?</div>
-    <div class="faq-a">Ask the admin to log in, go to Users &amp; Access, click Edit on your account, and set a new password. If the admin account is also locked out, open the file in a text editor, find the user in the <code>diamondCRM_v2</code> localStorage key and reset the hash manually (or reload demo data from Settings, which resets all passwords to defaults).</div>
+    <div class="faq-a">Ask the admin to log in, go to Users &amp; Access, click Edit on your account, and set a new password. If the admin account is also locked out, restore a JSON backup via Settings → Import Data to reset all accounts to their exported state.</div>
   </div>
   <div class="faq-item">
-    <div class="faq-q" onclick="toggleFaq(this)">▶ My Excel file imported 0 records. What happened?</div>
-    <div class="faq-a">The most common cause is that column headers in your file don't match any of the recognised variants. Download the template from the Import modal for the exact headers. Also check that the file is saved as .xlsx or .csv (not .xls or .ods).</div>
+    <div class="faq-q" onclick="toggleFaq(this)">▶ I can't see a module in the sidebar. Why?</div>
+    <div class="faq-a">Your admin has set that module to "None" in your RBAC permission matrix — it is intentionally hidden. Ask your admin to grant you at least "View" access in Users &amp; Access → Edit your account → Module Permissions.</div>
   </div>
   <div class="faq-item">
-    <div class="faq-q" onclick="toggleFaq(this)">▶ All my imported records show as duplicates.</div>
-    <div class="faq-a">The CRM matches on email AND phone. If your spreadsheet uses the same placeholder email or phone for all rows (e.g. "N/A"), they will all match the first record and be flagged. Use unique values, or leave the field blank rather than using a placeholder.</div>
+    <div class="faq-q" onclick="toggleFaq(this)">▶ How do I add a new customer or lead?</div>
+    <div class="faq-a">Go to Customers &amp; Leads, click <b>+ Add Customer</b> (top-right toolbar). Fill in the form — at minimum a first name and either email or phone. Click Save. The record appears immediately in the list and on the Pipeline Kanban.</div>
   </div>
   <div class="faq-item">
-    <div class="faq-q" onclick="toggleFaq(this)">▶ I don't see the Users &amp; Access section in the sidebar.</div>
-    <div class="faq-a">This section is only visible to Admin-role accounts. Sign out and log back in as <code>admin</code> (or any other account with the Admin role) to see and use it.</div>
+    <div class="faq-q" onclick="toggleFaq(this)">▶ How do I assign a lead to a salesperson?</div>
+    <div class="faq-a">Open the customer's edit form (click ✏️ Edit), scroll to "Assigned To", select a salesperson from the dropdown, and Save. The assignment reflects immediately in Reports and in the salesperson's performance metrics.</div>
   </div>
   <div class="faq-item">
-    <div class="faq-q" onclick="toggleFaq(this)">▶ The Edit button is missing on some customer cards.</div>
-    <div class="faq-a">You're logged in as a standard user and those customers are assigned to a different salesperson. You can view them but not edit them. The admin can reassign the customer to you, or log in as admin to edit directly.</div>
+    <div class="faq-q" onclick="toggleFaq(this)">▶ I accidentally deleted a customer. Can I undo it?</div>
+    <div class="faq-a">There is no undo for deletions. If you have a recent JSON export, restore it via Settings → Import Data. This is why regular exports are strongly recommended. Only give "Full" access on the Customers module to trusted users.</div>
   </div>
   <div class="faq-item">
-    <div class="faq-q" onclick="toggleFaq(this)">▶ The CRM looks broken / blank on one section.</div>
-    <div class="faq-a">Open the browser console (F12 → Console) and look for a red error message. Common fix: go to Settings → Reload Demo Data to reset the database to defaults. If data matters, export it first. Report the error message to your CRM admin.</div>
+    <div class="faq-q" onclick="toggleFaq(this)">▶ I saved changes but they disappeared after a page reload.</div>
+    <div class="faq-a">You are likely in Private/Incognito mode (localStorage is wiped when the window closes). Use a regular browser window. Also check that your browser is not set to clear site data on close.</div>
+  </div>
+  <div class="faq-item">
+    <div class="faq-q" onclick="toggleFaq(this)">▶ How do I export / back up my data?</div>
+    <div class="faq-a">Go to Settings → Data Management → Export Data. A JSON file downloads with all your records. Store it in a shared drive. To restore, use Settings → Import Data. Aim to export at least weekly.</div>
+  </div>
+  <div class="faq-item">
+    <div class="faq-q" onclick="toggleFaq(this)">▶ Who is the admin? How do I know if I have admin access?</div>
+    <div class="faq-a">If you can see 🔐 Users &amp; Access in the sidebar, you have admin access. The default admin username is <code>admin</code>. Ask your manager if you are unsure who holds the admin role.</div>
   </div>
   <div class="faq-item">
     <div class="faq-q" onclick="toggleFaq(this)">▶ Can two people use the CRM at the same time?</div>
-    <div class="faq-a">Yes, but each person's browser has its own independent localStorage -- changes one person makes are not automatically seen by another. To sync data, use Settings → Export Data / Import Data to exchange JSON snapshots. This is a single-device offline tool by design.</div>
+    <div class="faq-a">Yes, but each browser has its own independent localStorage. Changes one person makes are not seen by another until they import the updated JSON. Use Settings → Export / Import to sync data between team members.</div>
   </div>
   <div class="faq-item">
-    <div class="faq-q" onclick="toggleFaq(this)">▶ How do I print a business card or report?</div>
-    <div class="faq-a">Navigate to the Business Cards or Reports section, then use your browser's built-in print function: press Ctrl+P (Windows) or Cmd+P (Mac), or File → Print. The CRM pages are styled for print output.</div>
+    <div class="faq-q" onclick="toggleFaq(this)">▶ How do I scan a business card?</div>
+    <div class="faq-a">Go to 🪪 Business Cards, click Scan / Upload Cards, and drop a JPG, PNG or PDF. The OCR engine extracts all fields. Review and correct, then click Save Contact. Multi-page PDFs produce one contact per page.</div>
   </div>
   <div class="faq-item">
-    <div class="faq-q" onclick="toggleFaq(this)">▶ I photographed 3 cards but only 1 was extracted.</div>
-    <div class="faq-a">Auto-detection counts email addresses in the OCR output to guess how many cards are in the image. If any cards have no email, the count will be under-detected. After extraction you'll see a <b>re-split bar</b> -- click the correct number (e.g. "3") and the image is re-processed into that many strips instantly, with no need to re-upload.</div>
+    <div class="faq-q" onclick="toggleFaq(this)">▶ How do I change my own password?</div>
+    <div class="faq-a">Ask the admin to update it in Users &amp; Access → Edit your account → Password field. Admins can change any user's password, including their own.</div>
   </div>
   <div class="faq-item">
-    <div class="faq-q" onclick="toggleFaq(this)">▶ The OCR extracted garbled or wrong text. Can I fix it?</div>
-    <div class="faq-a">Yes -- all extracted fields are fully editable before you save. Click <b>✏️ Edit</b> on any card in the gallery to open the form and correct any field. OCR accuracy depends on photo quality; for best results use a well-lit, straight-on photo with cards laid flat.</div>
+    <div class="faq-q" onclick="toggleFaq(this)">▶ What does a VIP tier (Bronze / Silver / Gold / Platinum) mean?</div>
+    <div class="faq-a">VIP tiers are calculated automatically from total paid invoice amounts. Thresholds are set in Settings → VIP Tier Thresholds. The badge updates instantly each time a payment is recorded.</div>
   </div>
   <div class="faq-item">
-    <div class="faq-q" onclick="toggleFaq(this)">▶ The card had handwritten notes but they weren't captured.</div>
-    <div class="faq-a">Handwritten text is captured in the <b>✍️ Handwritten Notes</b> field -- it collects any OCR text that didn't match a standard field like name, company, email or phone. If the handwriting was too faint or stylised for the OCR engine to read, type the notes manually in that field before saving.</div>
+    <div class="faq-q" onclick="toggleFaq(this)">▶ How do campaigns work?</div>
+    <div class="faq-a">Go to 📣 Campaigns, click + New Campaign. Set type (WhatsApp, Email, In-Person Event), date range, budget and target audience. Update sent/open/reply counts as the campaign runs. Campaign ROI is auto-included in Reports.</div>
   </div>
   <div class="faq-item">
-    <div class="faq-q" onclick="toggleFaq(this)">▶ How do I add a photo to a customer or lead?</div>
-    <div class="faq-a">Open the customer's edit form (click ✏️ Edit on their card). The form has a photo upload area -- click it and select a JPG or PNG from your device (max 3 MB). A preview appears immediately. Click Save to store it. The photo also appears on their card in list and card views, and in the detail panel.</div>
+    <div class="faq-q" onclick="toggleFaq(this)">▶ How do I run a report?</div>
+    <div class="faq-a">Click 📈 Reports in the sidebar. All charts load automatically from your current data: Revenue over time, Pipeline funnel, Top salespeople, Campaign ROI and VIP distribution. Use the date filter to change the period.</div>
   </div>
   <div class="faq-item">
-    <div class="faq-q" onclick="toggleFaq(this)">▶ My PDF had 5 pages but only some cards were extracted.</div>
-    <div class="faq-a">For PDFs, each page is treated as one card -- so a 5-page PDF should yield 5 extracted cards. If fewer appear, one or more pages may have been blank or unreadable. The CRM uses a single shared OCR engine for all pages, so the process should complete reliably. Try re-uploading the PDF; if a specific page consistently fails, extract that page as a separate image and upload it alone.</div>
+    <div class="faq-q" onclick="toggleFaq(this)">▶ How do cross-sell suggestions work?</div>
+    <div class="faq-a">The Reports module analyses purchase history patterns and surfaces insight cards at the bottom of the page — e.g. clients who bought oval cuts often enquire about pear shapes. Suggestions update automatically as you add data.</div>
+  </div>
+  <div class="faq-item">
+    <div class="faq-q" onclick="toggleFaq(this)">▶ How do I generate an invoice?</div>
+    <div class="faq-a">Go to 🧾 Invoices &amp; Payments, click + New Invoice. Select the client, choose document type (Invoice / Proforma / Quote), add line items, apply discounts and VAT, then Save. Record payments via + Record Payment on the invoice — balance and status update automatically.</div>
+  </div>
+  <div class="faq-item">
+    <div class="faq-q" onclick="toggleFaq(this)">▶ What is the gold / platinum price ticker on the Dashboard?</div>
+    <div class="faq-a">The Dashboard shows a live ticker for gold (XAU/USD) and platinum (XPT/USD) spot prices pulled from a public metals API. It refreshes every few minutes — useful for quick reference during client conversations.</div>
+  </div>
+  <div class="faq-item">
+    <div class="faq-q" onclick="toggleFaq(this)">▶ How is the CRM backed up to GitHub?</div>
+    <div class="faq-a">The CRM code (index.html) is hosted at github.com/nagarajprasadh/JVDCRM and served via GitHub Pages. Code updates are pushed by the admin. Your data lives only in your browser's localStorage — export it regularly as an independent backup.</div>
+  </div>
+  <div class="faq-item">
+    <div class="faq-q" onclick="toggleFaq(this)">▶ I cleared my browser data — is my CRM data gone?</div>
+    <div class="faq-a">Yes — localStorage is cleared with browser data. Restore from your latest JSON export via Settings → Import Data. The code at nagarajprasadh.github.io/JVDCRM is always safe — only your local data is affected.</div>
+  </div>
+  <div class="faq-item">
+    <div class="faq-q" onclick="toggleFaq(this)">▶ How do I contact support or the CRM admin?</div>
+    <div class="faq-a">Use the 📧 Contact Admin button at the top of this page to open a pre-addressed email. Or use the Report a Problem form below — the admin reviews all tickets in Settings → Support Tickets.</div>
   </div>
 </div>
 
+<!-- Report a Problem -->
+<div class="help-section" id="h-report">
+  <div class="help-h1">11. Report a Problem</div>
+  <p class="help-p">Use this form to log a technical issue or feedback. The admin will see your ticket in Settings → Support Tickets.</p>
+  <div id="ticket-success" style="display:none;background:#0f2a0f;border:1px solid #22c55e;border-radius:10px;padding:14px 18px;margin-bottom:14px;color:#22c55e;font-size:13px;font-weight:600">
+    ✅ Your ticket has been submitted. The admin will review it shortly.
+  </div>
+  <textarea id="ticket-msg" rows="5" placeholder="Describe the problem or feedback in detail…" style="width:100%;background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:12px 14px;font-size:13px;color:var(--text);resize:vertical;font-family:inherit;box-sizing:border-box;outline:none;margin-bottom:12px"></textarea>
+  <button class="btn btn-gold" onclick="submitSupportTicket()" style="padding:10px 24px;font-size:13px">📩 Submit Ticket</button>
 </div>
 
+</div>
 <style>
 .help-section{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:24px 28px;margin-bottom:20px}
 .help-h1{font-size:18px;font-weight:700;color:var(--text);margin-bottom:14px;padding-bottom:10px;border-bottom:2px solid var(--gold)}
@@ -4557,11 +4455,70 @@ function renderHelp(){
 .faq-q{padding:12px 16px;font-size:13px;font-weight:600;color:var(--text);cursor:pointer;user-select:none;transition:background .15s}
 .faq-q:hover{background:var(--hover)}
 .faq-a{padding:0 16px;font-size:13px;color:var(--text2);line-height:1.7;max-height:0;overflow:hidden;transition:max-height .3s ease,padding .3s ease}
-.faq-a.open{max-height:200px;padding:0 16px 14px}
+.faq-a.open{max-height:300px;padding:0 16px 14px}
 </style>
 
 `;
+
+  // Start the tip rotator
+  let _tipIdx = Math.floor(Math.random() * HELP_TIPS.length);
+  function _showTip(idx){
+    const el = document.getElementById('tip-text');
+    if(!el) return;
+    el.style.opacity='0';
+    setTimeout(function(){ el.textContent = HELP_TIPS[idx]; el.style.opacity='1'; }, 200);
+  }
+  _showTip(_tipIdx);
+  _helpTipTimer = setInterval(function(){ _tipIdx = (_tipIdx+1)%HELP_TIPS.length; _showTip(_tipIdx); window._helpTipIdx=_tipIdx; }, 8000);
+  window._helpTipIdx = _tipIdx;
 }
+
+function nextTip(){
+  window._helpTipIdx = ((window._helpTipIdx||0)+1) % HELP_TIPS.length;
+  const el = document.getElementById('tip-text');
+  if(el){ el.style.opacity='0'; setTimeout(function(){ el.textContent=HELP_TIPS[window._helpTipIdx]; el.style.opacity='1'; },200); }
+}
+function prevTip(){
+  window._helpTipIdx = ((window._helpTipIdx||0)-1+HELP_TIPS.length) % HELP_TIPS.length;
+  const el = document.getElementById('tip-text');
+  if(el){ el.style.opacity='0'; setTimeout(function(){ el.textContent=HELP_TIPS[window._helpTipIdx]; el.style.opacity='1'; },200); }
+}
+
+function submitSupportTicket(){
+  const msgEl = document.getElementById('ticket-msg');
+  const msg = msgEl ? msgEl.value : '';
+  if(!msg.trim()){ alert('Please describe the problem before submitting.'); return; }
+  const tickets = JSON.parse(localStorage.getItem('supportTickets')||'[]');
+  tickets.push({
+    id: 'tk'+ Date.now(),
+    user: currentUser ? currentUser.username : 'unknown',
+    name: currentUser ? (currentUser.name||currentUser.username) : 'unknown',
+    message: msg.trim(),
+    timestamp: new Date().toISOString(),
+    resolved: false
+  });
+  localStorage.setItem('supportTickets', JSON.stringify(tickets));
+  if(msgEl) msgEl.value = '';
+  const s = document.getElementById('ticket-success');
+  if(s){ s.style.display='block'; setTimeout(function(){ s.style.display='none'; }, 5000); }
+}
+
+function resolveTicket(id){
+  const tickets = JSON.parse(localStorage.getItem('supportTickets')||'[]');
+  const t = tickets.find(function(x){ return x.id===id; });
+  if(t) t.resolved = true;
+  localStorage.setItem('supportTickets', JSON.stringify(tickets));
+  renderSettings();
+}
+
+function deleteTicket(id){
+  if(!confirm('Delete this ticket permanently?')) return;
+  const tickets = JSON.parse(localStorage.getItem('supportTickets')||'[]').filter(function(x){ return x.id!==id; });
+  localStorage.setItem('supportTickets', JSON.stringify(tickets));
+  renderSettings();
+}
+
+
 
 
 
