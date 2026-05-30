@@ -4371,7 +4371,7 @@ function buildAdvFilterRow(f,i){
     <select onchange="updateAdvFilter(${i},'op',this.value);renderCustomers()" style="padding:5px 8px;border:1px solid var(--border);border-radius:6px;background:var(--card);color:var(--text);font-size:12px">
       ${ADV_OPS.map(o=>`<option value="${o.key}" ${f.op===o.key?'selected':''}>${o.label}</option>`).join('')}
     </select>
-    ${f.op!=='empty'&&f.op!=='notempty'?`<input value="${f.value||''}" placeholder="value…" oninput="updateAdvFilter(${i},'value',this.value);renderCustomers()" style="padding:5px 8px;border:1px solid var(--border);border-radius:6px;background:var(--card);color:var(--text);font-size:12px;width:130px">`:''}
+    ${f.op!=='empty'&&f.op!=='notempty'?`<input value="${f.value||''}" placeholder="value…" id="adv-val-${i}" oninput="updateAdvFilter(${i},'value',this.value);debouncedAdvFilter(${i})" style="padding:5px 8px;border:1px solid var(--border);border-radius:6px;background:var(--card);color:var(--text);font-size:12px;width:130px">`:''}
     <button onclick="removeAdvFilter(${i})" style="background:none;border:1px solid var(--border);border-radius:6px;padding:4px 8px;cursor:pointer;color:var(--red);font-size:12px">✕</button>
   </div>`;
 }
@@ -4412,7 +4412,7 @@ function waBtn(c,s){s=s||'';var l=waLink(c);if(!l)return '';return '<a href="'+l
 function emailBtn(c,s){s=s||'';if(!c.email)return '';return '<a href="mailto:'+c.email+'" onclick="event.stopPropagation()" style="display:inline-flex;align-items:center;gap:4px;padding:5px 10px;background:var(--blue);color:#fff;border-radius:7px;font-size:12px;font-weight:600;text-decoration:none;'+s+'">Email</a>';}
 function callBtn(c,s){s=s||'';var n=c.phone||c.mobile;if(!n)return '';return '<a href="tel:'+n+'" onclick="event.stopPropagation()" style="display:inline-flex;align-items:center;gap:4px;padding:5px 10px;background:var(--green);color:#fff;border-radius:7px;font-size:12px;font-weight:600;text-decoration:none;'+s+'">Call</a>';}
 
-// ── Search debounce — prevents focus loss on every keystroke ─────────────────
+// ── Search + filter debounce — prevents focus loss on every keystroke ──────────
 let _searchDebounce = null;
 function debouncedSearch(){
   clearTimeout(_searchDebounce);
@@ -4422,6 +4422,18 @@ function debouncedSearch(){
     renderCustomers();
     // Restore focus and cursor after re-render
     var el2 = document.getElementById('cust-search-input');
+    if(el2){ el2.focus(); if(pos!==null){ try{ el2.setSelectionRange(pos,pos); }catch(e){} } }
+  }, 220);
+}
+
+let _advDebounce = null;
+function debouncedAdvFilter(idx){
+  clearTimeout(_advDebounce);
+  _advDebounce = setTimeout(function(){
+    var el = document.getElementById('adv-val-'+idx);
+    var pos = el ? el.selectionStart : null;
+    renderCustomers();
+    var el2 = document.getElementById('adv-val-'+idx);
     if(el2){ el2.focus(); if(pos!==null){ try{ el2.setSelectionRange(pos,pos); }catch(e){} } }
   }, 220);
 }
