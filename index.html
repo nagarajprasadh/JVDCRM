@@ -1728,6 +1728,7 @@ ${(()=>{ try{ return custViewMode==='card' ? renderCustCards(list) : renderCustT
 </div>
 ${selectedCustId?`<div class="detail-panel">${detailHtml}</div>`:''}
 </div>`;
+  if(custViewMode==='table') setTimeout(initColDrag, 0);
 }
 
 function renderCustCards(list){
@@ -1819,7 +1820,6 @@ function renderCustTableHTML(list){
     <tbody id="cust-table-body">${rows}</tbody>
   </table>
 </div>`;
-  setTimeout(initColDrag,0);
 }
 
 function selectAllVisibleCards(){
