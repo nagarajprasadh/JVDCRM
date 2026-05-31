@@ -2582,67 +2582,43 @@ function openCustFromPipeline(id){
 // INVENTORY
 // ══════════════════════════════════════════════
 function renderInventory(){
-  const custs=db.customers||[];
-  const total=custs.length||1;
-  const nat=custs.filter(c=>c.diamondType==='Natural').length;
-  const lab=custs.filter(c=>c.diamondType==='Lab-Grown').length;
-  const both=custs.filter(c=>c.diamondType==='Both').length;
-  const undec=custs.filter(c=>!c.diamondType||c.diamondType==='Undecided').length;
-  const avgDeal=custs.reduce((s,c)=>s+(c.dealValue||0),0)/Math.max(1,custs.length);
-  const totalPipeline=custs.filter(c=>!['Won','Lost'].includes(c.leadStatus)).reduce((s,c)=>s+(c.dealValue||0),0);
+  const total=db.customers.length||1;
+  const nat=db.customers.filter(c=>c.diamondType==='Natural').length;
+  const lab=db.customers.filter(c=>c.diamondType==='Lab-Grown').length;
+  const both=db.customers.filter(c=>c.diamondType==='Both').length;
+  const avgDeal=db.customers.reduce((s,c)=>s+(c.dealValue||0),0)/Math.max(1,db.customers.length);
+  // shape tally
   const shapeTally={};SHAPES.forEach(s=>shapeTally[s]=0);
-  custs.forEach(c=>(c.preferredShapes||[]).forEach(s=>{if(shapeTally[s]!==undefined)shapeTally[s]++;}));
-  const shapesSorted=Object.entries(shapeTally).filter(([,v])=>v>0).sort((a,b)=>b[1]-a[1]);
+  db.customers.forEach(c=>(c.preferredShapes||[]).forEach(s=>{if(shapeTally[s]!==undefined)shapeTally[s]++;}));
   const maxShape=Math.max(1,...Object.values(shapeTally));
-  const caratBuckets={'<1ct':0,'1-2ct':0,'2-3ct':0,'3-5ct':0,'5ct+':0};
-  custs.forEach(c=>{const mx=parseFloat(c.caratMax)||0;if(mx>0){if(mx<1)caratBuckets['<1ct']++;else if(mx<=2)caratBuckets['1-2ct']++;else if(mx<=3)caratBuckets['2-3ct']++;else if(mx<=5)caratBuckets['3-5ct']++;else caratBuckets['5ct+']++;}});
-  const purposeTally={};custs.forEach(c=>{const p=c.purpose||'Not Specified';purposeTally[p]=(purposeTally[p]||0)+1;});
-  const purposes=Object.entries(purposeTally).sort((a,b)=>b[1]-a[1]).slice(0,6);
-  const maxP=Math.max(1,...purposes.map(x=>x[1]));
-  const maxC=Math.max(1,...Object.values(caratBuckets));
-  const withInterest=custs.filter(c=>c.diamondType&&c.diamondType!=='Undecided').sort((a,b)=>(b.dealValue||0)-(a.dealValue||0));
-  const typeGrad={'Natural':'linear-gradient(135deg,#B48A50,#E8D090)','Lab-Grown':'linear-gradient(135deg,#4A7A9B,#7AB8D4)','Both':'linear-gradient(135deg,#5A7048,#8AB878)','Undecided':'linear-gradient(135deg,#888,#aaa)'};
-
   document.getElementById('content').innerHTML=`
-<div style="font-family:'Playfair Display',serif;font-size:22px;font-weight:600;margin-bottom:16px">Inventory Interest</div>
-<div style="display:grid;grid-template-columns:repeat(6,1fr);gap:10px;margin-bottom:20px">
-  ${[['💎','Natural',nat,Math.round(nat/total*100)+'%','#B48A50'],['🔬','Lab-Grown',lab,Math.round(lab/total*100)+'%','#4A7A9B'],['✨','Both',both,Math.round(both/total*100)+'%','#5A7048'],['❓','Undecided',undec,Math.round(undec/total*100)+'%','#888'],['💰','Avg Deal',fmt(avgDeal),'per customer','var(--gold)'],['🔄','Pipeline',fmt(totalPipeline),'active','var(--green)']].map(([ic,lb,vl,sb,col])=>`
-  <div class="card" style="text-align:center;padding:14px 8px"><div style="font-size:22px;margin-bottom:4px">${ic}</div><div style="font-family:'Playfair Display',serif;font-size:22px;font-weight:700;color:${col}">${vl}</div><div style="font-size:10px;text-transform:uppercase;letter-spacing:.5px;color:var(--text2);margin:2px 0">${lb}</div><div style="font-size:10px;color:var(--text3)">${sb}</div></div>`).join('')}
+<div class="kpi-grid">
+  <div class="card kpi"><div class="kpi-label">Natural Diamond</div><div class="kpi-value">${nat}</div><div class="kpi-sub">${Math.round(nat/total*100)}% of leads</div></div>
+  <div class="card kpi"><div class="kpi-label">Lab-Grown</div><div class="kpi-value">${lab}</div><div class="kpi-sub">${Math.round(lab/total*100)}% of leads</div></div>
+  <div class="card kpi"><div class="kpi-label">Both / Either</div><div class="kpi-value">${both}</div><div class="kpi-sub">${Math.round(both/total*100)}% of leads</div></div>
+  <div class="card kpi"><div class="kpi-label">Avg Deal Size</div><div class="kpi-value">${fmt(avgDeal)}</div><div class="kpi-sub">฿ avg pipeline</div></div>
 </div>
-<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px;margin-bottom:20px">
+<div class="grid-2">
   <div class="card">
-    <div style="font-weight:700;font-size:12px;text-transform:uppercase;letter-spacing:.5px;color:var(--text2);margin-bottom:14px">Shape Preferences</div>
-    ${shapesSorted.slice(0,8).map(([s,v])=>`<div style="display:flex;align-items:center;gap:8px;margin-bottom:7px"><div style="font-size:11px;color:var(--text2);width:72px;flex-shrink:0">${s}</div><div style="flex:1;background:var(--bg2);border-radius:20px;height:9px;overflow:hidden"><div style="height:100%;width:${Math.round(v/maxShape*100)}%;background:linear-gradient(90deg,var(--gold),var(--gold3));border-radius:20px"></div></div><div style="font-size:11px;font-weight:700;color:var(--gold);width:20px;text-align:right">${v}</div></div>`).join('')||'<div style="font-size:12px;color:var(--text3)">No data</div>'}
+    <div class="section-title" style="margin-bottom:12px">Shape Preferences</div>
+    <div class="bar-wrap">${SHAPES.map(s=>`
+      <div class="bar-row"><div class="bar-label">${s}</div>
+        <div class="bar-track"><div class="bar-fill" style="width:${shapeTally[s]/maxShape*100}%"></div></div>
+        <div class="bar-val">${shapeTally[s]}</div>
+      </div>`).join('')}
+    </div>
   </div>
   <div class="card">
-    <div style="font-weight:700;font-size:12px;text-transform:uppercase;letter-spacing:.5px;color:var(--text2);margin-bottom:14px">Carat Range Demand</div>
-    ${Object.entries(caratBuckets).map(([k,v])=>`<div style="display:flex;align-items:center;gap:8px;margin-bottom:7px"><div style="font-size:11px;color:var(--text2);width:44px;flex-shrink:0">${k}</div><div style="flex:1;background:var(--bg2);border-radius:20px;height:9px;overflow:hidden"><div style="height:100%;width:${Math.round(v/maxC*100)}%;background:linear-gradient(90deg,#4A7A9B,#7AB8D4);border-radius:20px"></div></div><div style="font-size:11px;font-weight:700;color:#4A7A9B;width:20px;text-align:right">${v}</div></div>`).join('')}
+    <div class="section-title" style="margin-bottom:12px">Customer Interest Details</div>
+    ${db.customers.filter(c=>c.diamondType).slice(0,12).map(c=>`
+      <div class="inv-pref-row">
+        <div style="flex:1"><div class="cust-name" style="font-size:13px">${c.firstName} ${c.lastName}</div>
+          <div class="text-xs">${c.diamondType} · ${(c.preferredShapes||[]).slice(0,3).join(', ')||'--'} · ${c.caratMin||0}-${c.caratMax||'?'}ct</div></div>
+        <div class="text-xs">${fmt(c.dealValue)}</div>
+      </div>`).join('')||'<div class="text-xs">No preference data</div>'}
   </div>
-  <div class="card">
-    <div style="font-weight:700;font-size:12px;text-transform:uppercase;letter-spacing:.5px;color:var(--text2);margin-bottom:14px">Purchase Purpose</div>
-    ${purposes.map(([k,v])=>`<div style="display:flex;align-items:center;gap:8px;margin-bottom:7px"><div style="font-size:11px;color:var(--text2);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${k}</div><div style="width:70px;background:var(--bg2);border-radius:20px;height:9px;overflow:hidden;flex-shrink:0"><div style="height:100%;width:${Math.round(v/maxP*100)}%;background:linear-gradient(90deg,#5A7048,#8AB878);border-radius:20px"></div></div><div style="font-size:11px;font-weight:700;color:var(--green);width:20px;text-align:right">${v}</div></div>`).join('')}
-  </div>
-</div>
-<div style="font-weight:700;font-size:12px;text-transform:uppercase;letter-spacing:.5px;color:var(--text2);margin-bottom:12px">Customer Interest Cards <span style="font-weight:400;color:var(--text3)">${withInterest.length} customers</span></div>
-<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:12px">
-  ${withInterest.map(c=>{
-    const grad=typeGrad[c.diamondType]||typeGrad.Undecided;
-    return `<div class="card" style="padding:0;overflow:hidden;cursor:pointer;transition:transform .2s" onmouseover="this.style.transform='translateY(-3px)'" onmouseout="this.style.transform=''" onclick="nav('customers');selectedCustId='${c.id}';setTimeout(renderCustomers,0)">
-      <div style="background:${grad};padding:12px 14px;display:flex;justify-content:space-between;align-items:center">
-        <div><div style="font-size:13px;font-weight:700;color:#fff">${c.firstName} ${c.lastName}</div><div style="font-size:10px;color:rgba(255,255,255,.8)">${c.company||c.nationality||'--'}</div></div>
-        <div style="text-align:right"><div style="font-size:15px;font-weight:700;color:#fff">${fmt(c.dealValue)}</div><div style="font-size:10px;color:rgba(255,255,255,.8)">${c.leadStatus||'--'}</div></div>
-      </div>
-      <div style="padding:10px 14px">
-        ${[['Type',c.diamondType],['Shapes',(c.preferredShapes||[]).slice(0,3).join(' · ')||'--'],['Carats',c.caratMin||c.caratMax?`${c.caratMin||0}–${c.caratMax||'?'}ct`:'--'],['Purpose',c.purpose||'--']].map(([l,v])=>`<div style="display:flex;justify-content:space-between;margin-bottom:5px"><span style="font-size:10px;text-transform:uppercase;letter-spacing:.4px;color:var(--text3)">${l}</span><span style="font-size:11px;font-weight:600;color:var(--text2)">${v}</span></div>`).join('')}
-      </div>
-    </div>`;
-  }).join('')||'<div class="card" style="grid-column:1/-1;text-align:center;padding:32px;color:var(--text3)">No preference data yet. Add diamond preferences to customer records.</div>'}
-</div>
-<div class="card" style="margin-top:20px;padding:16px;background:var(--bg2);border:1px dashed var(--border2)">
-  <div style="display:flex;align-items:center;gap:12px"><div style="font-size:28px">🏪</div><div><div style="font-weight:700;font-size:14px">Physical Inventory — coming soon</div><div style="font-size:12px;color:var(--text3);margin-top:3px">Track actual stock with GIA certs, cost price, asking price. Match to customer interests instantly.</div></div></div>
 </div>`;
 }
-
 
 // ══════════════════════════════════════════════
 // SALESPEOPLE
@@ -2737,182 +2713,173 @@ function renderReports(){
 }
 
 function renderReportOverview(){
-  const custs=db.customers||[];
-  const total=custs.length;
-  const won=custs.filter(c=>c.leadStatus==='Won');
-  const lost=custs.filter(c=>c.leadStatus==='Lost');
-  const active=custs.filter(c=>!['Won','Lost','Dormant'].includes(c.leadStatus));
-  const pipeline=active.reduce((s,c)=>s+(c.dealValue||0),0);
-  const ltv=won.reduce((s,c)=>s+(c.dealValue||0),0);
-  const winRate=Math.round(won.length/Math.max(1,won.length+lost.length)*100);
-  const avgDeal=Math.round(custs.reduce((s,c)=>s+(c.dealValue||0),0)/Math.max(1,total));
-
-  // Lead source tally
-  const srcTally={};
-  custs.forEach(c=>{const s=c.leadSource||'Unknown';srcTally[s]=(srcTally[s]||0)+1;});
-  const topSources=Object.entries(srcTally).sort((a,b)=>b[1]-a[1]).slice(0,5);
-  const maxSrc=Math.max(1,...topSources.map(x=>x[1]));
-
-  // Status breakdown
-  const stTally={};
-  custs.forEach(c=>{const s=c.leadStatus||'New';stTally[s]=(stTally[s]||0)+1;});
-
-  // SP leaderboard
+  const total=db.customers.length;
+  const byStatus={};STATUSES.forEach(s=>byStatus[s]=0);
+  db.customers.forEach(c=>{ byStatus[c.leadStatus||'New']=(byStatus[c.leadStatus||'New']||0)+1; });
+  const bySource={};
+  db.customers.forEach(c=>{ bySource[c.leadSource||'Unknown']=(bySource[c.leadSource||'Unknown']||0)+1; });
+  const byRef={};
+  db.customers.filter(c=>c.referredBy).forEach(c=>{ byRef[c.referredBy]=(byRef[c.referredBy]||0)+1; });
+  const topCust=[...db.customers].sort((a,b)=>(b.dealValue||0)-(a.dealValue||0)).slice(0,8);
   const spStats=db.salespeople.map(sp=>{
-    const cc=custs.filter(c=>c.assignedTo===sp.name||c.assignedTo2===sp.name);
-    const wonV=cc.filter(c=>c.leadStatus==='Won').reduce((s,c)=>s+(c.dealValue||0),0);
-    return{name:sp.name,count:cc.length,won:cc.filter(c=>c.leadStatus==='Won').length,val:wonV};
-  }).sort((a,b)=>b.val-a.val).slice(0,5);
+    const cc=db.customers.filter(c=>c.assignedTo===sp.name);
+    return {name:sp.name,count:cc.length,val:cc.reduce((s,c)=>s+(c.dealValue||0),0),won:cc.filter(c=>c.leadStatus==='Won').length};
+  }).sort((a,b)=>b.val-a.val);
+  const maxStatus=Math.max(1,...Object.values(byStatus));
 
-  // Overdue
-  const overdue=custs.filter(c=>!['Won','Lost'].includes(c.leadStatus))
-    .map(c=>({...c,_d:daysSince(c.lastContactedDate)}))
-    .filter(c=>c._d===null||c._d>14).length;
-
-  // Monthly new leads (last 6 months)
-  const months=[];const now=new Date();
-  for(let i=5;i>=0;i--){const d=new Date(now.getFullYear(),now.getMonth()-i,1);months.push(d);}
-  const monthlyLeads=months.map(m=>custs.filter(c=>{
-    if(!c.createdAt)return false;
-    const d=new Date(c.createdAt);
-    return d.getFullYear()===m.getFullYear()&&d.getMonth()===m.getMonth();
-  }).length);
-  const maxML=Math.max(1,...monthlyLeads);
-
-  // Status colors
-  const stColors={Won:'#22c55e',Lost:'#ef4444',Dormant:'#888',Qualified:'#3b82f6',
-    Proposal:'#f59e0b',Negotiation:'#8b5cf6',New:'#94a3b8','In Progress':'#06b6d4'};
+  // Overdue follow-ups
+  const now=Date.now();
+  const overdue=db.customers.filter(c=>!['Won','Lost'].includes(c.leadStatus)).map(c=>{
+    const d=daysSince(c.lastContactedDate);
+    return {...c, _days: d===null?999:d};
+  }).filter(c=>c._days>14).sort((a,b)=>b._days-a._days).slice(0,8);
 
   document.getElementById('report-tab-content').innerHTML=`
-<!-- KPI Cards -->
-<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:20px">
-  ${[
-    ['🎯','Total Leads',total,'all time','var(--gold)'],
-    ['✅','Won Deals',won.length,fmt(ltv)+' value','#22c55e'],
-    ['🏆','Win Rate',winRate+'%',won.length+' of '+(won.length+lost.length)+' closed','#3b82f6'],
-    ['💰','Active Pipeline',fmt(pipeline),active.length+' active deals','var(--gold3)'],
-  ].map(([ic,lb,vl,sb,col])=>`
-  <div class="card" style="text-align:center;padding:20px 12px">
-    <div style="font-size:28px;margin-bottom:6px">${ic}</div>
-    <div style="font-family:'Playfair Display',serif;font-size:30px;font-weight:700;color:${col}">${vl}</div>
-    <div style="font-size:11px;text-transform:uppercase;letter-spacing:.6px;color:var(--text2);margin:4px 0">${lb}</div>
-    <div style="font-size:11px;color:var(--text3)">${sb}</div>
-  </div>`).join('')}
-</div>
-
-<div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px">
-  <!-- Lead Status Donut-style -->
+<div class="grid-2">
   <div class="card">
-    <div style="font-weight:700;font-size:13px;text-transform:uppercase;letter-spacing:.5px;color:var(--text2);margin-bottom:14px">Lead Status Breakdown</div>
-    ${Object.entries(stTally).sort((a,b)=>b[1]-a[1]).map(([s,v])=>{
-      const pct=Math.round(v/Math.max(1,total)*100);
-      const col=stColors[s]||'var(--gold)';
-      return `<div style="margin-bottom:10px">
-        <div style="display:flex;justify-content:space-between;margin-bottom:3px">
-          <span style="font-size:12px;font-weight:600;color:var(--text)">${s}</span>
-          <span style="font-size:12px;color:var(--text3)">${v} <span style="color:${col};font-weight:700">${pct}%</span></span>
-        </div>
-        <div style="background:var(--bg2);border-radius:20px;height:8px;overflow:hidden">
-          <div style="height:100%;width:${pct}%;background:${col};border-radius:20px;transition:width .5s"></div>
-        </div>
-      </div>`;
-    }).join('')}
+    <div class="section-title" style="margin-bottom:12px">Lead Status Breakdown</div>
+    <div class="bar-wrap">${STATUSES.map(s=>`
+      <div class="bar-row"><div class="bar-label">${s}</div>
+        <div class="bar-track"><div class="bar-fill" style="width:${byStatus[s]/maxStatus*100}%"></div></div>
+        <div class="bar-val">${byStatus[s]} (${total?Math.round(byStatus[s]/total*100):0}%)</div>
+      </div>`).join('')}
+    </div>
   </div>
-
-  <!-- Lead Sources -->
   <div class="card">
-    <div style="font-weight:700;font-size:13px;text-transform:uppercase;letter-spacing:.5px;color:var(--text2);margin-bottom:14px">Lead Sources</div>
-    ${topSources.map(([s,v],i)=>{
-      const colors=['#B48A50','#4A7A9B','#5A7048','#8b5cf6','#f59e0b'];
-      return `<div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">
-        <div style="width:28px;height:28px;border-radius:50%;background:${colors[i]};display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:#fff;flex-shrink:0">${i+1}</div>
-        <div style="flex:1">
-          <div style="font-size:12px;font-weight:600;color:var(--text)">${s}</div>
-          <div style="background:var(--bg2);border-radius:20px;height:6px;margin-top:3px;overflow:hidden">
-            <div style="height:100%;width:${Math.round(v/maxSrc*100)}%;background:${colors[i]};border-radius:20px"></div>
-          </div>
-        </div>
-        <div style="font-size:13px;font-weight:700;color:var(--text2);flex-shrink:0">${v}</div>
-      </div>`;
-    }).join('')}
+    <div class="section-title" style="margin-bottom:12px">Lead Source Attribution</div>
+    <div class="bar-wrap">${Object.entries(bySource).sort((a,b)=>b[1]-a[1]).map(([k,v])=>`
+      <div class="bar-row"><div class="bar-label">${k}</div>
+        <div class="bar-track"><div class="bar-fill" style="width:${v/Math.max(1,...Object.values(bySource))*100}%"></div></div>
+        <div class="bar-val">${v}</div>
+      </div>`).join('')||'<div class="text-xs">No data</div>'}
+    </div>
   </div>
 </div>
-
-<div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px">
-  <!-- SP Performance -->
+<div class="grid-2 mt-2">
   <div class="card">
-    <div style="font-weight:700;font-size:13px;text-transform:uppercase;letter-spacing:.5px;color:var(--text2);margin-bottom:14px">Salesperson Performance</div>
-    ${spStats.map((sp,i)=>`
-    <div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--border)">
-      <div style="width:32px;height:32px;border-radius:50%;background:${['linear-gradient(135deg,#C9A84C,#E8D090)','linear-gradient(135deg,#A8A8A8,#D0D0D0)','linear-gradient(135deg,#C87840,#E0A068)'][i]||'var(--bg2)'};display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;flex-shrink:0">${i+1}</div>
-      <div style="flex:1;min-width:0">
-        <div style="font-size:13px;font-weight:600;color:var(--text)">${sp.name}</div>
-        <div style="font-size:11px;color:var(--text3)">${sp.count} leads · ${sp.won} won</div>
-      </div>
-      <div style="text-align:right;flex-shrink:0">
-        <div style="font-family:'Playfair Display',serif;font-size:14px;font-weight:600;color:var(--gold3)">${fmt(sp.val)}</div>
-      </div>
+    <div class="section-title" style="margin-bottom:10px">Top Customers by Deal Value</div>
+    <table class="report-table">
+      <tr><th>Customer</th><th>Stage</th><th>Deal Value</th></tr>
+      ${topCust.map(c=>`<tr><td>${c.firstName} ${c.lastName}</td><td>${c.pipelineStage||'--'}</td><td style="font-weight:700;color:var(--gold)">${fmt(c.dealValue)}</td></tr>`).join('')||'<tr><td colspan="3" style="text-align:center">No data</td></tr>'}
+    </table>
+  </div>
+  <div class="card">
+    <div class="section-title" style="margin-bottom:10px">Salesperson Leaderboard</div>
+    <table class="report-table">
+      <tr><th>Name</th><th>Leads</th><th>Won</th><th>Pipeline</th></tr>
+      ${spStats.map(s=>`<tr><td>${s.name}</td><td>${s.count}</td><td style="color:var(--green)">${s.won}</td><td style="font-weight:700;color:var(--gold)">${fmt(s.val)}</td></tr>`).join('')||'<tr><td colspan="4" style="text-align:center">No salespeople</td></tr>'}
+    </table>
+  </div>
+</div>
+${Object.keys(byRef).length?`
+<div class="card mt-2">
+  <div class="section-title" style="margin-bottom:10px">Referral Source Breakdown</div>
+  <div class="bar-wrap">${Object.entries(byRef).sort((a,b)=>b[1]-a[1]).slice(0,10).map(([k,v])=>`
+    <div class="bar-row"><div class="bar-label">${k}</div>
+      <div class="bar-track"><div class="bar-fill" style="width:${v/Math.max(1,...Object.values(byRef))*100}%;background:var(--gold)"></div></div>
+      <div class="bar-val">${v}</div>
     </div>`).join('')}
   </div>
-
-  <!-- Monthly trend sparkline -->
-  <div class="card">
-    <div style="font-weight:700;font-size:13px;text-transform:uppercase;letter-spacing:.5px;color:var(--text2);margin-bottom:14px">New Leads — Last 6 Months</div>
-    <div style="display:flex;align-items:flex-end;gap:8px;height:80px;margin-bottom:8px">
-      ${monthlyLeads.map((v,i)=>{
-        const mLabel=months[i].toLocaleDateString('en-US',{month:'short'});
-        const h=Math.round(v/maxML*80);
-        return `<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px">
-          <div style="font-size:11px;font-weight:700;color:var(--gold)">${v||''}</div>
-          <div style="width:100%;height:${Math.max(4,h)}px;background:linear-gradient(180deg,var(--gold),var(--gold3));border-radius:4px 4px 0 0;transition:height .4s"></div>
-          <div style="font-size:10px;color:var(--text3)">${mLabel}</div>
-        </div>`;
-      }).join('')}
-    </div>
-    <div style="display:flex;gap:16px;padding-top:10px;border-top:1px solid var(--border)">
-      <div><div style="font-size:10px;color:var(--text3)">Avg/month</div><div style="font-size:14px;font-weight:700;color:var(--text)">${Math.round(monthlyLeads.reduce((a,b)=>a+b,0)/6)}</div></div>
-      <div><div style="font-size:10px;color:var(--text3)">Overdue follow-ups</div><div style="font-size:14px;font-weight:700;color:var(--red)">${overdue}</div></div>
-      <div><div style="font-size:10px;color:var(--text3)">Avg deal</div><div style="font-size:14px;font-weight:700;color:var(--gold3)">${fmt(avgDeal)}</div></div>
-    </div>
-  </div>
-</div>`;
+</div>`:''}
+${overdue.length?`
+<div class="card mt-2">
+  <div class="section-title" style="margin-bottom:4px">⚠️ Follow-Up Overdue <span style="font-size:12px;font-weight:400;color:var(--text3)">(active leads not contacted in 14+ days)</span></div>
+  <table class="report-table" style="margin-top:10px">
+    <tr><th>Name</th><th>Status</th><th>Salesperson</th><th>Last Contacted</th><th>Days Overdue</th></tr>
+    ${overdue.map(c=>{
+      const color=c._days>30?'#ef4444':c._days>14?'#f59e0b':'#22c55e';
+      return `<tr>
+        <td><b>${c.firstName} ${c.lastName}</b></td>
+        <td><span class="badge badge-${(c.leadStatus||'new').toLowerCase().replace(' ','-')}">${c.leadStatus||'New'}</span></td>
+        <td>${c.assignedTo||'--'}</td>
+        <td>${c.lastContactedDate?fmtDate(c.lastContactedDate):'<span style="color:#ef4444">Never</span>'}</td>
+        <td style="font-weight:700;color:${color}">${c._days===999?'Never':c._days+'d'}</td>
+      </tr>`;
+    }).join('')}
+  </table>
+</div>`:''}`;
 }
-
 
 function renderPdfReportsTab(){
   const reports=[
-    {id:'followup',  icon:'📵',title:'Follow-Up Overdue',     desc:'Active leads not contacted in 14+ days, sorted by urgency'},
-    {id:'source',    icon:'📣',title:'Lead Source & Referral', desc:'Where leads come from and who refers them'},
-    {id:'pipeline',  icon:'🚀',title:'Pipeline Stage Summary', desc:'Deal count and value at each pipeline stage'},
-    {id:'salesperson',icon:'🤝',title:'Salesperson Performance',desc:'Leads, conversions, pipeline value and win rate per SP'},
-    {id:'vip',       icon:'💎',title:'VIP Customer Profiles',  desc:'Customer tier distribution and top accounts by LTV'},
-    {id:'campaign',  icon:'📣',title:'Campaign ROI',           desc:'Campaign performance, engagement and ROI analysis'},
-    {id:'kyc',       icon:'🛂',title:'KYC Status Report',      desc:'All active customers KYC status, expiry and document status'},
-    {id:'invoice',   icon:'🧾',title:'Invoice & Payments',     desc:'Pending, overdue and paid invoice summary'},
+    {id:'followup',   icon:'📵',title:'Follow-Up Overdue',      desc:'Active leads not contacted in 14+ days'},
+    {id:'source',     icon:'📣',title:'Lead Source & Referral',  desc:'Where leads come from and who refers them'},
+    {id:'pipeline',   icon:'🚀',title:'Pipeline Stage Summary',  desc:'Deal count and value at each pipeline stage'},
+    {id:'salesperson',icon:'🤝',title:'Salesperson Performance', desc:'Leads, conversions, pipeline value per SP'},
+    {id:'vip',        icon:'💎',title:'VIP Customer Profiles',   desc:'Tier distribution and top accounts by LTV'},
+    {id:'campaign',   icon:'📣',title:'Campaign ROI',            desc:'Campaign performance and engagement metrics'},
+    {id:'kyc',        icon:'🛂',title:'KYC Status',              desc:'KYC document status and expiry for active customers'},
+    {id:'invoice',    icon:'🧾',title:'Invoices & Payments',     desc:'Pending, overdue and paid invoice summary'},
   ];
+
+  // Build month options: current month back 24 months
+  const now = new Date();
+  let monthOpts = '<option value="">All time</option>';
+  for(let i=0;i<24;i++){
+    const d = new Date(now.getFullYear(), now.getMonth()-i, 1);
+    const val = d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0');
+    const lbl = d.toLocaleDateString('en-GB',{month:'long',year:'numeric'});
+    monthOpts += `<option value="${val}">${lbl}</option>`;
+  }
+
   document.getElementById('report-tab-content').innerHTML=`
-<div style="font-size:12px;color:var(--text3);margin-bottom:16px">Download as PDF for formal reporting or CSV for Excel analysis.</div>
+<div class="card" style="margin-bottom:16px;padding:14px 18px">
+  <div style="display:flex;align-items:center;gap:16px;flex-wrap:wrap">
+    <div style="font-size:13px;font-weight:700;color:var(--text)">📅 Date Range Filter</div>
+    <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+      <label style="font-size:12px;color:var(--text3)">From</label>
+      <select id="rpt-from" style="padding:5px 10px;border:1px solid var(--border);border-radius:7px;background:var(--card);color:var(--text);font-size:12px">${monthOpts}</select>
+      <label style="font-size:12px;color:var(--text3)">To</label>
+      <select id="rpt-to" style="padding:5px 10px;border:1px solid var(--border);border-radius:7px;background:var(--card);color:var(--text);font-size:12px">${monthOpts}</select>
+    </div>
+    <div style="font-size:11px;color:var(--text3)">Leave blank for all-time data</div>
+  </div>
+</div>
+<div style="font-size:12px;color:var(--text3);margin-bottom:14px">Download as PDF for formal reporting or CSV for Excel analysis.</div>
 <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:14px">
   ${reports.map(r=>`
   <div class="card" style="display:flex;flex-direction:column;gap:10px;transition:transform .2s" onmouseover="this.style.transform='translateY(-2px)'" onmouseout="this.style.transform=''">
     <div style="display:flex;align-items:center;gap:12px">
       <div style="width:44px;height:44px;border-radius:10px;background:linear-gradient(135deg,var(--gold),var(--gold3));display:flex;align-items:center;justify-content:center;font-size:22px;flex-shrink:0">${r.icon}</div>
-      <div>
-        <div style="font-size:14px;font-weight:700;color:var(--text)">${r.title}</div>
-        <div style="font-size:11px;color:var(--text3);margin-top:2px">${r.desc}</div>
-      </div>
+      <div><div style="font-size:14px;font-weight:700;color:var(--text)">${r.title}</div><div style="font-size:11px;color:var(--text3);margin-top:2px">${r.desc}</div></div>
     </div>
     <div style="display:flex;gap:8px;margin-top:4px">
-      <button class="btn btn-gold" onclick="openPdfReport('${r.id}')" style="flex:1;font-size:12px">🖨️ PDF</button>
-      <button class="btn btn-outline" onclick="downloadCsvReport('${r.id}')" style="flex:1;font-size:12px">📊 CSV</button>
+      <button class="btn btn-gold"    onclick="openPdfReport('${r.id}')"      style="flex:1;font-size:12px">🖨️ PDF</button>
+      <button class="btn btn-outline" onclick="downloadCsvReport('${r.id}')"  style="flex:1;font-size:12px">📊 CSV</button>
     </div>
   </div>`).join('')}
 </div>`;
 }
 
+// Helper: get date range from selectors
+function getRptDateRange(){
+  const fromEl=document.getElementById('rpt-from');
+  const toEl=document.getElementById('rpt-to');
+  const fromVal=fromEl?fromEl.value:'';
+  const toVal=toEl?toEl.value:'';
+  let from=null, to=null;
+  if(fromVal){ const p=fromVal.split('-'); from=new Date(+p[0],+p[1]-1,1); }
+  if(toVal){   const p=toVal.split('-');   to=new Date(+p[0],+p[1]-1+1,0,23,59,59); } // last day of month
+  return{from,to};
+}
+
+// Helper: filter records by date range using a date field
+function filterByRange(arr, field, from, to){
+  if(!from&&!to) return arr;
+  return arr.filter(r=>{
+    if(!r[field]) return !from; // no date: include only if no from set
+    const d=new Date(r[field]);
+    if(from&&d<from) return false;
+    if(to&&d>to)     return false;
+    return true;
+  });
+}
+
 
 function openPdfReport(type){
   const today=new Date().toLocaleDateString('en-GB',{day:'2-digit',month:'long',year:'numeric'});
+  const{from:rptFrom,to:rptTo}=getRptDateRange();
+  const rptRange=rptFrom?`${rptFrom.toLocaleDateString('en-GB',{month:'long',year:'numeric'})}${rptTo?' – '+rptTo.toLocaleDateString('en-GB',{month:'long',year:'numeric'}):''}`:null;
   const co=(db.settings&&db.settings.companyName)||'Jay Vijay Diamond Co., Ltd.';
   let title='',tableHtml='';
 
@@ -3046,76 +3013,79 @@ const RB_OPS=['contains','equals','is empty','is not empty','greater than','less
 let _rbState={cols:['name','email','phone','leadStatus','referredBy','lastContactedDate','assignedTo'],filters:[],sortBy:'name',sortDir:'asc',groupBy:'',savedName:''};
 
 function downloadCsvReport(type){
-  let rows=[], filename='report.csv';
-  const custs=db.customers||[];
+  const{from,to}=getRptDateRange();
+  const rangeLabel=from?`_${from.toISOString().slice(0,7)}${to?'_to_'+to.toISOString().slice(0,7):''}`:'' ;
+  let rows=[], filename=type+rangeLabel+'.csv';
+  const allCusts=db.customers||[]; const custs=rptFrom?allCusts.filter(c=>{const d=new Date(c.createdAt||0);return(!rptFrom||d>=rptFrom)&&(!rptTo||d<=rptTo);}):allCusts;
   const fmtD=d=>d?new Date(d).toLocaleDateString('en-GB'):'';
 
   if(type==='followup'){
-    filename='Followup_Overdue.csv';
-    rows=[['Name','Company','Nationality','Lead Status','Pipeline Stage','Deal Value','Days Since Contact','Assigned SP','SP2','Phone','Email']];
-    custs.filter(c=>!['Won','Lost'].includes(c.leadStatus))
+    filename='Followup_Overdue'+rangeLabel+'.csv';
+    rows=[['Name','Company','Nationality','Lead Status','Pipeline','Deal Value','Days Since Contact','SP1','SP2','Phone','Email']];
+    filterByRange(custs,'lastContactedDate',from,to)
+      .filter(c=>!['Won','Lost'].includes(c.leadStatus))
       .map(c=>({...c,_d:daysSince(c.lastContactedDate)}))
       .filter(c=>c._d===null||c._d>14).sort((a,b)=>(b._d||999)-(a._d||999))
       .forEach(c=>rows.push([c.firstName+' '+c.lastName,c.company||'',c.nationality||'',c.leadStatus||'',c.pipelineStage||'',c.dealValue||0,c._d===null?'Never':c._d,c.assignedTo||'',c.assignedTo2||'',c.phone||'',c.email||'']));
   } else if(type==='pipeline'){
-    filename='Pipeline_Summary.csv';
-    rows=[['Stage','Count','Total Value','Avg Deal Value']];
+    filename='Pipeline'+rangeLabel+'.csv';
+    rows=[['Stage','Count','Total Value','Avg Deal']];
+    const src=filterByRange(custs,'createdAt',from,to);
     const stages={};
-    custs.forEach(c=>{const s=c.pipelineStage||'Unknown';if(!stages[s])stages[s]={count:0,val:0};stages[s].count++;stages[s].val+=(c.dealValue||0);});
-    Object.entries(stages).forEach(([s,v])=>rows.push([s,v.count,v.val,Math.round(v.val/v.count)]));
+    src.forEach(c=>{const s=c.pipelineStage||'Unknown';if(!stages[s])stages[s]={count:0,val:0};stages[s].count++;stages[s].val+=(c.dealValue||0);});
+    Object.entries(stages).forEach(([s,v])=>rows.push([s,v.count,v.val,Math.round(v.val/Math.max(1,v.count))]));
   } else if(type==='salesperson'){
-    filename='Salesperson_Performance.csv';
+    filename='Salesperson'+rangeLabel+'.csv';
     rows=[['Salesperson','Total Leads','Won','Lost','Active','Pipeline Value','Won Value','Win Rate%']];
+    const src=filterByRange(custs,'createdAt',from,to);
     db.salespeople.forEach(sp=>{
-      const cc=custs.filter(c=>c.assignedTo===sp.name||c.assignedTo2===sp.name);
+      const cc=src.filter(c=>c.assignedTo===sp.name||c.assignedTo2===sp.name);
       const won=cc.filter(c=>c.leadStatus==='Won');
       const lost=cc.filter(c=>c.leadStatus==='Lost');
       const act=cc.filter(c=>!['Won','Lost'].includes(c.leadStatus));
       rows.push([sp.name,cc.length,won.length,lost.length,act.length,
-        act.reduce((s,c)=>s+(c.dealValue||0),0),
-        won.reduce((s,c)=>s+(c.dealValue||0),0),
+        act.reduce((s,c)=>s+(c.dealValue||0),0),won.reduce((s,c)=>s+(c.dealValue||0),0),
         Math.round(won.length/Math.max(1,won.length+lost.length)*100)+'%']);
     });
   } else if(type==='vip'){
-    filename='VIP_Customers.csv';
-    rows=[['Name','Company','VIP Level','Lead Status','Deal Value','Nationality','Phone','Email','LINE ID','Assigned SP']];
-    custs.filter(c=>c.vipLevel&&c.vipLevel!=='None').sort((a,b)=>(b.dealValue||0)-(a.dealValue||0))
-      .forEach(c=>rows.push([c.firstName+' '+c.lastName,c.company||'',c.vipLevel,c.leadStatus||'',c.dealValue||0,c.nationality||'',c.phone||'',c.email||'',c.wechat||'',c.assignedTo||'']));
+    filename='VIP_Customers'+rangeLabel+'.csv';
+    rows=[['Name','Company','VIP Level','Lead Status','Deal Value','Nationality','Phone','Email','LINE ID','SP1','SP2']];
+    filterByRange(custs,'createdAt',from,to)
+      .filter(c=>c.vipLevel&&c.vipLevel!=='None').sort((a,b)=>(b.dealValue||0)-(a.dealValue||0))
+      .forEach(c=>rows.push([c.firstName+' '+c.lastName,c.company||'',c.vipLevel,c.leadStatus||'',c.dealValue||0,c.nationality||'',c.phone||'',c.email||'',c.wechat||'',c.assignedTo||'',c.assignedTo2||'']));
   } else if(type==='kyc'){
-    filename='KYC_Status.csv';
+    filename='KYC_Status'+rangeLabel+'.csv';
     rows=[['CIF','Name','Company','Lead Status','Documents','Next KYC Date','KYC Status']];
-    custs.filter(isKycCustomer).forEach(c=>{
-      rows.push([c.cif||'',c.firstName+' '+c.lastName,c.company||'',c.leadStatus||'',
-        (c.kycDocs||[]).map(d=>d.type).join('; ')||'None',
-        c.kycNextDate?fmtD(c.kycNextDate):'Not set',kycStatusLabel(kycStatus(c))]);
-    });
+    filterByRange(custs,'kycNextDate',from,to).filter(isKycCustomer)
+      .forEach(c=>rows.push([c.cif||'',c.firstName+' '+c.lastName,c.company||'',c.leadStatus||'',(c.kycDocs||[]).map(d=>d.type).join('; ')||'None',c.kycNextDate?fmtD(c.kycNextDate):'Not set',kycStatusLabel(kycStatus(c))]));
   } else if(type==='invoice'){
-    filename='Invoices.csv';
+    filename='Invoices'+rangeLabel+'.csv';
     rows=[['Invoice No','Client','Status','Amount','Balance Due','Due Date','Issue Date']];
-    (db.invoices||[]).sort((a,b)=>new Date(b.issueDate||0)-new Date(a.issueDate||0))
+    filterByRange(db.invoices||[],'issueDate',from,to)
+      .sort((a,b)=>new Date(b.issueDate||0)-new Date(a.issueDate||0))
       .forEach(i=>rows.push([i.invoiceNo||'',i.clientName||'',i.status||'',i.totalAmount||0,i.balanceDue||0,fmtD(i.dueDate),fmtD(i.issueDate)]));
   } else if(type==='source'){
-    filename='Lead_Sources.csv';
+    filename='Lead_Sources'+rangeLabel+'.csv';
     rows=[['Lead Source','Count','% of Total','Total Value']];
-    const src={};
-    custs.forEach(c=>{const s=c.leadSource||'Unknown';if(!src[s])src[s]={count:0,val:0};src[s].count++;src[s].val+=(c.dealValue||0);});
-    Object.entries(src).sort((a,b)=>b[1].count-a[1].count)
-      .forEach(([s,v])=>rows.push([s,v.count,Math.round(v.count/Math.max(1,custs.length)*100)+'%',v.val]));
+    const src=filterByRange(custs,'createdAt',from,to);
+    const srcT={};
+    src.forEach(c=>{const s=c.leadSource||'Unknown';if(!srcT[s])srcT[s]={count:0,val:0};srcT[s].count++;srcT[s].val+=(c.dealValue||0);});
+    Object.entries(srcT).sort((a,b)=>b[1].count-a[1].count)
+      .forEach(([s,v])=>rows.push([s,v.count,Math.round(v.count/Math.max(1,src.length)*100)+'%',v.val]));
   } else if(type==='campaign'){
-    filename='Campaign_ROI.csv';
-    rows=[['Campaign','Type','Status','Target','Sent','Opens','Clicks','Conversions']];
-    (db.campaigns||[]).forEach(c=>rows.push([c.name||'',c.type||'',c.status||'',c.targetAudience||'',c.sentCount||0,c.openCount||0,c.clickCount||0,c.conversions||0]));
+    filename='Campaigns'+rangeLabel+'.csv';
+    rows=[['Campaign','Type','Status','Sent','Opens','Clicks','Conversions']];
+    filterByRange(db.campaigns||[],'createdAt',from,to)
+      .forEach(c=>rows.push([c.name||'',c.type||'',c.status||'',c.sentCount||0,c.openCount||0,c.clickCount||0,c.conversions||0]));
   }
 
-  if(rows.length<=1){alert('No data available for this report.');return;}
-  const csv=rows.map(r=>r.map(x=>'"'+String(x===null||x===undefined?'':x).replace(/"/g,'""')+'"').join(',')).join('\n');
+  if(rows.length<=1){showToast('No data for this report/date range');return;}
+  const csv=rows.map(r=>r.map(x=>'"'+String(x==null?'':x).replace(/"/g,'""')+'"').join(',')).join('\n');
   const a=document.createElement('a');
   a.href='data:text/csv;charset=utf-8,\uFEFF'+encodeURIComponent(csv);
-  a.download=filename;
-  a.click();
-  showToast('CSV downloaded: '+filename);
+  a.download=filename; a.click();
+  showToast('Downloaded: '+filename);
 }
-
 
 function renderReportBuilder(){
   if(!db.savedReports) db.savedReports=[];
@@ -3294,6 +3264,8 @@ function rbPrintPdf(){
   const cols=RB_FIELDS.filter(f=>_rbState.cols.includes(f.key));
   const rows=rbGetRows();
   const today=new Date().toLocaleDateString('en-GB',{day:'2-digit',month:'long',year:'numeric'});
+  const{from:rptFrom,to:rptTo}=getRptDateRange();
+  const rptRange=rptFrom?`${rptFrom.toLocaleDateString('en-GB',{month:'long',year:'numeric'})}${rptTo?' – '+rptTo.toLocaleDateString('en-GB',{month:'long',year:'numeric'}):''}`:null;
   const co=(db.settings&&db.settings.companyName)||'Jay Vijay Diamond Co., Ltd.';
   const win=window.open('','_blank');
   win.document.write(`<!DOCTYPE html><html><head><meta charset="utf-8"><title>Custom Report</title>
