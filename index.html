@@ -492,7 +492,7 @@ th[data-tip]{cursor:pointer}
 @keyframes tickerMove{0%{transform:translateX(0)}100%{transform:translateX(-50%)}}
 .t-item{font-size:12px;color:#e0e0e0;padding:0 18px;letter-spacing:.3px;font-weight:400}
 .t-item b{color:#F0C060;font-weight:700}
-.ticker-time{font-size:9px;color:#888;flex-shrink:0;white-space:nowrap}
+.ticker-time{font-size:9px;color:var(--text3);flex-shrink:0;white-space:nowrap}
 
 /* ── USER BADGE (topbar) ── */
 .user-badge{display:flex;align-items:center;gap:8px;padding:5px 12px;background:var(--bg2);border:1px solid var(--border);border-radius:20px;cursor:pointer;transition:all .15s;font-size:12px;color:var(--text2);white-space:nowrap}
@@ -579,17 +579,17 @@ th[data-tip]{cursor:pointer}
 
   <div class="nav-section">CRM</div>
   <div class="nav-item" data-mod="dashboard"   data-label="Dashboard"           onclick="nav('dashboard')"><span class="nav-icon">⌂</span><span class="nav-label">Dashboard</span></div>
-  <div class="nav-item" data-mod="customers"   data-label="Customers &amp; Leads"    onclick="nav('customers')"><span class="nav-icon">👤</span><span class="nav-label">Customers &amp; Leads</span><span class="badge" id="nb-cust">0</span></div>
+  <div class="nav-item" data-mod="customers"   data-label="Customers &amp; Leads"    onclick="nav('customers')"><span class="nav-icon">○</span><span class="nav-label">Customers &amp; Leads</span><span class="badge" id="nb-cust">0</span></div>
   <div class="nav-item" data-mod="pipeline"    data-label="Sales Pipeline"      onclick="nav('pipeline')"><span class="nav-icon">◈</span><span class="nav-label">Sales Pipeline</span></div>
-  <div class="nav-item" data-mod="deals"       data-label="Deals"               onclick="nav('deals')"><span class="nav-icon">🤝</span><span class="nav-label">Deals</span><span class="badge" id="nb-deals"></span></div>
+  <div class="nav-item" data-mod="deals"       data-label="Deals"               onclick="nav('deals')"><span class="nav-icon">⇌</span><span class="nav-label">Deals</span><span class="badge" id="nb-deals"></span></div>
   <div class="nav-item" data-mod="tasks"       data-label="Tasks"               onclick="nav('tasks')"><span class="nav-icon">✓</span><span class="nav-label">Tasks</span><span class="badge" id="nb-tasks"></span></div>
   <div class="nav-item" data-mod="campaigns"   data-label="Campaigns"           onclick="nav('campaigns')"><span class="nav-icon">◎</span><span class="nav-label">Campaigns</span><span class="badge" id="nb-camp">0</span></div>
 
   <div class="nav-section">Inventory</div>
-  <div class="nav-item" data-mod="stockinv"    data-label="Stock Inventory"     onclick="nav('stockinv')"><span class="nav-icon">💎</span><span class="nav-label">Stock Inventory</span><span class="badge" id="nb-inv"></span></div>
+  <div class="nav-item" data-mod="stockinv"    data-label="Stock Inventory"     onclick="nav('stockinv')"><span class="nav-icon">◆</span><span class="nav-label">Stock Inventory</span><span class="badge" id="nb-inv"></span></div>
   <div class="nav-item" data-mod="suppliers"   data-label="Suppliers"           onclick="nav('suppliers')"><span class="nav-icon">⬡</span><span class="nav-label">Suppliers</span><span class="badge" id="nb-sup"></span></div>
   <div class="nav-item" data-mod="inventory"   data-label="Interest Map"        onclick="nav('inventory')"><span class="nav-icon">◇</span><span class="nav-label">Interest Map</span></div>
-  <div class="nav-item" data-mod="kyc"         data-label="KYC"                 onclick="nav('kyc')"><span class="nav-icon">🛂</span><span class="nav-label">KYC</span><span class="badge" id="nb-kyc">0</span></div>
+  <div class="nav-item" data-mod="kyc"         data-label="KYC"                 onclick="nav('kyc')"><span class="nav-icon">⊕</span><span class="nav-label">KYC</span><span class="badge" id="nb-kyc">0</span></div>
 
   <div class="nav-section">Finance</div>
   <div class="nav-item" data-mod="accounting"  data-label="Invoices &amp; Payments" onclick="nav('accounting')"><span class="nav-icon">◻</span><span class="nav-label">Invoices &amp; Payments</span></div>
@@ -601,7 +601,7 @@ th[data-tip]{cursor:pointer}
   <div class="nav-item" data-mod="bizcard"     data-label="Business Cards"      onclick="nav('bizcard')"><span class="nav-icon">▣</span><span class="nav-label">Business Cards</span><span class="badge" id="nb-bc">0</span></div>
 
   <div class="nav-section" style="margin-top:auto">System</div>
-  <div class="nav-item" id="nav-users" data-label="Users &amp; Access" onclick="nav('users')" style="display:none"><span class="nav-icon">🔐</span><span class="nav-label">Users &amp; Access</span></div>
+  <div class="nav-item" id="nav-users" data-label="Users &amp; Access" onclick="nav('users')" style="display:none"><span class="nav-icon">⊛</span><span class="nav-label">Users &amp; Access</span></div>
   <div class="nav-item" onclick="nav('help')" data-label="Help"><span class="nav-icon">?</span><span class="nav-label">Help &amp; FAQ</span></div>
   <div class="nav-item" data-mod="settings" data-label="Settings" onclick="nav('settings')"><span class="nav-icon">⚙</span><span class="nav-label">Settings</span></div>
 
@@ -2557,7 +2557,7 @@ function renderPipeline(){
 
   // Stage colors
   const stageColors = {
-    'Awareness':    { bg:'#f0f4ff', border:'#4a90d9', badge:'#4a90d9' },
+    'Awareness':    { bg:'#f0f4ff', border:'var(--blue)', badge:'var(--blue)' },
     'Interest':     { bg:'#fff8e6', border:'#f0a500', badge:'#f0a500' },
     'Evaluation':   { bg:'#f3f0ff', border:'#7c5cbf', badge:'#7c5cbf' },
     'Proposal':     { bg:'#e8f7ff', border:'#00a8cc', badge:'#00a8cc' },
@@ -2579,14 +2579,14 @@ function renderPipeline(){
     const valStr = val>=1000 ? '$'+(val/1000).toFixed(0)+'k' : (val>0?'$'+val.toFixed(0):'--');
     const initials = ((c.firstName||'?')[0]+(c.lastName||'?')[0]).toUpperCase();
     const vipBadge = c.isVip ? `<span style="background:#B48A50;color:#fff;border-radius:20px;padding:1px 7px;font-size:10px;font-weight:700;margin-left:4px">VIP</span>` : '';
-    const colorPool = ['#B48A50','#4a90d9','#27ae60','#7c5cbf','#e67e22','#00a8cc'];
+    const colorPool = ['#B48A50','var(--blue)','#27ae60','#7c5cbf','#e67e22','#00a8cc'];
     const avatarBg = colorPool[(c.id||'').charCodeAt(0)%colorPool.length]||'#B48A50';
-    return `<div class="pipeline-card" onclick="openCustFromPipeline('${c.id}')" style="background:#fff;border:1.5px solid #e8e0d5;border-radius:10px;padding:10px 12px;margin-bottom:8px;cursor:pointer;transition:box-shadow 0.15s" onmouseover="this.style.boxShadow='0 3px 12px rgba(0,0,0,0.13)'" onmouseout="this.style.boxShadow='none'">
+    return `<div class="pipeline-card" onclick="openCustFromPipeline('${c.id}')" style="background:var(--card);border:1px solid var(--border);border-radius:10px;padding:10px 12px;margin-bottom:8px;cursor:pointer;transition:box-shadow 0.15s" onmouseover="this.style.boxShadow='0 3px 12px rgba(0,0,0,0.13)'" onmouseout="this.style.boxShadow='none'">
       <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
         <div style="width:30px;height:30px;border-radius:50%;background:${avatarBg};color:#fff;font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0">${initials}</div>
         <div style="flex:1;min-width:0">
-          <div style="font-weight:600;font-size:13px;color:#1a1a2e;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${c.firstName||''} ${c.lastName||''}${vipBadge}</div>
-          <div style="font-size:11px;color:#888;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${c.company||c.email||'--'}</div>
+          <div style="font-weight:600;font-size:13px;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${c.firstName||''} ${c.lastName||''}${vipBadge}</div>
+          <div style="font-size:11px;color:var(--text3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${c.company||c.email||'--'}</div>
         </div>
         <div style="font-size:12px;font-weight:700;color:#B48A50;flex-shrink:0">${valStr}</div>
       </div>
@@ -2610,7 +2610,7 @@ function renderPipeline(){
           <span style="background:${col.badge};color:#fff;border-radius:20px;padding:1px 8px;font-size:11px;font-weight:700">${cards.length}</span>
         </div>
       </div>
-      <div style="font-size:11px;color:#888;margin-bottom:10px;font-weight:600">${valDisplay} pipeline</div>
+      <div style="font-size:11px;color:var(--text3);margin-bottom:10px;font-weight:600">${valDisplay} pipeline</div>
       <div style="overflow-y:auto;flex:1">
         ${cards.length ? cards.map(c=>custCard(c)).join('') : '<div style="color:#bbb;font-size:12px;text-align:center;padding:20px 0">No contacts</div>'}
       </div>
@@ -2628,24 +2628,24 @@ function renderPipeline(){
       <div class="page-title" style="margin-bottom:16px">Sales Pipeline</div>
       <!-- Summary strip -->
       <div style="display:flex;gap:16px;flex-wrap:wrap;margin-bottom:22px">
-        <div style="background:#fff;border:1.5px solid #e8e0d5;border-radius:12px;padding:14px 20px;min-width:140px">
-          <div style="font-size:11px;color:#888;font-weight:600;text-transform:uppercase;letter-spacing:.5px">Total Contacts</div>
-          <div class="page-title" style="color:#1a1a2e;margin-top:2px">${totalCustomers}</div>
+        <div style="background:var(--card);border:1px solid var(--border);border-radius:12px;padding:14px 20px;min-width:140px">
+          <div style="font-size:11px;color:var(--text3);font-weight:600;text-transform:uppercase;letter-spacing:.5px">Total Contacts</div>
+          <div class="page-title" style="color:var(--text);margin-top:2px">${totalCustomers}</div>
         </div>
-        <div style="background:#fff;border:1.5px solid #e8e0d5;border-radius:12px;padding:14px 20px;min-width:140px">
-          <div style="font-size:11px;color:#888;font-weight:600;text-transform:uppercase;letter-spacing:.5px">Active Pipeline</div>
-          <div class="page-title" style="color:#4a90d9;margin-top:2px">$${(totalPipeline/1000).toFixed(0)}k</div>
+        <div style="background:var(--card);border:1px solid var(--border);border-radius:12px;padding:14px 20px;min-width:140px">
+          <div style="font-size:11px;color:var(--text3);font-weight:600;text-transform:uppercase;letter-spacing:.5px">Active Pipeline</div>
+          <div class="page-title" style="color:var(--blue);margin-top:2px">$${(totalPipeline/1000).toFixed(0)}k</div>
         </div>
-        <div style="background:#fff;border:1.5px solid #e8e0d5;border-radius:12px;padding:14px 20px;min-width:140px">
-          <div style="font-size:11px;color:#888;font-weight:600;text-transform:uppercase;letter-spacing:.5px">Won Value</div>
+        <div style="background:var(--card);border:1px solid var(--border);border-radius:12px;padding:14px 20px;min-width:140px">
+          <div style="font-size:11px;color:var(--text3);font-weight:600;text-transform:uppercase;letter-spacing:.5px">Won Value</div>
           <div class="page-title" style="color:#27ae60;margin-top:2px">$${(totalWon/1000).toFixed(0)}k</div>
         </div>
-        <div style="background:#fff;border:1.5px solid #e8e0d5;border-radius:12px;padding:14px 20px;min-width:140px">
-          <div style="font-size:11px;color:#888;font-weight:600;text-transform:uppercase;letter-spacing:.5px">Lost Value</div>
+        <div style="background:var(--card);border:1px solid var(--border);border-radius:12px;padding:14px 20px;min-width:140px">
+          <div style="font-size:11px;color:var(--text3);font-weight:600;text-transform:uppercase;letter-spacing:.5px">Lost Value</div>
           <div class="page-title" style="color:var(--red);margin-top:2px">$${(totalLost/1000).toFixed(0)}k</div>
         </div>
         <div style="background:#fff;border:1.5px solid #B48A50;border-radius:12px;padding:14px 20px;min-width:140px">
-          <div style="font-size:11px;color:#888;font-weight:600;text-transform:uppercase;letter-spacing:.5px">Win Rate</div>
+          <div style="font-size:11px;color:var(--text3);font-weight:600;text-transform:uppercase;letter-spacing:.5px">Win Rate</div>
           <div class="page-title" style="color:#B48A50;margin-top:2px">${totalWon+totalLost>0?Math.round(totalWon/(totalWon+totalLost)*100):0}%</div>
         </div>
       </div>
@@ -3150,7 +3150,7 @@ function openPdfReport(type){
       const d=daysSince(c.lastContactedDate); return {...c,_d:d===null?9999:d};
     }).filter(c=>c._d>0).sort((a,b)=>b._d-a._d);
     tableHtml=`<table><thead><tr><th>#</th><th>Name</th><th>Status</th><th>Stage</th><th>Salesperson</th><th>Referred By</th><th>Last Contacted</th><th>Days Since</th></tr></thead><tbody>
-      ${rows.map((c,i)=>{const color=c._d>30?'#c0392b':c._d>14?'#e67e22':'#27ae60';return`<tr><td>${i+1}</td><td><b>${c.firstName} ${c.lastName}</b></td><td>${c.leadStatus||'New'}</td><td>${c.pipelineStage||'--'}</td><td>${c.assignedTo||'--'}</td><td>${c.referredBy||'--'}</td><td>${c.lastContactedDate?new Date(c.lastContactedDate).toLocaleDateString('en-GB'):'<span style="color:#c0392b">Never</span>'}</td><td style="color:${color};font-weight:700">${c._d===9999?'Never':c._d+'d'}</td></tr>`;}).join('')||'<tr><td colspan="8" style="text-align:center;color:#888">No overdue follow-ups 🎉</td></tr>'}
+      ${rows.map((c,i)=>{const color=c._d>30?'#c0392b':c._d>14?'#e67e22':'#27ae60';return`<tr><td>${i+1}</td><td><b>${c.firstName} ${c.lastName}</b></td><td>${c.leadStatus||'New'}</td><td>${c.pipelineStage||'--'}</td><td>${c.assignedTo||'--'}</td><td>${c.referredBy||'--'}</td><td>${c.lastContactedDate?new Date(c.lastContactedDate).toLocaleDateString('en-GB'):'<span style="color:#c0392b">Never</span>'}</td><td style="color:${color};font-weight:700">${c._d===9999?'Never':c._d+'d'}</td></tr>`;}).join('')||'<tr><td colspan="8" style="text-align:center;color:var(--text3)">No overdue follow-ups 🎉</td></tr>'}
     </tbody></table>`;
   } else if(type==='source'){
     title='Lead Source & Referral Report';
@@ -3163,7 +3163,7 @@ function openPdfReport(type){
       ${Object.entries(bySource).sort((a,b)=>b[1]-a[1]).map(([k,v])=>`<tr><td>${k}</td><td>${v}</td><td>${Math.round(v/db.customers.length*100)}%</td></tr>`).join('')}
     </tbody></table>
     <h3 style="margin-top:24px">Top Referrers</h3><table><thead><tr><th>Referred By</th><th>Leads Generated</th></tr></thead><tbody>
-      ${Object.keys(byRef).length?Object.entries(byRef).sort((a,b)=>b[1]-a[1]).map(([k,v])=>`<tr><td>${k}</td><td><b>${v}</b></td></tr>`).join(''):'<tr><td colspan="2" style="color:#888">No referral data yet</td></tr>'}
+      ${Object.keys(byRef).length?Object.entries(byRef).sort((a,b)=>b[1]-a[1]).map(([k,v])=>`<tr><td>${k}</td><td><b>${v}</b></td></tr>`).join(''):'<tr><td colspan="2" style="color:var(--text3)">No referral data yet</td></tr>'}
     </tbody></table>`;
   } else if(type==='pipeline'){
     title='Pipeline Stage Summary';
@@ -3197,7 +3197,7 @@ function openPdfReport(type){
   } else if(type==='campaign'){
     title='Campaign ROI Report';
     tableHtml=`<table><thead><tr><th>Campaign</th><th>Type</th><th>Status</th><th>Budget (฿)</th><th>Spent (฿)</th><th>Sent</th><th>Opened</th><th>Replied</th><th>Open %</th><th>Reply %</th></tr></thead><tbody>
-      ${db.campaigns.map(c=>`<tr><td><b>${c.name}</b></td><td>${c.type||'--'}</td><td>${c.status||'--'}</td><td>${(c.budget||0).toLocaleString()}</td><td>${(c.spent||0).toLocaleString()}</td><td>${c.sentCount||0}</td><td>${c.openCount||0}</td><td>${c.replyCount||0}</td><td>${c.sentCount?Math.round((c.openCount||0)/c.sentCount*100):0}%</td><td>${c.sentCount?Math.round((c.replyCount||0)/c.sentCount*100):0}%</td></tr>`).join('')||'<tr><td colspan="10" style="text-align:center;color:#888">No campaigns</td></tr>'}
+      ${db.campaigns.map(c=>`<tr><td><b>${c.name}</b></td><td>${c.type||'--'}</td><td>${c.status||'--'}</td><td>${(c.budget||0).toLocaleString()}</td><td>${(c.spent||0).toLocaleString()}</td><td>${c.sentCount||0}</td><td>${c.openCount||0}</td><td>${c.replyCount||0}</td><td>${c.sentCount?Math.round((c.openCount||0)/c.sentCount*100):0}%</td><td>${c.sentCount?Math.round((c.replyCount||0)/c.sentCount*100):0}%</td></tr>`).join('')||'<tr><td colspan="10" style="text-align:center;color:var(--text3)">No campaigns</td></tr>'}
     </tbody></table>`;
   }
 
@@ -3507,7 +3507,7 @@ function rbPreview(){
 function rbTableHtml(cols,rows){
   return `<table class="report-table" style="font-size:11px;min-width:100%">
     <tr>${cols.map(f=>`<th>${f.label}</th>`).join('')}</tr>
-    ${rows.map(r=>`<tr>${cols.map(f=>`<td style="max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${f.get(r)}</td>`).join('')}</tr>`).join('')||'<tr><td colspan="'+cols.length+'" style="text-align:center;color:#888">No records match filters</td></tr>'}
+    ${rows.map(r=>`<tr>${cols.map(f=>`<td style="max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${f.get(r)}</td>`).join('')}</tr>`).join('')||'<tr><td colspan="'+cols.length+'" style="text-align:center;color:var(--text3)">No records match filters</td></tr>'}
   </table>`;
 }
 
@@ -3538,7 +3538,7 @@ function rbPrintPdf(){
   tr:nth-child(even) td{background:#fafafa}.footer{margin-top:20px;font-size:9px;color:#aaa;display:flex;justify-content:space-between}
   @media print{button{display:none}}</style></head><body>
   <div class="header"><div><div style="font-size:22px;color:#B48A50">💎</div><h1>Custom Report</h1><div style="font-size:10px;color:#666">${co}</div></div>
-  <div style="text-align:right;font-size:10px;color:#888">Generated: ${today}<br>${rows.length} records</div></div>
+  <div style="text-align:right;font-size:10px;color:var(--text3)">Generated: ${today}<br>${rows.length} records</div></div>
   <table><thead><tr>${cols.map(f=>`<th>${f.label}</th>`).join('')}</tr></thead><tbody>
   ${rows.map(r=>`<tr>${cols.map(f=>`<td title="${f.get(r)}">${f.get(r)}</td>`).join('')}</tr>`).join('')}
   </tbody></table>
@@ -5769,15 +5769,14 @@ function renderKYC(){
 
 <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:20px">
   ${[
-    ['✅','Valid',valid,'var(--green)'],
-    ['⏰','Expiring ≤30d',expiring,'var(--orange)'],
-    ['❌','Expired / Missing',missing+expired,'var(--red)'],
-    ['📋','Total Active',custs.length,'var(--gold)'],
-  ].map(([icon,label,val,color])=>`
-    <div class="card" style="text-align:center;padding:16px">
-      <div style="font-size:26px">${icon}</div>
-      <div style="font-family:'Inter',sans-serif;font-size:28px;font-weight:700;letter-spacing:-.5px;color:${color}">${val}</div>
-      <div style="font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:.5px">${label}</div>
+    ['Valid',            valid,           'var(--green)'],
+    ['Expiring ≤30d',    expiring,        'var(--orange)'],
+    ['Expired / Missing',missing+expired, 'var(--red)'],
+    ['Total Active',     custs.length,    'var(--text)'],
+  ].map(([label,val,color])=>`
+    <div class="card" style="padding:16px 14px;border-top:3px solid ${color}">
+      <div class="kpi-label">${label}</div>
+      <div class="kpi-value" style="color:${color}">${val}</div>
     </div>`).join('')}
 </div>
 
