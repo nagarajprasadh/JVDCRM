@@ -570,6 +570,7 @@ th[data-tip]{cursor:pointer}
   <div class="nav-item" data-mod="kyc" onclick="nav('kyc')"><span class="icon">🛂</span>KYC<span class="badge" id="nb-kyc">0</span></div>
   <div class="nav-item" data-mod="suppliers" onclick="nav('suppliers')"><span class="icon">🏭</span>Suppliers<span class="badge" id="nb-sup"></span></div>
   <div class="nav-item" data-mod="stockinv" onclick="nav('stockinv')"><span class="icon">💎</span>Stock Inventory<span class="badge" id="nb-inv"></span></div>
+  <div class="nav-item" data-mod="deals" onclick="nav('deals')"><span class="icon">🤝</span>Deals<span class="badge" id="nb-deals"></span></div>
   <div class="nav-item" data-mod="accounting" onclick="nav('accounting')"><span class="icon">🧾</span>Invoices & Payments<span class="badge" id="nb-inv">0</span></div>
   <div class="nav-item" id="nav-users" onclick="nav('users')" style="display:none"><span class="icon">🔐</span>Users &amp; Access</div>
   <div class="nav-item" onclick="nav('help')"><span class="icon">❓</span>Help &amp; FAQ</div>
@@ -692,6 +693,7 @@ function loadDB(){
   if(!db.settings)      db.settings      = {};
   if(!db.suppliers)     db.suppliers     = [];
   if(!db.stock)         db.stock         = [];
+  if(!db.deals)         db.deals         = [];
   // Assign VID to any supplier missing one
   (db.suppliers||[]).forEach(s=>{ if(!s.vid) s.vid=generateVID(); });
   // Assign CIF to any customer missing one
@@ -727,6 +729,8 @@ function updateBadges(){
   if(supBadge){const supKycDue=(db.suppliers||[]).filter(s=>isSupKycDue(s)).length;supBadge.textContent=supKycDue||'';}
   const invBadge=document.getElementById('nb-inv');
   if(invBadge){const avail=(db.stock||[]).filter(s=>s.status==='Available').length;invBadge.textContent=avail||'';}
+  const dealBadge=document.getElementById('nb-deals');
+  if(dealBadge){const openDeals=(db.deals||[]).filter(d=>d.status==='Open'||d.status==='Pending').length;dealBadge.textContent=openDeals||'';}
   const kycDue=(db.customers||[]).filter(c=>isKycCustomer(c)&&isKycDue(c)).length;
   const kycBadge=document.getElementById('nb-kyc'); if(kycBadge) kycBadge.textContent=kycDue||'';
   const invBadge=document.getElementById('nb-inv'); if(invBadge) invBadge.textContent = (db.invoices||[]).filter(i=>['Draft','Sent','Overdue'].includes(i.status)).length;
@@ -736,7 +740,7 @@ function updateBadges(){
 // NAVIGATION
 // ══════════════════════════════════════════════
 let currentNav = 'dashboard';
-const TITLES = { dashboard:'Dashboard', customers:'Customers & Leads', pipeline:'Sales Pipeline', kyc:'KYC Management', suppliers:'Suppliers', stockinv:'Stock Inventory', users:'Users & Access',
+const TITLES = { dashboard:'Dashboard', customers:'Customers & Leads', pipeline:'Sales Pipeline', kyc:'KYC Management', suppliers:'Suppliers', stockinv:'Stock Inventory', deals:'Deal Records', users:'Users & Access',
   inventory:'Inventory Interest', salespeople:'Salespeople', reports:'Reports',
   campaigns:'Campaigns', bizcard:'Business Cards', accounting:'Invoices & Payments', settings:'Settings', help:'Help & FAQ' };
 
@@ -1291,7 +1295,7 @@ function nav(section){
       </div>`;
     return;
   }
-  const renders = { dashboard:renderDashboard, customers:renderCustomers, pipeline:renderPipeline, kyc:renderKYC, suppliers:renderSuppliers, stockinv:renderStockInventory,
+  const renders = { dashboard:renderDashboard, customers:renderCustomers, pipeline:renderPipeline, kyc:renderKYC, suppliers:renderSuppliers, stockinv:renderStockInventory, deals:renderDeals,
       inventory:renderInventory, salespeople:renderSalespeople, reports:renderReports,
       campaigns:renderCampaigns, bizcard:renderBizcard, accounting:renderAccounting,
       settings:renderSettings, users:renderUsers, help:renderHelp };
@@ -6285,6 +6289,338 @@ function exportStockCSV(){
   a.download='Stock_Inventory_'+new Date().toISOString().slice(0,10)+'.csv';
   a.click();
   showToast('Stock CSV downloaded');
+}
+
+// ══════════════════════════════════════════════
+// DEAL RECORDS MODULE
+// ══════════════════════════════════════════════
+
+const DEAL_STATUSES = ['Open','Pending Payment','Completed','Cancelled','Refunded'];
+
+function generateDealNo(){
+  const existing=(db.deals||[]).map(d=>parseInt((d.dealNo||'').replace(/\D/g,''))||0);
+  const next=existing.length?Math.max(...existing)+1:1001;
+  return 'DEAL-'+new Date().getFullYear()+'-'+String(next).padStart(4,'0');
+}
+
+// ── renderDeals ───────────────────────────────────────────────────────────
+function renderDeals(){
+  const deals=db.deals||[];
+  const open=deals.filter(d=>d.status==='Open'||d.status==='Pending Payment');
+  const completed=deals.filter(d=>d.status==='Completed');
+  const totalRev=completed.reduce((s,d)=>s+(d.salePrice||0),0);
+  const totalCost=completed.reduce((s,d)=>s+(d.costPrice||0),0);
+  const totalMargin=totalRev-totalCost;
+  const avgMarginPct=completed.length?Math.round(totalMargin/Math.max(1,totalRev)*100):0;
+
+  // Filter
+  if(!window._dealFilter) window._dealFilter={search:'',status:'All'};
+  const f=window._dealFilter;
+  let list=[...deals].sort((a,b)=>new Date(b.createdAt||0)-new Date(a.createdAt||0));
+  if(f.search){const q=f.search.toLowerCase();list=list.filter(d=>(d.dealNo+' '+(d.customerName||'')+' '+(d.sku||'')).toLowerCase().includes(q));}
+  if(f.status!=='All') list=list.filter(d=>d.status===f.status);
+
+  const statusColor={Open:'var(--blue)',Completed:'var(--green)','Pending Payment':'var(--orange)',Cancelled:'var(--text3)',Refunded:'var(--red)'};
+
+  document.getElementById('content').innerHTML=`
+<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;flex-wrap:wrap;gap:10px">
+  <div style="font-family:'EB Garamond',Georgia,serif;font-size:24px;font-weight:600;letter-spacing:-.2px">Deal Records</div>
+  <div style="display:flex;gap:8px;flex-wrap:wrap">
+    <button class="btn btn-outline btn-sm" onclick="exportDealsCSV()">📊 Export CSV</button>
+    <button class="btn btn-gold" onclick="openDealModal(null)">+ New Deal</button>
+  </div>
+</div>
+
+<!-- KPIs -->
+<div style="display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin-bottom:18px">
+  ${[
+    ['Total Deals',   deals.length,        'all time',           'var(--text)'],
+    ['Open / Pending',open.length,          'in progress',        'var(--blue)'],
+    ['Completed',     completed.length,     'closed deals',       'var(--green)'],
+    ['Total Revenue', fmt(totalRev),        'from completed',     'var(--green)'],
+    ['Avg Margin',    avgMarginPct+'%',     fmt(totalMargin)+' profit','var(--gold)'],
+  ].map(([lb,vl,sb,col])=>`
+  <div class="card" style="padding:14px 12px;border-top:3px solid ${col}">
+    <div style="font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.6px;color:var(--text3);margin-bottom:5px">${lb}</div>
+    <div style="font-size:22px;font-weight:700;color:${col};font-variant-numeric:tabular-nums;letter-spacing:-.3px;line-height:1">${vl}</div>
+    <div style="font-size:10px;color:var(--text3);margin-top:3px">${sb}</div>
+  </div>`).join('')}
+</div>
+
+<!-- Filters -->
+<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px;align-items:center">
+  <input class="search-box" style="width:200px" placeholder="🔍 Deal no, customer, SKU…"
+    value="${f.search}" oninput="window._dealFilter.search=this.value;renderDeals()">
+  <select class="filter-select" onchange="window._dealFilter.status=this.value;renderDeals()">
+    ${['All',...DEAL_STATUSES].map(s=>`<option ${f.status===s?'selected':''}>${s}</option>`).join('')}
+  </select>
+  <span style="font-size:12px;color:var(--text3)">${list.length} deal${list.length!==1?'s':''}</span>
+</div>
+
+<!-- Deal table -->
+<div class="card" style="padding:0;overflow:hidden">
+  <table class="report-table" style="width:100%">
+    <thead><tr style="background:var(--bg2)">
+      <th style="padding:10px 14px;text-align:left;font-size:10px;text-transform:uppercase;letter-spacing:.6px;color:var(--text3)">Deal No</th>
+      <th style="padding:10px 14px;text-align:left;font-size:10px;text-transform:uppercase;letter-spacing:.6px;color:var(--text3)">Customer</th>
+      <th style="padding:10px 14px;text-align:left;font-size:10px;text-transform:uppercase;letter-spacing:.6px;color:var(--text3)">Stone / SKU</th>
+      <th style="padding:10px 14px;text-align:right;font-size:10px;text-transform:uppercase;letter-spacing:.6px;color:var(--text3)">Cost</th>
+      <th style="padding:10px 14px;text-align:right;font-size:10px;text-transform:uppercase;letter-spacing:.6px;color:var(--text3)">Sale Price</th>
+      <th style="padding:10px 14px;text-align:right;font-size:10px;text-transform:uppercase;letter-spacing:.6px;color:var(--text3)">Margin</th>
+      <th style="padding:10px 14px;text-align:left;font-size:10px;text-transform:uppercase;letter-spacing:.6px;color:var(--text3)">Status</th>
+      <th style="padding:10px 14px;text-align:left;font-size:10px;text-transform:uppercase;letter-spacing:.6px;color:var(--text3)">Date</th>
+      <th style="padding:10px 14px"></th>
+    </tr></thead>
+    <tbody>
+      ${list.length?list.map(d=>{
+        const margin=(d.salePrice||0)-(d.costPrice||0);
+        const marginPct=d.salePrice?Math.round(margin/d.salePrice*100):0;
+        const col=statusColor[d.status]||'var(--text3)';
+        return `<tr style="border-bottom:1px solid var(--border);transition:background .1s" onmouseover="this.style.background='var(--hover)'" onmouseout="this.style.background=''">
+          <td style="padding:10px 14px;font-size:12px;font-weight:600;color:var(--gold)">${d.dealNo}</td>
+          <td style="padding:10px 14px;font-size:13px;font-weight:500;color:var(--text)">${d.customerName||'--'}</td>
+          <td style="padding:10px 14px"><div style="font-size:12px;font-weight:500;color:var(--text)">${d.sku||d.stoneDesc||'--'}</div><div style="font-size:10px;color:var(--text3)">${d.certNo?d.certLab+' '+d.certNo:''}</div></td>
+          <td style="padding:10px 14px;text-align:right;font-size:12px;font-variant-numeric:tabular-nums;color:var(--text2)">${fmt(d.costPrice)}</td>
+          <td style="padding:10px 14px;text-align:right;font-size:13px;font-weight:600;font-variant-numeric:tabular-nums;color:var(--green)">${fmt(d.salePrice)}</td>
+          <td style="padding:10px 14px;text-align:right">
+            <div style="font-size:12px;font-weight:700;color:${margin>=0?'var(--green)':'var(--red)'};">${fmt(margin)}</div>
+            <div style="font-size:10px;color:var(--text3)">${marginPct}%</div>
+          </td>
+          <td style="padding:10px 14px"><span style="font-size:11px;font-weight:600;color:${col};background:${col}18;padding:2px 8px;border-radius:20px">${d.status}</span></td>
+          <td style="padding:10px 14px;font-size:11px;color:var(--text3)">${d.dealDate?fmtDate(d.dealDate):'--'}</td>
+          <td style="padding:10px 14px"><button class="btn btn-outline btn-sm" onclick="openDealModal('${d.id}')">Edit</button></td>
+        </tr>`;
+      }).join(''):`<tr><td colspan="9" style="padding:32px;text-align:center;color:var(--text3)">No deals yet. Click + New Deal to record your first transaction.</td></tr>`}
+    </tbody>
+  </table>
+</div>
+
+<!-- Deal Modal -->
+<div id="modal-deal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:1000;align-items:center;justify-content:center">
+  <div class="modal" style="max-width:680px;width:95vw;max-height:90vh;overflow-y:auto">
+    <button class="modal-close" onclick="document.getElementById('modal-deal').style.display='none'">✕</button>
+    <div class="modal-title" id="deal-modal-title">New Deal</div>
+    <div id="deal-modal-body"></div>
+  </div>
+</div>`;
+}
+
+// ── openDealModal ─────────────────────────────────────────────────────────
+function openDealModal(id){
+  const d=id?(db.deals||[]).find(x=>x.id===id)||{}:{};
+  const isNew=!id;
+  document.getElementById('deal-modal-title').textContent=isNew?'New Deal':('Edit Deal — '+(d.dealNo||''));
+  const g=(f,v='')=>d[f]!==undefined?d[f]:v;
+
+  // Customer options
+  const custOpts=(db.customers||[])
+    .sort((a,b)=>(a.firstName||'').localeCompare(b.firstName||''))
+    .map(c=>`<option value="${c.id}" ${g('customerId')===c.id?'selected':''}>${c.firstName} ${c.lastName}${c.company?' ('+c.company+')':''}</option>`).join('');
+
+  // Available stock options (+ currently linked item)
+  const stockOpts=(db.stock||[])
+    .filter(s=>s.status==='Available'||s.id===g('stockId'))
+    .map(s=>`<option value="${s.id}" ${g('stockId')===s.id?'selected':''}>${s.sku} — ${s.caratWeight||''}ct ${s.shape||''} ${s.color||''} ${s.clarity||''} (${s.status})</option>`).join('');
+
+  document.getElementById('deal-modal-body').innerHTML=`
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
+  <div class="field"><label class="form-label">Customer *</label>
+    <select id="dl-cust" class="form-input" onchange="fillDealFromCustomer(this.value)">
+      <option value="">-- Select Customer --</option>
+      ${custOpts}
+    </select></div>
+  <div class="field"><label class="form-label">Deal Date</label>
+    <input id="dl-date" class="form-input" type="date" value="${g('dealDate',new Date().toISOString().slice(0,10))}"></div>
+
+  <div class="field" style="grid-column:1/-1"><label class="form-label">Stone from Inventory (optional — or describe manually below)</label>
+    <select id="dl-stock" class="form-input" onchange="fillDealFromStock(this.value)">
+      <option value="">-- Select from inventory or enter manually --</option>
+      ${stockOpts}
+    </select></div>
+
+  <div class="field"><label class="form-label">Stone Description</label>
+    <input id="dl-desc" class="form-input" value="${g('stoneDesc')}" placeholder="e.g. 1.52ct Round D VS1"></div>
+  <div class="field"><label class="form-label">Cert Lab</label>
+    <select id="dl-certlab" class="form-input">
+      ${CERT_LABS.map(c=>`<option ${g('certLab')===c?'selected':''}>${c}</option>`).join('')}
+    </select></div>
+  <div class="field"><label class="form-label">Certificate No.</label>
+    <input id="dl-certno" class="form-input" value="${g('certNo')}" placeholder="e.g. 2141438171"></div>
+  <div class="field"><label class="form-label">SKU (if from inventory)</label>
+    <input id="dl-sku" class="form-input" value="${g('sku')}" placeholder="e.g. SKU-2026-0001" readonly></div>
+
+  <div class="field"><label class="form-label">Cost Price (THB) *</label>
+    <input id="dl-cost" class="form-input" type="number" value="${g('costPrice')}" placeholder="0" oninput="updateDealMargin()"></div>
+  <div class="field"><label class="form-label">Sale Price (THB) *</label>
+    <input id="dl-sale" class="form-input" type="number" value="${g('salePrice')}" placeholder="0" oninput="updateDealMargin()"></div>
+
+  <!-- Live margin preview -->
+  <div id="deal-margin-preview" style="grid-column:1/-1;background:var(--bg2);border-radius:8px;padding:10px 14px;font-size:13px">
+    ${g('salePrice')?'':'Enter cost and sale price to see margin'}
+  </div>
+
+  <div class="field"><label class="form-label">Salesperson (Primary)</label>
+    <select id="dl-sp1" class="form-input">
+      <option value="">-- Select --</option>
+      ${db.salespeople.map(sp=>`<option ${g('sp1')===sp.name?'selected':''}>${sp.name}</option>`).join('')}
+    </select></div>
+  <div class="field"><label class="form-label">Salesperson (Secondary)</label>
+    <select id="dl-sp2" class="form-input">
+      <option value="">-- None --</option>
+      ${db.salespeople.map(sp=>`<option ${g('sp2')===sp.name?'selected':''}>${sp.name}</option>`).join('')}
+    </select></div>
+
+  <div class="field"><label class="form-label">Status</label>
+    <select id="dl-status" class="form-input">
+      ${DEAL_STATUSES.map(s=>`<option ${g('status','Open')===s?'selected':''}>${s}</option>`).join('')}
+    </select></div>
+  <div class="field"><label class="form-label">Payment Method</label>
+    <select id="dl-payment" class="form-input">
+      ${['Cash','Bank Transfer','Crypto','Cheque','Other'].map(s=>`<option ${g('paymentMethod')===s?'selected':''}>${s}</option>`).join('')}
+    </select></div>
+
+  <div class="field" style="grid-column:1/-1"><label class="form-label">Notes</label>
+    <textarea id="dl-notes" class="form-input" rows="2" style="resize:vertical">${g('notes')}</textarea></div>
+</div>
+<div style="display:flex;gap:8px;justify-content:space-between;margin-top:20px;padding-top:16px;border-top:1px solid var(--border)">
+  <div>${id?`<button class="btn btn-outline" style="color:var(--red);border-color:var(--red)" onclick="deleteDeal('${id}')">🗑 Delete</button>`:''}</div>
+  <div style="display:flex;gap:8px">
+    <button class="btn btn-outline" onclick="document.getElementById('modal-deal').style.display='none'">Cancel</button>
+    <button class="btn btn-gold" onclick="saveDeal('${id||''}')">💾 Save Deal</button>
+  </div>
+</div>`;
+
+  // Trigger margin display if editing
+  if(d.costPrice||d.salePrice) updateDealMargin();
+  document.getElementById('modal-deal').style.display='flex';
+}
+
+function fillDealFromStock(stockId){
+  if(!stockId) return;
+  const s=(db.stock||[]).find(x=>x.id===stockId); if(!s) return;
+  const set=(id,val)=>{const el=document.getElementById(id);if(el)el.value=val;};
+  set('dl-desc',[s.caratWeight?s.caratWeight+'ct':'',s.shape,s.color,s.clarity].filter(Boolean).join(' '));
+  set('dl-certlab',s.certLab||'GIA');
+  set('dl-certno',s.certNo||'');
+  set('dl-sku',s.sku||'');
+  set('dl-cost',s.costPrice||'');
+  set('dl-sale',s.askingPrice||'');
+  updateDealMargin();
+}
+
+function fillDealFromCustomer(custId){
+  if(!custId) return;
+  const c=(db.customers||[]).find(x=>x.id===custId); if(!c) return;
+  const set=(id,val)=>{const el=document.getElementById(id);if(el&&!el.value)el.value=val;};
+  if(c.assignedTo){const el=document.getElementById('dl-sp1');if(el)for(let o of el.options)if(o.text===c.assignedTo)o.selected=true;}
+  if(c.assignedTo2){const el=document.getElementById('dl-sp2');if(el)for(let o of el.options)if(o.text===c.assignedTo2)o.selected=true;}
+}
+
+function updateDealMargin(){
+  const cost=parseFloat((document.getElementById('dl-cost')||{}).value)||0;
+  const sale=parseFloat((document.getElementById('dl-sale')||{}).value)||0;
+  const el=document.getElementById('deal-margin-preview'); if(!el) return;
+  if(!cost&&!sale){el.innerHTML='<span style="color:var(--text3)">Enter cost and sale price to see margin</span>';return;}
+  const margin=sale-cost;
+  const pct=sale?Math.round(margin/sale*100):0;
+  const col=margin>=0?'var(--green)':'var(--red)';
+  el.innerHTML=`<div style="display:flex;gap:24px;align-items:center">
+    <div><div style="font-size:10px;text-transform:uppercase;letter-spacing:.5px;color:var(--text3)">Margin</div>
+      <div style="font-size:20px;font-weight:700;color:${col};font-variant-numeric:tabular-nums">${fmt(margin)}</div></div>
+    <div><div style="font-size:10px;text-transform:uppercase;letter-spacing:.5px;color:var(--text3)">Margin %</div>
+      <div style="font-size:20px;font-weight:700;color:${col}">${pct}%</div></div>
+    <div><div style="font-size:10px;text-transform:uppercase;letter-spacing:.5px;color:var(--text3)">Sale Price</div>
+      <div style="font-size:16px;font-weight:600;color:var(--text);font-variant-numeric:tabular-nums">${fmt(sale)}</div></div>
+  </div>`;
+}
+
+function saveDeal(id){
+  const g=f=>(document.getElementById(f)||{}).value||'';
+  const custId=g('dl-cust');
+  const cust=(db.customers||[]).find(x=>x.id===custId);
+  const obj={
+    customerId:custId,
+    customerName:cust?cust.firstName+' '+cust.lastName:'',
+    dealDate:g('dl-date'),
+    stockId:g('dl-stock'),
+    stoneDesc:g('dl-desc'),
+    certLab:g('dl-certlab'),
+    certNo:g('dl-certno'),
+    sku:g('dl-sku'),
+    costPrice:parseFloat(g('dl-cost'))||0,
+    salePrice:parseFloat(g('dl-sale'))||0,
+    sp1:g('dl-sp1'),
+    sp2:g('dl-sp2'),
+    status:g('dl-status'),
+    paymentMethod:g('dl-payment'),
+    notes:g('dl-notes'),
+  };
+  obj.margin=(obj.salePrice||0)-(obj.costPrice||0);
+  obj.marginPct=obj.salePrice?Math.round(obj.margin/obj.salePrice*100):0;
+
+  if(!obj.customerId&&!obj.stoneDesc){alert('Select a customer and/or enter stone description');return;}
+
+  if(!db.deals) db.deals=[];
+
+  // If status=Completed and linked stock item → mark as Sold
+  if(obj.status==='Completed'&&obj.stockId){
+    const stk=(db.stock||[]).find(x=>x.id===obj.stockId);
+    if(stk&&stk.status!=='Sold'){stk.status='Sold';stk.updatedAt=new Date().toISOString();}
+  }
+  // If customer linked → mark as Won
+  if(obj.status==='Completed'&&obj.customerId){
+    const c=(db.customers||[]).find(x=>x.id===obj.customerId);
+    if(c&&c.leadStatus!=='Won'){c.leadStatus='Won';c.updatedAt=new Date().toISOString();}
+  }
+
+  if(id){
+    const idx=db.deals.findIndex(x=>x.id===id);
+    if(idx>-1){obj.id=id;obj.dealNo=db.deals[idx].dealNo;obj.createdAt=db.deals[idx].createdAt;obj.updatedAt=new Date().toISOString();db.deals[idx]=obj;}
+  } else {
+    obj.id='deal_'+Date.now();
+    obj.dealNo=generateDealNo();
+    obj.createdAt=new Date().toISOString();obj.updatedAt=new Date().toISOString();
+    db.deals.push(obj);
+  }
+  saveDB();
+  document.getElementById('modal-deal').style.display='none';
+  renderDeals();
+  updateBadges();
+  showToast(id?'Deal updated':'Deal recorded — '+obj.dealNo);
+}
+
+function deleteDeal(id){
+  if(!confirm('Delete this deal record?')) return;
+  const d=(db.deals||[]).find(x=>x.id===id);
+  // If we're deleting a completed deal that set stock to Sold, revert it
+  if(d&&d.status==='Completed'&&d.stockId){
+    const stk=(db.stock||[]).find(x=>x.id===d.stockId);
+    if(stk&&stk.status==='Sold'){stk.status='Available';stk.updatedAt=new Date().toISOString();}
+  }
+  db.deals=(db.deals||[]).filter(x=>x.id!==id);
+  saveDB();
+  document.getElementById('modal-deal').style.display='none';
+  renderDeals();
+  updateBadges();
+  showToast('Deal deleted','error');
+}
+
+function exportDealsCSV(){
+  const deals=db.deals||[];
+  if(!deals.length){showToast('No deals to export','error');return;}
+  const rows=[['Deal No','Customer','Stone Description','SKU','Cert Lab','Cert No','Cost (THB)','Sale Price (THB)','Margin (THB)','Margin %','SP1','SP2','Status','Payment Method','Deal Date','Notes']];
+  deals.forEach(d=>{
+    rows.push([d.dealNo||'',d.customerName||'',d.stoneDesc||'',d.sku||'',d.certLab||'',d.certNo||'',
+      d.costPrice||0,d.salePrice||0,d.margin||0,(d.marginPct||0)+'%',
+      d.sp1||'',d.sp2||'',d.status||'',d.paymentMethod||'',
+      d.dealDate||'',d.notes||'']);
+  });
+  const csv=rows.map(r=>r.map(x=>'"'+String(x==null?'':x).replace(/"/g,'""')+'"').join(',')).join('\n');
+  const a=document.createElement('a');
+  a.href='data:text/csv;charset=utf-8,\uFEFF'+encodeURIComponent(csv);
+  a.download='Deals_'+new Date().toISOString().slice(0,10)+'.csv';
+  a.click();
+  showToast('Deals CSV downloaded');
 }
 
 // ══════════════════════════════════════════════
