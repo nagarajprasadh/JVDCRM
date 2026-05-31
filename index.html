@@ -347,6 +347,7 @@ th[data-tip]{cursor:pointer}
 #zoom-bar button:hover{background:var(--hover)}
 #zoom-pct{font-size:12px;font-weight:600;color:var(--text2);min-width:36px;text-align:center}
 
+@keyframes fadeInUp{from{opacity:0;transform:translateX(-50%) translateY(10px)}to{opacity:1;transform:translateX(-50%) translateY(0)}}
 /* scrollbar */
 ::-webkit-scrollbar{width:5px;height:5px}
 ::-webkit-scrollbar-track{background:transparent;border-radius:3px}
@@ -568,6 +569,7 @@ th[data-tip]{cursor:pointer}
   <div class="nav-item" data-mod="bizcard" onclick="nav('bizcard')"><span class="icon">🪪</span>Business Cards<span class="badge" id="nb-bc">0</span></div>
   <div class="nav-item" data-mod="kyc" onclick="nav('kyc')"><span class="icon">🛂</span>KYC<span class="badge" id="nb-kyc">0</span></div>
   <div class="nav-item" data-mod="suppliers" onclick="nav('suppliers')"><span class="icon">🏭</span>Suppliers<span class="badge" id="nb-sup"></span></div>
+  <div class="nav-item" data-mod="stockinv" onclick="nav('stockinv')"><span class="icon">💎</span>Stock Inventory<span class="badge" id="nb-inv"></span></div>
   <div class="nav-item" data-mod="accounting" onclick="nav('accounting')"><span class="icon">🧾</span>Invoices & Payments<span class="badge" id="nb-inv">0</span></div>
   <div class="nav-item" id="nav-users" onclick="nav('users')" style="display:none"><span class="icon">🔐</span>Users &amp; Access</div>
   <div class="nav-item" onclick="nav('help')"><span class="icon">❓</span>Help &amp; FAQ</div>
@@ -689,6 +691,7 @@ function loadDB(){
   if(!db.savedReports)  db.savedReports  = [];
   if(!db.settings)      db.settings      = {};
   if(!db.suppliers)     db.suppliers     = [];
+  if(!db.stock)         db.stock         = [];
   // Assign VID to any supplier missing one
   (db.suppliers||[]).forEach(s=>{ if(!s.vid) s.vid=generateVID(); });
   // Assign CIF to any customer missing one
@@ -722,6 +725,8 @@ function updateBadges(){
   document.getElementById('nb-bc').textContent   = (db.businessCards||[]).length;
   const supBadge=document.getElementById('nb-sup');
   if(supBadge){const supKycDue=(db.suppliers||[]).filter(s=>isSupKycDue(s)).length;supBadge.textContent=supKycDue||'';}
+  const invBadge=document.getElementById('nb-inv');
+  if(invBadge){const avail=(db.stock||[]).filter(s=>s.status==='Available').length;invBadge.textContent=avail||'';}
   const kycDue=(db.customers||[]).filter(c=>isKycCustomer(c)&&isKycDue(c)).length;
   const kycBadge=document.getElementById('nb-kyc'); if(kycBadge) kycBadge.textContent=kycDue||'';
   const invBadge=document.getElementById('nb-inv'); if(invBadge) invBadge.textContent = (db.invoices||[]).filter(i=>['Draft','Sent','Overdue'].includes(i.status)).length;
@@ -731,7 +736,7 @@ function updateBadges(){
 // NAVIGATION
 // ══════════════════════════════════════════════
 let currentNav = 'dashboard';
-const TITLES = { dashboard:'Dashboard', customers:'Customers & Leads', pipeline:'Sales Pipeline', kyc:'KYC Management', suppliers:'Suppliers', users:'Users & Access',
+const TITLES = { dashboard:'Dashboard', customers:'Customers & Leads', pipeline:'Sales Pipeline', kyc:'KYC Management', suppliers:'Suppliers', stockinv:'Stock Inventory', users:'Users & Access',
   inventory:'Inventory Interest', salespeople:'Salespeople', reports:'Reports',
   campaigns:'Campaigns', bizcard:'Business Cards', accounting:'Invoices & Payments', settings:'Settings', help:'Help & FAQ' };
 
@@ -1286,7 +1291,7 @@ function nav(section){
       </div>`;
     return;
   }
-  const renders = { dashboard:renderDashboard, customers:renderCustomers, pipeline:renderPipeline, kyc:renderKYC, suppliers:renderSuppliers,
+  const renders = { dashboard:renderDashboard, customers:renderCustomers, pipeline:renderPipeline, kyc:renderKYC, suppliers:renderSuppliers, stockinv:renderStockInventory,
       inventory:renderInventory, salespeople:renderSalespeople, reports:renderReports,
       campaigns:renderCampaigns, bizcard:renderBizcard, accounting:renderAccounting,
       settings:renderSettings, users:renderUsers, help:renderHelp };
@@ -3203,7 +3208,7 @@ function downloadCsvReport(type){
   const{from,to}=getRptDateRange();
   const rangeLabel=from?`_${from.toISOString().slice(0,7)}${to?'_to_'+to.toISOString().slice(0,7):''}`:'' ;
   let rows=[], filename=type+rangeLabel+'.csv';
-  const allCusts=db.customers||[]; const custs=rptFrom?allCusts.filter(c=>{const d=new Date(c.createdAt||0);return(!rptFrom||d>=rptFrom)&&(!rptTo||d<=rptTo);}):allCusts;
+  const allCusts=db.customers||[]; const custs=from?allCusts.filter(c=>{const d=new Date(c.createdAt||0);return(!from||d>=from)&&(!to||d<=to);}):allCusts;
   const fmtD=d=>d?new Date(d).toLocaleDateString('en-GB'):'';
 
   if(type==='followup'){
@@ -4869,6 +4874,20 @@ function debouncedSearch(){
     if(el2){ el2.focus(); if(pos!==null){ try{ el2.setSelectionRange(pos,pos); }catch(e){} } }
   }, 220);
 }
+
+// ── Toast notification ────────────────────────────────────────────────────
+function showToast(msg, type){
+  type = type||'success';
+  const t = document.createElement('div');
+  t.style.cssText = 'position:fixed;bottom:70px;left:50%;transform:translateX(-50%);'
+    +'background:'+(type==='error'?'var(--red)':'var(--green)')
+    +';color:#fff;padding:9px 20px;border-radius:20px;font-size:13px;font-weight:500;'
+    +'z-index:9999;box-shadow:0 4px 20px rgba(0,0,0,.2);white-space:nowrap;'
+    +'animation:fadeInUp .2s ease';
+  t.textContent = msg;
+  document.body.appendChild(t);
+  setTimeout(()=>{ t.style.opacity='0'; t.style.transition='opacity .3s'; setTimeout(()=>t.remove(),300); }, 2500);
+}
 // ══════════════════════════════════════════════
 // GLOBAL SEARCH
 // ══════════════════════════════════════════════
@@ -5915,6 +5934,357 @@ function removeSupPurchase(supId,idx){
   if(!confirm('Remove this purchase record?'))return;
   const s=(db.suppliers||[]).find(x=>x.id===supId);if(!s)return;
   s.purchases.splice(idx,1);saveDB();openSupPurchaseModal(supId);
+}
+
+// ══════════════════════════════════════════════
+// STOCK INVENTORY MODULE
+// ══════════════════════════════════════════════
+
+const DIAMOND_SHAPES   = ['Round','Princess','Cushion','Oval','Pear','Marquise','Emerald','Radiant','Asscher','Heart','Trillion'];
+const DIAMOND_COLORS   = ['D','E','F','G','H','I','J','K','L','M'];
+const DIAMOND_CLARITIES= ['FL','IF','VVS1','VVS2','VS1','VS2','SI1','SI2','I1','I2','I3'];
+const DIAMOND_CUTS     = ['Excellent','Very Good','Good','Fair','Poor'];
+const STOCK_STATUSES   = ['Available','Reserved','On Memo','Sold','Returned'];
+const CERT_LABS        = ['GIA','IGI','AGS','HRD','EGL','None'];
+const STONE_TYPES      = ['Natural Diamond','Lab-Grown Diamond','Coloured Diamond','Fancy Coloured','Rough Diamond','Coloured Gemstone','Other'];
+
+function generateSKU(){
+  const existing=(db.stock||[]).map(s=>parseInt((s.sku||'').replace(/\D/g,''))||0);
+  const next=existing.length?Math.max(...existing)+1:1001;
+  return 'SKU-'+new Date().getFullYear()+'-'+String(next).padStart(4,'0');
+}
+
+// ── renderStockInventory ──────────────────────────────────────────────────
+function renderStockInventory(){
+  const stock=db.stock||[];
+  const avail=stock.filter(s=>s.status==='Available');
+  const reserved=stock.filter(s=>s.status==='Reserved');
+  const memo=stock.filter(s=>s.status==='On Memo');
+  const sold=stock.filter(s=>s.status==='Sold');
+  const totalCost=stock.reduce((s,i)=>s+(i.costPrice||0),0);
+  const totalAsk=avail.reduce((s,i)=>s+(i.askingPrice||0),0);
+
+  // Filter state
+  if(!window._invFilter) window._invFilter={search:'',status:'All',type:'All',shape:'All'};
+  const f=window._invFilter;
+  let list=[...stock];
+  if(f.search){const q=f.search.toLowerCase();list=list.filter(s=>(s.sku+' '+s.certNo+' '+s.description+' '+(s.shape||'')).toLowerCase().includes(q));}
+  if(f.status!=='All') list=list.filter(s=>s.status===f.status);
+  if(f.type!=='All')   list=list.filter(s=>s.stoneType===f.type);
+  if(f.shape!=='All')  list=list.filter(s=>s.shape===f.shape);
+
+  // Match score: how many customers want this stone
+  function matchScore(item){
+    if(!item.shape&&!item.caratWeight) return 0;
+    return (db.customers||[]).filter(c=>{
+      if(!['Won','Proposal','Negotiation','Qualified','New'].includes(c.leadStatus)) return false;
+      if(c.preferredShapes&&c.preferredShapes.length&&!c.preferredShapes.includes(item.shape)) return false;
+      if(c.caratMin&&item.caratWeight<parseFloat(c.caratMin)) return false;
+      if(c.caratMax&&item.caratWeight>parseFloat(c.caratMax)) return false;
+      return true;
+    }).length;
+  }
+
+  const statusColors={Available:'var(--green)',Reserved:'var(--blue)',
+    'On Memo':'var(--orange)',Sold:'var(--text3)',Returned:'var(--red)'};
+
+  document.getElementById('content').innerHTML=`
+<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;flex-wrap:wrap;gap:10px">
+  <div style="font-family:'EB Garamond',Georgia,serif;font-size:24px;font-weight:600;letter-spacing:-.2px">Stock Inventory</div>
+  <div style="display:flex;gap:8px;flex-wrap:wrap">
+    <button class="btn btn-outline btn-sm" onclick="exportStockCSV()">📊 Export CSV</button>
+    <button class="btn btn-gold" onclick="openStockModal(null)">+ Add Stone</button>
+  </div>
+</div>
+
+<!-- KPI row -->
+<div style="display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin-bottom:18px">
+  ${[
+    ['Available',avail.length,'in stock','var(--green)'],
+    ['Reserved', reserved.length,'pending','var(--blue)'],
+    ['On Memo',  memo.length,'with clients','var(--orange)'],
+    ['Sold',     sold.length,'completed','var(--text3)'],
+    ['Asking Value',fmt(totalAsk),'available stock','var(--gold)'],
+  ].map(([lb,vl,sb,col])=>`
+  <div class="card" style="padding:14px 12px;border-top:3px solid ${col}">
+    <div style="font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.6px;color:var(--text3);margin-bottom:5px">${lb}</div>
+    <div style="font-size:22px;font-weight:700;color:${col};font-variant-numeric:tabular-nums;letter-spacing:-.3px;line-height:1">${vl}</div>
+    <div style="font-size:10px;color:var(--text3);margin-top:3px">${sb}</div>
+  </div>`).join('')}
+</div>
+
+<!-- Filters -->
+<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px;align-items:center">
+  <input id="inv-search" class="search-box" style="width:200px" placeholder="🔍 SKU, cert, description…"
+    value="${f.search}" oninput="window._invFilter.search=this.value;debouncedInvRender()">
+  ${[['inv-status','status',['All',...STOCK_STATUSES]],['inv-type','type',['All',...STONE_TYPES]],['inv-shape','shape',['All',...DIAMOND_SHAPES]]].map(([id,key,opts])=>`
+  <select id="${id}" class="filter-select" onchange="window._invFilter.${key}=this.value;renderStockInventory()">
+    ${opts.map(o=>`<option ${f[key]===o?'selected':''}>${o}</option>`).join('')}
+  </select>`).join('')}
+  <span style="font-size:12px;color:var(--text3)">${list.length} stones</span>
+</div>
+
+<!-- Stock cards -->
+<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:12px">
+  ${list.length ? list.map(item=>{
+    const col=statusColors[item.status]||'var(--text3)';
+    const matches=matchScore(item);
+    const sup=(db.suppliers||[]).find(s=>s.id===item.supplierId);
+    return `<div class="card" style="padding:0;overflow:hidden;cursor:pointer;transition:box-shadow .15s"
+      onmouseover="this.style.boxShadow='var(--shadow-md)'" onmouseout="this.style.boxShadow=''"
+      onclick="openStockModal('${item.id}')">
+      <!-- Status bar -->
+      <div style="height:3px;background:${col}"></div>
+      <div style="padding:12px 14px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:flex-start">
+        <div>
+          <div style="font-size:13px;font-weight:600;color:var(--text)">${item.sku}</div>
+          <div style="font-size:11px;color:var(--text3);margin-top:1px">${item.stoneType||'Diamond'}${item.certLab&&item.certLab!=='None'?' · '+item.certLab+' '+item.certNo:''}</div>
+        </div>
+        <span style="font-size:10px;font-weight:600;color:${col};background:${col}18;padding:2px 8px;border-radius:20px;flex-shrink:0">${item.status}</span>
+      </div>
+      <div style="padding:10px 14px">
+        <!-- Main specs -->
+        <div style="font-size:15px;font-weight:700;color:var(--text);margin-bottom:8px;font-variant-numeric:tabular-nums">
+          ${item.caratWeight?item.caratWeight+'ct ':''}<span style="font-weight:400;color:var(--text2)">${item.shape||''} ${item.color||''} ${item.clarity||''}</span>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:5px;margin-bottom:10px">
+          ${[
+            ['Cut',item.cut||'--'],
+            ['Polish/Sym',item.polish||'--'],
+            ['Asking',item.askingPrice?fmt(item.askingPrice):'--'],
+            ['Cost',item.costPrice?fmt(item.costPrice):'--'],
+            ['Supplier',sup?sup.company:'--'],
+            ['Location',item.location||'--'],
+          ].map(([l,v])=>`<div><div style="font-size:9px;text-transform:uppercase;letter-spacing:.4px;color:var(--text3)">${l}</div><div style="font-size:11px;font-weight:500;color:var(--text2)">${v}</div></div>`).join('')}
+        </div>
+        ${matches>0?`<div style="font-size:11px;background:var(--green-bg);color:var(--green);border-radius:6px;padding:4px 8px;font-weight:600">🎯 ${matches} customer${matches>1?'s':''} interested</div>`:''}
+      </div>
+    </div>`;
+  }).join('') : `<div class="card" style="grid-column:1/-1;text-align:center;padding:40px">
+    <div style="font-size:32px;margin-bottom:10px">💎</div>
+    <div style="font-family:'EB Garamond',serif;font-size:18px;color:var(--text2);margin-bottom:6px">No stock items yet</div>
+    <div style="font-size:13px;color:var(--text3);margin-bottom:16px">Add diamonds, coloured stones and jewellery to your inventory</div>
+    <button class="btn btn-gold" onclick="openStockModal(null)">+ Add First Stone</button>
+  </div>`}
+</div>
+
+<!-- Stock Modal -->
+<div id="modal-stock" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:1000;align-items:center;justify-content:center">
+  <div class="modal" style="max-width:680px;width:95vw;max-height:90vh;overflow-y:auto">
+    <button class="modal-close" onclick="document.getElementById('modal-stock').style.display='none'">✕</button>
+    <div class="modal-title" id="stock-modal-title">Add Stone</div>
+    <div id="stock-modal-body"></div>
+  </div>
+</div>`;
+
+  // Debounce for search
+  if(!window._invDebounce){
+    window.debouncedInvRender=function(){
+      clearTimeout(window._invDebounce);
+      window._invDebounce=setTimeout(function(){
+        var el=document.getElementById('inv-search');
+        var pos=el?el.selectionStart:null;
+        renderStockInventory();
+        var el2=document.getElementById('inv-search');
+        if(el2){el2.focus();if(pos!==null)try{el2.setSelectionRange(pos,pos);}catch(e){}}
+      },200);
+    };
+  }
+}
+
+// ── openStockModal ────────────────────────────────────────────────────────
+function openStockModal(id){
+  const item=id?(db.stock||[]).find(x=>x.id===id)||{}:{};
+  const isNew=!id;
+  document.getElementById('stock-modal-title').textContent=isNew?'Add Stone':'Edit Stone — '+(item.sku||'');
+  const g=(f,v='')=>item[f]!==undefined?item[f]:v;
+  const suppOpts=(db.suppliers||[]).map(s=>`<option value="${s.id}" ${g('supplierId')===s.id?'selected':''}>${s.company}</option>`).join('');
+
+  document.getElementById('stock-modal-body').innerHTML=`
+<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px">
+  <div class="field"><label class="form-label">Stone Type</label>
+    <select id="sk-stype" class="form-input">
+      ${STONE_TYPES.map(t=>`<option ${g('stoneType','Natural Diamond')===t?'selected':''}>${t}</option>`).join('')}
+    </select></div>
+  <div class="field"><label class="form-label">Shape</label>
+    <select id="sk-shape" class="form-input">
+      ${DIAMOND_SHAPES.map(t=>`<option ${g('shape')===t?'selected':''}>${t}</option>`).join('')}
+    </select></div>
+  <div class="field"><label class="form-label">Carat Weight</label>
+    <input id="sk-carat" class="form-input" type="number" step="0.01" min="0" value="${g('caratWeight')}" placeholder="e.g. 1.52"></div>
+
+  <div class="field"><label class="form-label">Color</label>
+    <select id="sk-color" class="form-input">
+      <option value="">--</option>
+      ${DIAMOND_COLORS.map(t=>`<option ${g('color')===t?'selected':''}>${t}</option>`).join('')}
+    </select></div>
+  <div class="field"><label class="form-label">Clarity</label>
+    <select id="sk-clarity" class="form-input">
+      <option value="">--</option>
+      ${DIAMOND_CLARITIES.map(t=>`<option ${g('clarity')===t?'selected':''}>${t}</option>`).join('')}
+    </select></div>
+  <div class="field"><label class="form-label">Cut</label>
+    <select id="sk-cut" class="form-input">
+      <option value="">--</option>
+      ${DIAMOND_CUTS.map(t=>`<option ${g('cut')===t?'selected':''}>${t}</option>`).join('')}
+    </select></div>
+
+  <div class="field"><label class="form-label">Cert Lab</label>
+    <select id="sk-certlab" class="form-input">
+      ${CERT_LABS.map(t=>`<option ${g('certLab','GIA')===t?'selected':''}>${t}</option>`).join('')}
+    </select></div>
+  <div class="field"><label class="form-label">Certificate No.</label>
+    <input id="sk-certno" class="form-input" value="${g('certNo')}" placeholder="e.g. 2141438171"></div>
+  <div class="field"><label class="form-label">Status</label>
+    <select id="sk-status" class="form-input">
+      ${STOCK_STATUSES.map(t=>`<option ${g('status','Available')===t?'selected':''}>${t}</option>`).join('')}
+    </select></div>
+
+  <div class="field"><label class="form-label">Cost Price (THB)</label>
+    <input id="sk-cost" class="form-input" type="number" value="${g('costPrice')}" placeholder="0"></div>
+  <div class="field"><label class="form-label">Asking Price (THB)</label>
+    <input id="sk-ask" class="form-input" type="number" value="${g('askingPrice')}" placeholder="0"></div>
+  <div class="field"><label class="form-label">Location / Safe</label>
+    <input id="sk-loc" class="form-input" value="${g('location')}" placeholder="e.g. Safe A-3"></div>
+
+  <div class="field"><label class="form-label">Supplier</label>
+    <select id="sk-sup" class="form-input">
+      <option value="">-- No supplier --</option>
+      ${suppOpts}
+    </select></div>
+  <div class="field"><label class="form-label">Polish</label>
+    <select id="sk-polish" class="form-input">
+      <option value="">--</option>
+      ${['Excellent','Very Good','Good','Fair'].map(t=>`<option ${g('polish')===t?'selected':''}>${t}</option>`).join('')}
+    </select></div>
+  <div class="field"><label class="form-label">Symmetry</label>
+    <select id="sk-sym" class="form-input">
+      <option value="">--</option>
+      ${['Excellent','Very Good','Good','Fair'].map(t=>`<option ${g('symmetry')===t?'selected':''}>${t}</option>`).join('')}
+    </select></div>
+
+  <div class="field"><label class="form-label">Fluorescence</label>
+    <select id="sk-fluor" class="form-input">
+      <option value="">--</option>
+      ${['None','Faint','Medium','Strong','Very Strong'].map(t=>`<option ${g('fluorescence')===t?'selected':''}>${t}</option>`).join('')}
+    </select></div>
+  <div class="field"><label class="form-label">Measurements (mm)</label>
+    <input id="sk-meas" class="form-input" value="${g('measurements')}" placeholder="e.g. 7.24-7.27×4.48"></div>
+  <div class="field"><label class="form-label">Purchase Date</label>
+    <input id="sk-pdate" class="form-input" type="date" value="${g('purchaseDate')}"></div>
+
+  <div class="field" style="grid-column:1/-1"><label class="form-label">Description / Notes</label>
+    <textarea id="sk-notes" class="form-input" rows="2" style="resize:vertical">${g('notes')}</textarea></div>
+</div>
+
+<!-- Match preview -->
+<div id="stock-match-preview" style="margin-top:14px"></div>
+
+<div style="display:flex;gap:8px;justify-content:space-between;margin-top:20px;padding-top:16px;border-top:1px solid var(--border)">
+  <div>
+    ${id?`<button class="btn btn-outline" style="color:var(--red);border-color:var(--red)" onclick="deleteStockItem('${id}')">🗑 Delete</button>`:''}
+  </div>
+  <div style="display:flex;gap:8px">
+    <button class="btn btn-outline" onclick="document.getElementById('modal-stock').style.display='none'">Cancel</button>
+    <button class="btn btn-gold" onclick="saveStockItem('${id||''}')">💾 Save Stone</button>
+  </div>
+</div>`;
+
+  // Show match preview on load
+  if(id) updateStockMatchPreview(item);
+  document.getElementById('modal-stock').style.display='flex';
+
+  // Update match on change
+  ['sk-shape','sk-carat','sk-color','sk-clarity'].forEach(fid=>{
+    const el=document.getElementById(fid);
+    if(el) el.onchange=function(){
+      const draft={shape:document.getElementById('sk-shape').value,
+        caratWeight:parseFloat(document.getElementById('sk-carat').value)||0};
+      updateStockMatchPreview(draft);
+    };
+  });
+}
+
+function updateStockMatchPreview(item){
+  const el=document.getElementById('stock-match-preview'); if(!el) return;
+  const matches=(db.customers||[]).filter(c=>{
+    if(!['Won','Proposal','Negotiation','Qualified','New'].includes(c.leadStatus)) return false;
+    if(item.shape&&c.preferredShapes&&c.preferredShapes.length&&!c.preferredShapes.includes(item.shape)) return false;
+    if(item.caratWeight){
+      if(c.caratMin&&item.caratWeight<parseFloat(c.caratMin)) return false;
+      if(c.caratMax&&item.caratWeight>parseFloat(c.caratMax)) return false;
+    }
+    return true;
+  });
+  if(!matches.length){el.innerHTML='';return;}
+  el.innerHTML=`<div style="background:var(--green-bg);border:1px solid var(--green);border-radius:8px;padding:10px 14px">
+    <div style="font-size:12px;font-weight:600;color:var(--green);margin-bottom:6px">🎯 ${matches.length} potential customer match${matches.length>1?'es':''}</div>
+    <div style="display:flex;flex-wrap:wrap;gap:6px">
+      ${matches.slice(0,6).map(c=>`<span style="font-size:11px;background:white;border:1px solid var(--border);border-radius:20px;padding:2px 8px;cursor:pointer" onclick="nav('customers');selectedCustId='${c.id}';setTimeout(renderCustomers,0);document.getElementById('modal-stock').style.display='none'">${c.firstName} ${c.lastName}</span>`).join('')}
+      ${matches.length>6?`<span style="font-size:11px;color:var(--text3)">+${matches.length-6} more</span>`:''}
+    </div>
+  </div>`;
+}
+
+function saveStockItem(id){
+  const g=f=>(document.getElementById(f)||{}).value||'';
+  const obj={
+    stoneType:g('sk-stype'), shape:g('sk-shape'),
+    caratWeight:parseFloat(g('sk-carat'))||0,
+    color:g('sk-color'), clarity:g('sk-clarity'), cut:g('sk-cut'),
+    certLab:g('sk-certlab'), certNo:g('sk-certno'),
+    status:g('sk-status'),
+    costPrice:parseFloat(g('sk-cost'))||0,
+    askingPrice:parseFloat(g('sk-ask'))||0,
+    location:g('sk-loc'), supplierId:g('sk-sup'),
+    polish:g('sk-polish'), symmetry:g('sk-sym'),
+    fluorescence:g('sk-fluor'), measurements:g('sk-meas'),
+    purchaseDate:g('sk-pdate'), notes:g('sk-notes'),
+  };
+  if(!obj.caratWeight&&!obj.certNo){alert('Enter at least carat weight or certificate number');return;}
+  if(!db.stock) db.stock=[];
+  if(id){
+    const idx=db.stock.findIndex(x=>x.id===id);
+    if(idx>-1){obj.id=id;obj.sku=db.stock[idx].sku;obj.createdAt=db.stock[idx].createdAt;obj.updatedAt=new Date().toISOString();db.stock[idx]=obj;}
+  } else {
+    obj.id='stk_'+Date.now();
+    obj.sku=generateSKU();
+    obj.createdAt=new Date().toISOString();obj.updatedAt=new Date().toISOString();
+    db.stock.push(obj);
+  }
+  saveDB();
+  document.getElementById('modal-stock').style.display='none';
+  renderStockInventory();
+  updateBadges();
+  showToast(id?'Stone updated':'Stone added to inventory');
+}
+
+function deleteStockItem(id){
+  if(!confirm('Delete this stock item? This cannot be undone.')) return;
+  db.stock=(db.stock||[]).filter(x=>x.id!==id);
+  saveDB();
+  document.getElementById('modal-stock').style.display='none';
+  renderStockInventory();
+  updateBadges();
+  showToast('Stone deleted','error');
+}
+
+function exportStockCSV(){
+  const stock=db.stock||[];
+  if(!stock.length){showToast('No stock to export','error');return;}
+  const rows=[['SKU','Stone Type','Shape','Carat','Color','Clarity','Cut','Cert Lab','Cert No','Status','Cost (THB)','Asking (THB)','Supplier','Location','Fluorescence','Measurements','Purchase Date','Notes']];
+  stock.forEach(s=>{
+    const sup=(db.suppliers||[]).find(x=>x.id===s.supplierId);
+    rows.push([s.sku||'',s.stoneType||'',s.shape||'',s.caratWeight||0,s.color||'',s.clarity||'',s.cut||'',
+      s.certLab||'',s.certNo||'',s.status||'',s.costPrice||0,s.askingPrice||0,
+      sup?sup.company:'',s.location||'',s.fluorescence||'',s.measurements||'',s.purchaseDate||'',s.notes||'']);
+  });
+  const csv=rows.map(r=>r.map(x=>'"'+String(x==null?'':x).replace(/"/g,'""')+'"').join(',')).join('\n');
+  const a=document.createElement('a');
+  a.href='data:text/csv;charset=utf-8,\uFEFF'+encodeURIComponent(csv);
+  a.download='Stock_Inventory_'+new Date().toISOString().slice(0,10)+'.csv';
+  a.click();
+  showToast('Stock CSV downloaded');
 }
 
 // ══════════════════════════════════════════════
