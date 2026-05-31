@@ -7414,8 +7414,7 @@ function applyZoom(){
   var el=document.getElementById('content');
   if(!el) return;
   el.style.transform='scale('+_zoom+')';
-  // Adjust content wrapper width so scroll works correctly
-  el.style.width = (100/_zoom)+'%';
+  el.style.transformOrigin='top left';
   document.getElementById('zoom-pct').textContent=Math.round(_zoom*100)+'%';
 }
 function adjustZoom(delta){
