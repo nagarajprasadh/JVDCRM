@@ -2599,6 +2599,7 @@ function renderPipeline(){
 
   document.getElementById('content').innerHTML = `
     <div style="padding:24px 28px 0">
+      <div class="page-title" style="margin-bottom:16px">Sales Pipeline</div>
       <!-- Summary strip -->
       <div style="display:flex;gap:16px;flex-wrap:wrap;margin-bottom:22px">
         <div style="background:#fff;border:1.5px solid #e8e0d5;border-radius:12px;padding:14px 20px;min-width:140px">
@@ -2664,7 +2665,7 @@ function renderInventory(){
   const typeColor={'Natural':'var(--gold)','Lab-Grown':'var(--blue)','Both':'var(--green)'};
 
   document.getElementById('content').innerHTML=`
-<div style="font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--text2);margin-bottom:14px">Inventory Interest</div>
+<div class="page-title" style="margin-bottom:14px">Inventory Interest</div>
 
 <!-- KPI row -->
 <div style="display:grid;grid-template-columns:repeat(6,1fr);gap:10px;margin-bottom:18px">
