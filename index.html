@@ -27,7 +27,7 @@
 body{font-family:'Inter',-apple-system,BlinkMacSystemFont,sans-serif;background:var(--bg);color:var(--text);display:flex;height:100vh;overflow:hidden;font-size:14px;line-height:1.5;-webkit-font-smoothing:antialiased}
 #content{transform-origin:top left;transition:transform .2s}
 .t-display{font-family:'Inter',sans-serif;font-variant-numeric:tabular-nums;font-size:28px;font-weight:600;letter-spacing:-.3px;line-height:1.2}
-.t-title{font-family:'Inter',sans-serif;font-variant-numeric:tabular-nums;font-size:24px;font-weight:600;letter-spacing:-.2px;letter-spacing:-.2px;line-height:1.25}
+.t-title{font-family:'EB Garamond',Georgia,serif;font-size:24px;font-weight:600;letter-spacing:-.2px;letter-spacing:-.2px;line-height:1.25}
 .t-label{font-size:11px;font-weight:500;text-transform:uppercase;letter-spacing:.6px;color:var(--text3)}
 .t-num{font-family:'Inter',sans-serif;font-variant-numeric:tabular-nums;font-weight:700;letter-spacing:-.5px;line-height:1}
 
@@ -194,7 +194,7 @@ body{font-family:'Inter',-apple-system,BlinkMacSystemFont,sans-serif;background:
 .modal-overlay{display:none;position:fixed;inset:0;background:rgba(28,24,16,.5);z-index:1000;align-items:center;justify-content:center;backdrop-filter:blur(6px)}
 .modal-overlay.show{display:flex}
 .modal{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:28px;width:90%;max-width:880px;max-height:92vh;overflow-y:auto;position:relative;box-shadow:0 16px 60px rgba(0,0,0,.15)}
-.modal-title{font-family:'Inter',sans-serif;font-variant-numeric:tabular-nums;font-size:24px;font-weight:600;letter-spacing:-.2px;color:var(--text);letter-spacing:-.2px;margin-bottom:20px;padding-bottom:14px;border-bottom:1px solid var(--border)}
+.modal-title{font-family:'EB Garamond',Georgia,serif;font-size:24px;font-weight:600;letter-spacing:-.2px;color:var(--text);letter-spacing:-.2px;margin-bottom:20px;padding-bottom:14px;border-bottom:1px solid var(--border)}
 .modal-close{position:absolute;top:18px;right:18px;background:var(--bg2);border:1px solid var(--border);border-radius:7px;font-size:14px;cursor:pointer;color:var(--text3);width:30px;height:30px;display:flex;align-items:center;justify-content:center;transition:all .15s}
 .modal-close:hover{color:var(--text);border-color:var(--gold)}
 
@@ -458,7 +458,7 @@ th[data-tip]{cursor:pointer}
 .login-box{background:var(--card);border:1px solid var(--border2);border-radius:20px;padding:44px 40px;width:90%;max-width:400px;box-shadow:0 32px 80px rgba(0,0,0,.4),0 0 0 1px rgba(180,138,80,.1)}
 .login-logo{text-align:center;margin-bottom:28px}
 .login-logo img{height:44px;filter:brightness(1.1)}
-.login-title{font-family:'Inter',sans-serif;font-variant-numeric:tabular-nums;font-size:24px;font-weight:600;letter-spacing:-.2px;color:var(--text);text-align:center;margin-bottom:6px}
+.login-title{font-family:'EB Garamond',Georgia,serif;font-size:24px;font-weight:600;letter-spacing:-.2px;color:var(--text);text-align:center;margin-bottom:6px}
 .login-sub{font-size:12px;color:var(--text3);text-align:center;margin-bottom:28px;letter-spacing:.5px}
 .login-field{margin-bottom:16px}
 .login-field label{display:block;font-size:10px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:1px;margin-bottom:6px}
@@ -1379,7 +1379,7 @@ function renderDashboard(){
 
   document.getElementById('content').innerHTML=`
 <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:8px">
-  <div style="font-family:'Inter',sans-serif;font-variant-numeric:tabular-nums;font-size:24px;font-weight:600;letter-spacing:-.2px">Dashboard</div>
+  <div style="font-family:'EB Garamond',Georgia,serif;font-size:24px;font-weight:600;letter-spacing:-.2px">Dashboard</div>
   <button class="btn btn-outline btn-sm" onclick="openDashConfig()">⚙ Customise Dashboard</button>
 </div>
 ${widgetHtml}
@@ -4306,7 +4306,7 @@ function renderAccounting(){
   document.getElementById('content').innerHTML=`
 <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px">
   <div>
-    <div style="font-family:'Inter',sans-serif;font-variant-numeric:tabular-nums;font-size:24px;font-weight:600;letter-spacing:-.2px">Invoices & Payments</div>
+    <div style="font-family:'EB Garamond',Georgia,serif;font-size:24px;font-weight:600;letter-spacing:-.2px">Invoices & Payments</div>
     <div style="font-size:12px;color:var(--text3);margin-top:2px">${invs.length} total · ${invs.filter(i=>i.status==='Paid').length} paid · ${overdue.length} overdue</div>
   </div>
   <div style="display:flex;gap:8px">
