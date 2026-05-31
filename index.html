@@ -6901,11 +6901,7 @@ function renderSettingsGeneral(){
           ${['DD/MM/YYYY','MM/DD/YYYY','YYYY-MM-DD'].map(f=>`<option ${cfg.dateFormat===f?'selected':''}>${f}</option>`).join('')}
         </select></div>
     </div>
-    <button class="btn btn-gold" style="margin-top:14px" onclick="saveConfig({
-      companyName:document.getElementById('cfg-company').value,
-      baseCurrency:document.getElementById('cfg-currency').value,
-      dateFormat:document.getElementById('cfg-datefmt').value
-    });showToast('General settings saved')">💾 Save</button>
+    <button class="btn btn-gold" style="margin-top:14px" onclick="saveConfig({companyName:document.getElementById('cfg-company').value,baseCurrency:document.getElementById('cfg-currency').value,dateFormat:document.getElementById('cfg-datefmt').value});showToast('General settings saved')">💾 Save</button>
   </div>
 </div>`;
 }
@@ -7070,12 +7066,7 @@ function renderSettingsThresholds(){
         </div>
       </div>`).join('')}
     </div>
-    <button class="btn btn-gold" style="margin-top:18px" onclick="saveConfig({
-      notContactedDays:  parseInt(document.getElementById('cfg-nc-days').value)||30,
-      kycDefaultMonths:  parseInt(document.getElementById('cfg-kyc-months').value)||12,
-      marginAlertPct:    parseFloat(document.getElementById('cfg-margin-pct').value)||15,
-      taskWarningDays:   parseInt(document.getElementById('cfg-task-days').value)||3,
-    });showToast('Thresholds saved')">💾 Save Thresholds</button>
+    <button class="btn btn-gold" style="margin-top:18px" onclick="saveConfig({notContactedDays:parseInt(document.getElementById('cfg-nc-days').value)||30,kycDefaultMonths:parseInt(document.getElementById('cfg-kyc-months').value)||12,marginAlertPct:parseFloat(document.getElementById('cfg-margin-pct').value)||15,taskWarningDays:parseInt(document.getElementById('cfg-task-days').value)||3});showToast('Thresholds saved')">💾 Save Thresholds</button>
   </div>
 </div>`;
 }
