@@ -13,18 +13,26 @@
 <script src="https://cdn.sheetjs.com/xlsx-0.20.2/package/dist/xlsx.full.min.js"></script>
 <style>
 :root{
-  /* Refined — warm ivory base, deep forest green CTA, antique gold accents */
+  /* JVDCRM — warm ivory, readable greens and blues, gold accents only */
   --bg:#FAF8F5;--bg2:#F0EBE3;--card:#FFFFFF;--card2:#FDFBF8;--hover:#EDE5D8;
-  --gold:#96702A;--gold2:#B8904A;--gold3:#6E5020;--gold-glow:rgba(150,112,42,.08);
-  --green:#2D5A3D;--green2:#3D7A55;--red:#C0392B;--blue:#2C4A6E;--purple:#5A3A78;
-  --text:#1A1814;--text2:#4A4236;--text3:#887A68;
+  /* Gold: used only for accents/borders, NOT as text on dark bg */
+  --gold:#A07830;--gold2:#C09A50;--gold3:#7A5C20;--gold-glow:rgba(160,120,48,.08);
+  /* Green: dark for buttons/CTAs, mid for text, light for backgrounds */
+  --green:#1E6E3E;--green2:#2E8E5A;--green-bg:rgba(30,110,62,.08);
+  /* Blue: readable on white */
+  --blue:#1E4A7A;--blue-bg:rgba(30,74,122,.08);
+  /* Semantic */
+  --red:#B83028;--purple:#5A3878;
+  /* Text: high contrast on ivory background */
+  --text:#18140E;--text2:#3A3228;--text3:#7A6E5A;
   --border:#E2D8CC;--border2:#C4B49A;
   --sidebar:#F5F0E8;
-  --shadow:0 2px 16px rgba(26,24,20,.07);
-  --shadow-gold:0 0 20px rgba(150,112,42,.06);
+  --shadow:0 2px 16px rgba(24,20,14,.08);
+  --shadow-gold:0 0 20px rgba(160,120,48,.06);
 }
 *{box-sizing:border-box;margin:0;padding:0}
 body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);display:flex;height:100vh;overflow:hidden;font-size:14px}
+#content{transform-origin:top left;transition:transform .2s}
 
 /* ── SIDEBAR ── */
 .sidebar{width:228px;min-width:228px;background:var(--sidebar);border-right:1px solid var(--border);display:flex;flex-direction:column;overflow-y:auto;overflow-x:hidden}
@@ -148,7 +156,7 @@ body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);displ
 
 /* ── BUTTONS ── */
 .btn{padding:8px 16px;border-radius:9px;border:none;cursor:pointer;font-size:13px;font-weight:600;transition:all .15s;font-family:'Inter',sans-serif}
-.btn-gold{background:var(--green);color:#fff;letter-spacing:.3px;border:1px solid transparent}
+.btn-gold{background:var(--green);color:#fff;letter-spacing:.3px;border:1px solid transparent;font-weight:600}
 .btn-gold:hover{background:var(--gold2);transform:translateY(-1px)}
 .btn-outline{background:transparent;border:1px solid var(--border);color:var(--text2)}
 .btn-outline:hover{background:var(--hover);color:var(--text);border-color:var(--border2)}
@@ -206,13 +214,13 @@ body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--text);displ
 .perm-cell{display:flex;align-items:center;justify-content:center}
 .perm-btn{width:72px;height:26px;border-radius:6px;border:1px solid var(--border);background:var(--card);color:var(--text3);font-size:10px;font-weight:600;cursor:pointer;transition:all .15s;letter-spacing:.3px}
 .perm-btn:hover{border-color:var(--gold);color:var(--gold)}
-.perm-btn.active-view{background:rgba(59,130,246,.15);border-color:#3b82f6;color:#3b82f6}
+.perm-btn.active-view{background:rgba(59,130,246,.15);border-color:var(--blue);color:var(--blue)}
 .perm-btn.active-edit{background:rgba(201,169,110,.15);border-color:var(--gold);color:var(--gold)}
 .perm-btn.active-full{background:rgba(34,197,94,.15);border-color:var(--green);color:var(--green)}
 .mod-icon{font-size:14px;margin-right:6px}
 .mod-name{font-size:12px;font-weight:600;color:var(--text)}
 .perm-chip{display:inline-block;font-size:9px;font-weight:700;padding:1px 5px;border-radius:4px;margin:1px}
-.pc-view{background:rgba(59,130,246,.15);color:#3b82f6}
+.pc-view{background:rgba(59,130,246,.15);color:var(--blue)}
 .pc-edit{background:rgba(201,169,110,.15);color:var(--gold)}
 .pc-full{background:rgba(34,197,94,.15);color:var(--green)}
 .pc-none{background:var(--hover);color:var(--text3)}
@@ -330,6 +338,17 @@ th[data-tip]{cursor:pointer}
 .cust-table th.draggable-col{cursor:grab;user-select:none}
 .col-grip{color:var(--gold);margin-right:4px;opacity:.35;font-size:13px}
 .cust-table th.draggable-col:hover .col-grip{opacity:1}
+
+
+/* ── Zoom toolbar ── */
+#zoom-bar{position:fixed;bottom:18px;right:18px;display:flex;align-items:center;gap:6px;
+  background:var(--card);border:1px solid var(--border2);border-radius:20px;
+  padding:5px 10px;box-shadow:var(--shadow);z-index:500}
+#zoom-bar button{background:none;border:none;cursor:pointer;font-size:16px;
+  width:28px;height:28px;display:flex;align-items:center;justify-content:center;
+  border-radius:50%;color:var(--text2);transition:background .15s}
+#zoom-bar button:hover{background:var(--hover)}
+#zoom-pct{font-size:12px;font-weight:600;color:var(--text2);min-width:36px;text-align:center}
 
 /* scrollbar */
 ::-webkit-scrollbar{width:5px;height:5px}
@@ -1824,7 +1843,7 @@ ${list.map(c=>`
     ${c.tags&&c.tags.length?`<div class="cust-tags">${c.tags.slice(0,4).map(t=>`<span class="tag">${t}</span>`).join('')}</div>`:''}
     <div class="flex gap-2 mt-1" style="align-items:center">
       <input type="checkbox" class="row-cb" ${selectedCusts.has(c.id)?'checked':''} onclick="event.stopPropagation()" onchange="toggleCustSel('${c.id}',this.checked)" style="width:16px;height:16px;flex-shrink:0;cursor:pointer;accent-color:var(--gold);margin-right:4px">
-      ${waNumber(c)?`<a href="${waLink(c)||'#'}" target="_blank" onclick="event.stopPropagation()" style="display:inline-flex;align-items:center;padding:4px 9px;background:#25D366;color:#fff;border-radius:6px;font-size:11px;font-weight:600;text-decoration:none">WA</a>`:''}
+      ${waNumber(c)?`<a href="${waLink(c)||'#'}" target="_blank" onclick="event.stopPropagation()" style="display:inline-flex;align-items:center;padding:4px 9px;background:#1DA851;color:#fff;border-radius:6px;font-size:11px;font-weight:600;text-decoration:none">WA</a>`:''}
       ${lineBtn(c,'padding:4px 9px;font-size:11px')} ${viberCallBtn(c,'padding:4px 9px;font-size:11px')}
       ${canEdit(c)?`<button class="btn btn-outline btn-sm" onclick="event.stopPropagation();openCustModal('${c.id}')">✏️ Edit</button>`:''}
       ${canEdit(c)?`<button class="btn btn-outline btn-sm" onclick="event.stopPropagation();deleteCust('${c.id}')">🗑</button>`:`<span style="font-size:11px;color:var(--text3)">👁 View only</span>`}
@@ -2582,43 +2601,129 @@ function openCustFromPipeline(id){
 // INVENTORY
 // ══════════════════════════════════════════════
 function renderInventory(){
-  const total=db.customers.length||1;
-  const nat=db.customers.filter(c=>c.diamondType==='Natural').length;
-  const lab=db.customers.filter(c=>c.diamondType==='Lab-Grown').length;
-  const both=db.customers.filter(c=>c.diamondType==='Both').length;
-  const avgDeal=db.customers.reduce((s,c)=>s+(c.dealValue||0),0)/Math.max(1,db.customers.length);
-  // shape tally
+  const custs=db.customers||[];
+  const total=custs.length||1;
+  const nat=custs.filter(c=>c.diamondType==='Natural').length;
+  const lab=custs.filter(c=>c.diamondType==='Lab-Grown').length;
+  const both=custs.filter(c=>c.diamondType==='Both').length;
+  const undec=custs.filter(c=>!c.diamondType||c.diamondType==='Undecided').length;
+  const avgDeal=custs.reduce((s,c)=>s+(c.dealValue||0),0)/Math.max(1,custs.length);
+  const totalPipeline=custs.filter(c=>!['Won','Lost'].includes(c.leadStatus)).reduce((s,c)=>s+(c.dealValue||0),0);
   const shapeTally={};SHAPES.forEach(s=>shapeTally[s]=0);
-  db.customers.forEach(c=>(c.preferredShapes||[]).forEach(s=>{if(shapeTally[s]!==undefined)shapeTally[s]++;}));
+  custs.forEach(c=>(c.preferredShapes||[]).forEach(s=>{if(shapeTally[s]!==undefined)shapeTally[s]++;}));
+  const shapesSorted=Object.entries(shapeTally).filter(([,v])=>v>0).sort((a,b)=>b[1]-a[1]);
   const maxShape=Math.max(1,...Object.values(shapeTally));
+  const caratBuckets={'<1ct':0,'1-2ct':0,'2-3ct':0,'3-5ct':0,'5ct+':0};
+  custs.forEach(c=>{const mx=parseFloat(c.caratMax)||0;if(mx>0){if(mx<1)caratBuckets['<1ct']++;else if(mx<=2)caratBuckets['1-2ct']++;else if(mx<=3)caratBuckets['2-3ct']++;else if(mx<=5)caratBuckets['3-5ct']++;else caratBuckets['5ct+']++;}});
+  const maxC=Math.max(1,...Object.values(caratBuckets));
+  const purposeTally={};custs.forEach(c=>{const p=c.purpose||'Not Specified';purposeTally[p]=(purposeTally[p]||0)+1;});
+  const purposes=Object.entries(purposeTally).sort((a,b)=>b[1]-a[1]).slice(0,6);
+  const maxP=Math.max(1,...purposes.map(x=>x[1]));
+  const withInterest=custs.filter(c=>c.diamondType&&c.diamondType!=='Undecided').sort((a,b)=>(b.dealValue||0)-(a.dealValue||0));
+  const typeColor={'Natural':'var(--gold)','Lab-Grown':'var(--blue)','Both':'var(--green)'};
+
   document.getElementById('content').innerHTML=`
-<div class="kpi-grid">
-  <div class="card kpi"><div class="kpi-label">Natural Diamond</div><div class="kpi-value">${nat}</div><div class="kpi-sub">${Math.round(nat/total*100)}% of leads</div></div>
-  <div class="card kpi"><div class="kpi-label">Lab-Grown</div><div class="kpi-value">${lab}</div><div class="kpi-sub">${Math.round(lab/total*100)}% of leads</div></div>
-  <div class="card kpi"><div class="kpi-label">Both / Either</div><div class="kpi-value">${both}</div><div class="kpi-sub">${Math.round(both/total*100)}% of leads</div></div>
-  <div class="card kpi"><div class="kpi-label">Avg Deal Size</div><div class="kpi-value">${fmt(avgDeal)}</div><div class="kpi-sub">฿ avg pipeline</div></div>
+<div style="font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:var(--text2);margin-bottom:14px">Inventory Interest</div>
+
+<!-- KPI row -->
+<div style="display:grid;grid-template-columns:repeat(6,1fr);gap:10px;margin-bottom:18px">
+  ${[
+    ['Natural',    nat,   Math.round(nat/total*100)+'%',  'var(--gold)'],
+    ['Lab-Grown',  lab,   Math.round(lab/total*100)+'%',  'var(--blue)'],
+    ['Both/Either',both,  Math.round(both/total*100)+'%', 'var(--green)'],
+    ['Undecided',  undec, Math.round(undec/total*100)+'%','var(--text3)'],
+    ['Avg Deal',   fmt(avgDeal),'per customer',           'var(--gold)'],
+    ['Pipeline',   fmt(totalPipeline),'active value',     'var(--green)'],
+  ].map(([lb,vl,sb,col])=>`
+  <div class="card" style="padding:14px 12px;border-top:3px solid ${col}">
+    <div style="font-size:10px;text-transform:uppercase;letter-spacing:.6px;color:var(--text3);font-weight:500;margin-bottom:6px">${lb}</div>
+    <div style="font-size:20px;font-weight:700;color:${col};font-family:'Inter',sans-serif;letter-spacing:-.3px">${vl}</div>
+    <div style="font-size:10px;color:var(--text3);margin-top:3px">${sb}</div>
+  </div>`).join('')}
 </div>
-<div class="grid-2">
+
+<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px;margin-bottom:18px">
   <div class="card">
-    <div class="section-title" style="margin-bottom:12px">Shape Preferences</div>
-    <div class="bar-wrap">${SHAPES.map(s=>`
-      <div class="bar-row"><div class="bar-label">${s}</div>
-        <div class="bar-track"><div class="bar-fill" style="width:${shapeTally[s]/maxShape*100}%"></div></div>
-        <div class="bar-val">${shapeTally[s]}</div>
-      </div>`).join('')}
-    </div>
+    <div style="font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:.6px;color:var(--text2);margin-bottom:12px">Shape Preferences</div>
+    ${shapesSorted.slice(0,8).map(([s,v])=>`
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:7px">
+      <div style="font-size:11px;color:var(--text2);width:70px;flex-shrink:0">${s}</div>
+      <div style="flex:1;background:var(--bg2);border-radius:20px;height:8px;overflow:hidden">
+        <div style="height:100%;width:${Math.round(v/maxShape*100)}%;background:var(--gold2);border-radius:20px"></div>
+      </div>
+      <div style="font-size:11px;font-weight:700;color:var(--text2);width:18px;text-align:right">${v}</div>
+    </div>`).join('')||'<div style="font-size:12px;color:var(--text3)">No data</div>'}
   </div>
+
   <div class="card">
-    <div class="section-title" style="margin-bottom:12px">Customer Interest Details</div>
-    ${db.customers.filter(c=>c.diamondType).slice(0,12).map(c=>`
-      <div class="inv-pref-row">
-        <div style="flex:1"><div class="cust-name" style="font-size:13px">${c.firstName} ${c.lastName}</div>
-          <div class="text-xs">${c.diamondType} · ${(c.preferredShapes||[]).slice(0,3).join(', ')||'--'} · ${c.caratMin||0}-${c.caratMax||'?'}ct</div></div>
-        <div class="text-xs">${fmt(c.dealValue)}</div>
-      </div>`).join('')||'<div class="text-xs">No preference data</div>'}
+    <div style="font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:.6px;color:var(--text2);margin-bottom:12px">Carat Range Demand</div>
+    ${Object.entries(caratBuckets).map(([k,v])=>`
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:7px">
+      <div style="font-size:11px;color:var(--text2);width:44px;flex-shrink:0">${k}</div>
+      <div style="flex:1;background:var(--bg2);border-radius:20px;height:8px;overflow:hidden">
+        <div style="height:100%;width:${Math.round(v/maxC*100)}%;background:var(--blue);border-radius:20px"></div>
+      </div>
+      <div style="font-size:11px;font-weight:700;color:var(--text2);width:18px;text-align:right">${v}</div>
+    </div>`).join('')}
+  </div>
+
+  <div class="card">
+    <div style="font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:.6px;color:var(--text2);margin-bottom:12px">Purchase Purpose</div>
+    ${purposes.map(([k,v])=>`
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:7px">
+      <div style="font-size:11px;color:var(--text2);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${k}</div>
+      <div style="width:60px;background:var(--bg2);border-radius:20px;height:8px;overflow:hidden;flex-shrink:0">
+        <div style="height:100%;width:${Math.round(v/maxP*100)}%;background:var(--green);border-radius:20px"></div>
+      </div>
+      <div style="font-size:11px;font-weight:700;color:var(--text2);width:18px;text-align:right;flex-shrink:0">${v}</div>
+    </div>`).join('')}
+  </div>
+</div>
+
+<div style="font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:.6px;color:var(--text2);margin-bottom:12px">
+  Customer Interest Cards
+  <span style="font-weight:400;text-transform:none;font-size:12px;color:var(--text3);letter-spacing:0"> — ${withInterest.length} customers with preferences</span>
+</div>
+<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:12px">
+  ${withInterest.map(c=>{
+    const col=typeColor[c.diamondType]||'var(--text3)';
+    return `<div class="card" style="padding:0;overflow:hidden;cursor:pointer;transition:box-shadow .2s"
+      onmouseover="this.style.boxShadow='0 4px 20px rgba(0,0,0,.1)'" onmouseout="this.style.boxShadow=''"
+      onclick="nav('customers');selectedCustId='${c.id}';setTimeout(renderCustomers,0)">
+      <div style="padding:12px 14px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center">
+        <div>
+          <div style="font-size:13px;font-weight:600;color:var(--text)">${c.firstName} ${c.lastName}</div>
+          <div style="font-size:11px;color:var(--text3);margin-top:1px">${c.company||c.nationality||'--'}</div>
+        </div>
+        <div style="text-align:right">
+          <div style="font-size:14px;font-weight:700;color:var(--green)">${fmt(c.dealValue)}</div>
+          <div style="font-size:10px;color:${col};font-weight:600;margin-top:1px">${c.diamondType}</div>
+        </div>
+      </div>
+      <div style="padding:10px 14px">
+        ${[['Shapes',(c.preferredShapes||[]).slice(0,3).join(', ')||'--'],
+           ['Carats', c.caratMin||c.caratMax?`${c.caratMin||0}–${c.caratMax||'?'}ct`:'--'],
+           ['Purpose',c.purpose||'--'],
+           ['Status', c.leadStatus||'--']].map(([l,v])=>`
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:5px">
+          <span style="font-size:10px;text-transform:uppercase;letter-spacing:.5px;color:var(--text3)">${l}</span>
+          <span style="font-size:11px;font-weight:500;color:var(--text2)">${v}</span>
+        </div>`).join('')}
+      </div>
+    </div>`;
+  }).join('')||`<div class="card" style="grid-column:1/-1;text-align:center;padding:32px;color:var(--text3)">
+    No preference data yet — add diamond preferences to customer records.
+  </div>`}
+</div>
+<div class="card" style="margin-top:18px;padding:14px 16px;border:1px dashed var(--border2)">
+  <div style="display:flex;align-items:center;gap:12px">
+    <div style="font-size:24px">🏪</div>
+    <div><div style="font-size:13px;font-weight:600;color:var(--text)">Physical Inventory — coming soon</div>
+    <div style="font-size:11px;color:var(--text3);margin-top:2px">Track actual stock with GIA certs, cost price, asking price. Match to customer interests instantly.</div></div>
   </div>
 </div>`;
 }
+
 
 // ══════════════════════════════════════════════
 // SALESPEOPLE
@@ -2713,92 +2818,132 @@ function renderReports(){
 }
 
 function renderReportOverview(){
-  const total=db.customers.length;
-  const byStatus={};STATUSES.forEach(s=>byStatus[s]=0);
-  db.customers.forEach(c=>{ byStatus[c.leadStatus||'New']=(byStatus[c.leadStatus||'New']||0)+1; });
-  const bySource={};
-  db.customers.forEach(c=>{ bySource[c.leadSource||'Unknown']=(bySource[c.leadSource||'Unknown']||0)+1; });
-  const byRef={};
-  db.customers.filter(c=>c.referredBy).forEach(c=>{ byRef[c.referredBy]=(byRef[c.referredBy]||0)+1; });
-  const topCust=[...db.customers].sort((a,b)=>(b.dealValue||0)-(a.dealValue||0)).slice(0,8);
-  const spStats=db.salespeople.map(sp=>{
-    const cc=db.customers.filter(c=>c.assignedTo===sp.name);
-    return {name:sp.name,count:cc.length,val:cc.reduce((s,c)=>s+(c.dealValue||0),0),won:cc.filter(c=>c.leadStatus==='Won').length};
-  }).sort((a,b)=>b.val-a.val);
-  const maxStatus=Math.max(1,...Object.values(byStatus));
+  const custs=db.customers||[];
+  const total=custs.length;
+  const won=custs.filter(c=>c.leadStatus==='Won');
+  const lost=custs.filter(c=>c.leadStatus==='Lost');
+  const active=custs.filter(c=>!['Won','Lost','Dormant'].includes(c.leadStatus));
+  const pipeline=active.reduce((s,c)=>s+(c.dealValue||0),0);
+  const ltv=won.reduce((s,c)=>s+(c.dealValue||0),0);
+  const winRate=Math.round(won.length/Math.max(1,won.length+lost.length)*100);
+  const avgDeal=Math.round(custs.reduce((s,c)=>s+(c.dealValue||0),0)/Math.max(1,total));
+  const overdue=custs.filter(c=>!['Won','Lost'].includes(c.leadStatus))
+    .filter(c=>{const d=daysSince(c.lastContactedDate);return d===null||d>14;}).length;
 
-  // Overdue follow-ups
-  const now=Date.now();
-  const overdue=db.customers.filter(c=>!['Won','Lost'].includes(c.leadStatus)).map(c=>{
-    const d=daysSince(c.lastContactedDate);
-    return {...c, _days: d===null?999:d};
-  }).filter(c=>c._days>14).sort((a,b)=>b._days-a._days).slice(0,8);
+  // Status tally
+  const stT={};custs.forEach(c=>{const s=c.leadStatus||'New';stT[s]=(stT[s]||0)+1;});
+  const stColors={Won:'#1E6E3E',Lost:'#B83028',Dormant:'#7A6E5A',Qualified:'#1E4A7A',
+    Proposal:'#A07830',Negotiation:'#5A3878',New:'#4A7A9B','In Progress':'#2E8E5A'};
+
+  // Source tally
+  const srcT={};custs.forEach(c=>{const s=c.leadSource||'Unknown';srcT[s]=(srcT[s]||0)+1;});
+  const topSrc=Object.entries(srcT).sort((a,b)=>b[1]-a[1]).slice(0,5);
+  const maxSrc=Math.max(1,...topSrc.map(x=>x[1]));
+
+  // SP leaderboard
+  const spStats=db.salespeople.map(sp=>{
+    const cc=custs.filter(c=>c.assignedTo===sp.name||c.assignedTo2===sp.name);
+    return{name:sp.name,count:cc.length,
+      won:cc.filter(c=>c.leadStatus==='Won').length,
+      val:cc.filter(c=>c.leadStatus==='Won').reduce((s,c)=>s+(c.dealValue||0),0)};
+  }).sort((a,b)=>b.val-a.val).slice(0,5);
+
+  // Monthly bar (6 months)
+  const now=new Date();
+  const months=Array.from({length:6},(_,i)=>new Date(now.getFullYear(),now.getMonth()-5+i,1));
+  const mLeads=months.map(m=>custs.filter(c=>{if(!c.createdAt)return false;const d=new Date(c.createdAt);return d.getFullYear()===m.getFullYear()&&d.getMonth()===m.getMonth();}).length);
+  const maxML=Math.max(1,...mLeads);
 
   document.getElementById('report-tab-content').innerHTML=`
-<div class="grid-2">
+<!-- KPI row — colored top-border cards, Inter numbers -->
+<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:18px">
+  ${[
+    ['Total Leads',    total,      'all customers','var(--text)'],
+    ['Won Deals',      won.length, fmt(ltv)+' value','var(--green)'],
+    ['Win Rate',       winRate+'%',won.length+' of '+(won.length+lost.length)+' closed','var(--blue)'],
+    ['Active Pipeline',fmt(pipeline),active.length+' active deals','var(--gold)'],
+  ].map(([lb,vl,sb,col])=>`
+  <div class="card" style="padding:18px 16px;border-top:3px solid ${col}">
+    <div style="font-size:11px;text-transform:uppercase;letter-spacing:.7px;color:var(--text3);font-weight:500;margin-bottom:8px">${lb}</div>
+    <div style="font-size:30px;font-weight:700;color:${col};font-family:'Inter',sans-serif;letter-spacing:-.5px;line-height:1">${vl}</div>
+    <div style="font-size:11px;color:var(--text3);margin-top:5px">${sb}</div>
+  </div>`).join('')}
+</div>
+
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px">
+  <!-- Status breakdown -->
   <div class="card">
-    <div class="section-title" style="margin-bottom:12px">Lead Status Breakdown</div>
-    <div class="bar-wrap">${STATUSES.map(s=>`
-      <div class="bar-row"><div class="bar-label">${s}</div>
-        <div class="bar-track"><div class="bar-fill" style="width:${byStatus[s]/maxStatus*100}%"></div></div>
-        <div class="bar-val">${byStatus[s]} (${total?Math.round(byStatus[s]/total*100):0}%)</div>
+    <div style="font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:.6px;color:var(--text2);margin-bottom:14px">Lead Status</div>
+    ${Object.entries(stT).sort((a,b)=>b[1]-a[1]).map(([s,v])=>{
+      const pct=Math.round(v/Math.max(1,total)*100);
+      const col=stColors[s]||'var(--gold)';
+      return `<div style="margin-bottom:10px">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
+          <span style="font-size:12px;color:var(--text2);font-weight:500">${s}</span>
+          <span style="font-size:12px;color:${col};font-weight:700">${v} <span style="color:var(--text3);font-weight:400">${pct}%</span></span>
+        </div>
+        <div style="background:var(--bg2);border-radius:20px;height:7px;overflow:hidden">
+          <div style="height:100%;width:${pct}%;background:${col};border-radius:20px"></div>
+        </div>
+      </div>`;}).join('')}
+  </div>
+
+  <!-- Lead sources -->
+  <div class="card">
+    <div style="font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:.6px;color:var(--text2);margin-bottom:14px">Lead Sources</div>
+    ${topSrc.map(([s,v],i)=>{
+      const cols=['var(--gold)','var(--blue)','var(--green)','var(--purple)','var(--text3)'];
+      return `<div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">
+        <div style="width:26px;height:26px;border-radius:50%;background:${cols[i]};display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:#fff;flex-shrink:0">${i+1}</div>
+        <div style="flex:1">
+          <div style="font-size:12px;font-weight:500;color:var(--text2)">${s}</div>
+          <div style="background:var(--bg2);border-radius:20px;height:5px;margin-top:4px;overflow:hidden">
+            <div style="height:100%;width:${Math.round(v/maxSrc*100)}%;background:${cols[i]};border-radius:20px"></div>
+          </div>
+        </div>
+        <div style="font-size:13px;font-weight:700;color:var(--text2);flex-shrink:0">${v}</div>
+      </div>`;}).join('')}
+  </div>
+</div>
+
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
+  <!-- SP performance -->
+  <div class="card">
+    <div style="font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:.6px;color:var(--text2);margin-bottom:14px">Team Performance</div>
+    ${spStats.map((sp,i)=>{
+      const medals=['🥇','🥈','🥉'];
+      return `<div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--border)">
+        <div style="font-size:18px;flex-shrink:0">${medals[i]||String(i+1)}</div>
+        <div style="flex:1;min-width:0">
+          <div style="font-size:13px;font-weight:600;color:var(--text)">${sp.name}</div>
+          <div style="font-size:11px;color:var(--text3)">${sp.count} leads · ${sp.won} won</div>
+        </div>
+        <div style="font-size:13px;font-weight:700;color:var(--green);flex-shrink:0">${fmt(sp.val)}</div>
+      </div>`;}).join('')||'<div style="font-size:12px;color:var(--text3)">No data</div>'}
+  </div>
+
+  <!-- Monthly trend -->
+  <div class="card">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
+      <div style="font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:.6px;color:var(--text2)">New Leads / Month</div>
+      <span style="font-size:11px;color:var(--red);font-weight:600">${overdue} overdue follow-ups</span>
+    </div>
+    <div style="display:flex;align-items:flex-end;gap:6px;height:80px;margin-bottom:8px">
+      ${mLeads.map((v,i)=>`
+      <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:3px">
+        <div style="font-size:10px;font-weight:700;color:var(--text2)">${v||''}</div>
+        <div style="width:100%;height:${Math.max(4,Math.round(v/maxML*72))}px;background:var(--green);border-radius:3px 3px 0 0;opacity:${0.5+i*0.1}"></div>
+        <div style="font-size:9px;color:var(--text3)">${months[i].toLocaleDateString('en',{month:'short'})}</div>
       </div>`).join('')}
     </div>
-  </div>
-  <div class="card">
-    <div class="section-title" style="margin-bottom:12px">Lead Source Attribution</div>
-    <div class="bar-wrap">${Object.entries(bySource).sort((a,b)=>b[1]-a[1]).map(([k,v])=>`
-      <div class="bar-row"><div class="bar-label">${k}</div>
-        <div class="bar-track"><div class="bar-fill" style="width:${v/Math.max(1,...Object.values(bySource))*100}%"></div></div>
-        <div class="bar-val">${v}</div>
-      </div>`).join('')||'<div class="text-xs">No data</div>'}
+    <div style="display:flex;gap:16px;padding-top:10px;border-top:1px solid var(--border)">
+      <div><div style="font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.5px">Avg/mo</div><div style="font-size:16px;font-weight:700;color:var(--text)">${Math.round(mLeads.reduce((a,b)=>a+b,0)/6)}</div></div>
+      <div><div style="font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.5px">Avg Deal</div><div style="font-size:16px;font-weight:700;color:var(--green)">${fmt(avgDeal)}</div></div>
     </div>
   </div>
-</div>
-<div class="grid-2 mt-2">
-  <div class="card">
-    <div class="section-title" style="margin-bottom:10px">Top Customers by Deal Value</div>
-    <table class="report-table">
-      <tr><th>Customer</th><th>Stage</th><th>Deal Value</th></tr>
-      ${topCust.map(c=>`<tr><td>${c.firstName} ${c.lastName}</td><td>${c.pipelineStage||'--'}</td><td style="font-weight:700;color:var(--gold)">${fmt(c.dealValue)}</td></tr>`).join('')||'<tr><td colspan="3" style="text-align:center">No data</td></tr>'}
-    </table>
-  </div>
-  <div class="card">
-    <div class="section-title" style="margin-bottom:10px">Salesperson Leaderboard</div>
-    <table class="report-table">
-      <tr><th>Name</th><th>Leads</th><th>Won</th><th>Pipeline</th></tr>
-      ${spStats.map(s=>`<tr><td>${s.name}</td><td>${s.count}</td><td style="color:var(--green)">${s.won}</td><td style="font-weight:700;color:var(--gold)">${fmt(s.val)}</td></tr>`).join('')||'<tr><td colspan="4" style="text-align:center">No salespeople</td></tr>'}
-    </table>
-  </div>
-</div>
-${Object.keys(byRef).length?`
-<div class="card mt-2">
-  <div class="section-title" style="margin-bottom:10px">Referral Source Breakdown</div>
-  <div class="bar-wrap">${Object.entries(byRef).sort((a,b)=>b[1]-a[1]).slice(0,10).map(([k,v])=>`
-    <div class="bar-row"><div class="bar-label">${k}</div>
-      <div class="bar-track"><div class="bar-fill" style="width:${v/Math.max(1,...Object.values(byRef))*100}%;background:var(--gold)"></div></div>
-      <div class="bar-val">${v}</div>
-    </div>`).join('')}
-  </div>
-</div>`:''}
-${overdue.length?`
-<div class="card mt-2">
-  <div class="section-title" style="margin-bottom:4px">⚠️ Follow-Up Overdue <span style="font-size:12px;font-weight:400;color:var(--text3)">(active leads not contacted in 14+ days)</span></div>
-  <table class="report-table" style="margin-top:10px">
-    <tr><th>Name</th><th>Status</th><th>Salesperson</th><th>Last Contacted</th><th>Days Overdue</th></tr>
-    ${overdue.map(c=>{
-      const color=c._days>30?'#ef4444':c._days>14?'#f59e0b':'#22c55e';
-      return `<tr>
-        <td><b>${c.firstName} ${c.lastName}</b></td>
-        <td><span class="badge badge-${(c.leadStatus||'new').toLowerCase().replace(' ','-')}">${c.leadStatus||'New'}</span></td>
-        <td>${c.assignedTo||'--'}</td>
-        <td>${c.lastContactedDate?fmtDate(c.lastContactedDate):'<span style="color:#ef4444">Never</span>'}</td>
-        <td style="font-weight:700;color:${color}">${c._days===999?'Never':c._days+'d'}</td>
-      </tr>`;
-    }).join('')}
-  </table>
-</div>`:''}`;
+</div>`;
 }
+
 
 function renderPdfReportsTab(){
   const reports=[
@@ -3943,11 +4088,11 @@ function buildMCEditForm(i, f){
         return '<div style="background:var(--bg2);border:1px solid '+color+';border-radius:10px;padding:12px 14px;margin-bottom:10px">'
           +'<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px;flex-wrap:wrap">'
           +'<div style="flex:1">'
-          +'<div style="font-size:12px;color:var(--text3);margin-bottom:4px">👤 <b>'+t.user+'</b> &nbsp;·&nbsp; 🕐 '+ts+(t.resolved?' &nbsp;<span style="color:#22c55e;font-weight:700;font-size:11px">✓ Resolved</span>':'')+'</div>'
+          +'<div style="font-size:12px;color:var(--text3);margin-bottom:4px">👤 <b>'+t.user+'</b> &nbsp;·&nbsp; 🕐 '+ts+(t.resolved?' &nbsp;<span style="color:var(--green);font-weight:700;font-size:11px">✓ Resolved</span>':'')+'</div>'
           +'<div style="font-size:13px;color:var(--text);line-height:1.6">'+safe+'</div>'
           +'</div>'
           +'<div style="display:flex;gap:6px;flex-shrink:0">'
-          +(!t.resolved ? '<button class="btn" onclick="resolveTicket(\''+t.id+'\')" style="background:#0f2a0f;border:1px solid #22c55e;color:#22c55e;font-size:12px;padding:5px 12px">✓ Resolve</button>' : '')
+          +(!t.resolved ? '<button class="btn" onclick="resolveTicket(\''+t.id+'\')" style="background:#0f2a0f;border:1px solid #22c55e;color:var(--green);font-size:12px;padding:5px 12px">✓ Resolve</button>' : '')
           +'<button class="btn" onclick="deleteTicket(\''+t.id+'\')" style="background:#2a0f0f;border:1px solid #ef4444;color:#ef4444;font-size:12px;padding:5px 10px">🗑</button>'
           +'</div></div></div>';
       }).join('');
@@ -4414,7 +4559,7 @@ ${inv.dueDate?`<div style="font-size:12px;color:#9A8E7A;margin-top:4px">Due Date
 <table><thead><tr><th>Description</th><th style="text-align:right">Qty</th><th style="text-align:right">Unit Price</th><th style="text-align:right">Disc.</th><th style="text-align:right">Total</th></tr></thead>
 <tbody>${(inv.lineItems||[]).map(it=>`<tr><td>${it.desc||''}</td><td style="text-align:right">${it.qty||1}</td><td style="text-align:right">${fmt(it.unitPrice||0)}</td><td style="text-align:right">${it.discount||0}%</td><td style="text-align:right"><strong>${fmt(calcItemTotal(it))}</strong></td></tr>`).join('')}
 </tbody><tfoot>
-${inv.discountAmt?`<tr><td colspan="4" style="text-align:right;padding:6px 12px;color:#5A7048">Discount (${inv.discountPct}%)</td><td style="text-align:right;padding:6px 12px;color:#5A7048">-${fmt(inv.discountAmt)}</td></tr>`:''}
+${inv.discountAmt?`<tr><td colspan="4" style="text-align:right;padding:6px 12px;color:var(--green2)">Discount (${inv.discountPct}%)</td><td style="text-align:right;padding:6px 12px;color:var(--green2)">-${fmt(inv.discountAmt)}</td></tr>`:''}
 <tr><td colspan="4" style="text-align:right;padding:6px 12px">Tax / VAT (${inv.taxPct||7}%)</td><td style="text-align:right;padding:6px 12px">${fmt(inv.taxAmt||0)}</td></tr>
 <tr class="total-row"><td colspan="4" style="text-align:right;padding:10px 12px">TOTAL</td><td style="text-align:right;padding:10px 12px">${fmt(inv.total||0)}</td></tr>
 ${inv.balanceDue>0?`<tr><td colspan="4" style="text-align:right;padding:6px 12px;color:#B83020">Balance Due</td><td style="text-align:right;padding:6px 12px;color:#B83020;font-weight:700">${fmt(inv.balanceDue)}</td></tr>`:''}
@@ -4646,7 +4791,7 @@ function toggleAdvFilters(){
 // WA helpers
 function waNumber(c){return(c.whatsapp||c.mobile||c.phone||'').replace(/[^0-9+]/g,'');}
 function waLink(c,msg){var n=waNumber(c);if(!n)return null;msg=msg||('Dear '+(c.firstName||'there')+', greetings from Jay Vijay Diamond Co., Ltd. Following up on your enquiry. Let us know if you have questions!');return 'https://wa.me/'+n.replace('+','')+'?text='+encodeURIComponent(msg);}
-function waBtn(c,s){s=s||'';var l=waLink(c);if(!l)return '';return '<a href="'+l+'" target="_blank" rel="noopener" onclick="event.stopPropagation()" style="display:inline-flex;align-items:center;gap:4px;padding:5px 10px;background:#25D366;color:#fff;border-radius:7px;font-size:12px;font-weight:600;text-decoration:none;'+s+'">WhatsApp</a>';}
+function waBtn(c,s){s=s||'';var l=waLink(c);if(!l)return '';return '<a href="'+l+'" target="_blank" rel="noopener" onclick="event.stopPropagation()" style="display:inline-flex;align-items:center;gap:4px;padding:5px 10px;background:#1DA851;color:#fff;border-radius:7px;font-size:12px;font-weight:600;text-decoration:none;'+s+'">WhatsApp</a>';}
 function emailBtn(c,s){s=s||'';if(!c.email)return '';return '<a href="mailto:'+c.email+'" onclick="event.stopPropagation()" style="display:inline-flex;align-items:center;gap:4px;padding:5px 10px;background:var(--blue);color:#fff;border-radius:7px;font-size:12px;font-weight:600;text-decoration:none;'+s+'">Email</a>';}
 function callBtn(c,s){s=s||'';var n=c.phone||c.mobile;if(!n)return '';return '<a href="tel:'+n+'" onclick="event.stopPropagation()" style="display:inline-flex;align-items:center;gap:4px;padding:5px 10px;background:var(--green);color:#fff;border-radius:7px;font-size:12px;font-weight:600;text-decoration:none;'+s+'">Call</a>';}
 function lineBtn(c,s){
@@ -4896,9 +5041,9 @@ function renderHelp(){
     <thead><tr><th>Level</th><th>What it allows</th></tr></thead>
     <tbody>
       <tr><td><b style="color:#888">None</b></td><td>Module is hidden from sidebar — user cannot navigate to it.</td></tr>
-      <tr><td><b style="color:#3b82f6">View</b></td><td>User can open and read the module but cannot add, edit or delete.</td></tr>
+      <tr><td><b style="color:var(--blue)">View</b></td><td>User can open and read the module but cannot add, edit or delete.</td></tr>
       <tr><td><b style="color:#f59e0b">Edit</b></td><td>User can add and edit records but cannot delete.</td></tr>
-      <tr><td><b style="color:#22c55e">Full</b></td><td>Full control including delete and admin-level actions in that module.</td></tr>
+      <tr><td><b style="color:var(--green)">Full</b></td><td>Full control including delete and admin-level actions in that module.</td></tr>
     </tbody>
   </table>
   <div class="help-h2">Shortcuts</div>
@@ -5020,7 +5165,7 @@ function renderHelp(){
 <div class="help-section" id="h-report">
   <div class="help-h1">11. Report a Problem</div>
   <p class="help-p">Use this form to log a technical issue or feedback. The admin will see your ticket in Settings → Support Tickets.</p>
-  <div id="ticket-success" style="display:none;background:#0f2a0f;border:1px solid #22c55e;border-radius:10px;padding:14px 18px;margin-bottom:14px;color:#22c55e;font-size:13px;font-weight:600">
+  <div id="ticket-success" style="display:none;background:#0f2a0f;border:1px solid #22c55e;border-radius:10px;padding:14px 18px;margin-bottom:14px;color:var(--green);font-size:13px;font-weight:600">
     ✅ Your ticket has been submitted. The admin will review it shortly.
   </div>
   <textarea id="ticket-msg" rows="5" placeholder="Describe the problem or feedback in detail…" style="width:100%;background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:12px 14px;font-size:13px;color:var(--text);resize:vertical;font-family:inherit;box-sizing:border-box;outline:none;margin-bottom:12px"></textarea>
@@ -5508,5 +5653,35 @@ function saveVipSettings(){
 }
 
 </script>
+
+<!-- Zoom controls -->
+<div id="zoom-bar">
+  <button onclick="adjustZoom(-0.1)" title="Zoom out">−</button>
+  <span id="zoom-pct">100%</span>
+  <button onclick="adjustZoom(0.1)" title="Zoom in">+</button>
+  <button onclick="resetZoom()" title="Reset zoom" style="font-size:12px">⊙</button>
+</div>
+<script>
+var _zoom = parseFloat(localStorage.getItem('jvd_zoom')||'1');
+function applyZoom(){
+  var el=document.getElementById('content');
+  if(!el) return;
+  el.style.transform='scale('+_zoom+')';
+  // Adjust content wrapper width so scroll works correctly
+  el.style.width = (100/_zoom)+'%';
+  document.getElementById('zoom-pct').textContent=Math.round(_zoom*100)+'%';
+}
+function adjustZoom(delta){
+  _zoom=Math.min(1.5,Math.max(0.6,Math.round((_zoom+delta)*10)/10));
+  localStorage.setItem('jvd_zoom',_zoom);
+  applyZoom();
+}
+function resetZoom(){
+  _zoom=1; localStorage.setItem('jvd_zoom','1'); applyZoom();
+}
+// Apply saved zoom on load
+window.addEventListener('DOMContentLoaded',function(){ applyZoom(); });
+</script>
+
 </body>
 </html>
