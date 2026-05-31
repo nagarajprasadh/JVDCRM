@@ -1324,7 +1324,7 @@ function nav(section){
     if(renders[section]) renders[section]();
   }catch(e){
     console.error('[CRM] Render error in '+section+':', e);
-    document.getElementById('content').innerHTML=`<div style="background:#fff0f0;border:1.5px solid #e74c3c;border-radius:12px;padding:28px 32px;margin:32px auto;max-width:700px;font-family:monospace">
+    document.getElementById('content').innerHTML=`<div style="background:#fff0f0;border:1.5px solid var(--red);border-radius:12px;padding:28px 32px;margin:32px auto;max-width:700px;font-family:monospace">
       <div style="font-size:18px;font-weight:700;color:#c0392b;margin-bottom:12px">⚠️ Render Error -- ${section}</div>
       <div style="color:#333;font-size:14px;margin-bottom:8px"><b>Message:</b> ${e.message}</div>
       <pre style="background:#fff;border:1px solid #eee;border-radius:8px;padding:12px;font-size:12px;overflow:auto;white-space:pre-wrap">${e.stack||e}</pre>
@@ -1614,7 +1614,7 @@ function buildDashWidget(id){
       .filter(function(c){return c._d===null||c._d>days;})
       .sort(function(a,b){return(b._d||999)-(a._d||999);}).slice(0,8);
     var ncRows=overdue.map(function(c){
-      var urg=c._d===null||c._d>60?'var(--red)':c._d>30?'#f59e0b':'#888';
+      var urg=c._d===null||c._d>60?'var(--red)':c._d>30?'var(--orange)':'var(--text3)';
       var ln=(c.activityLog||[]).slice(-1)[0];
       var lmsg=ln?ln.type+': '+ln.note.substring(0,50)+(ln.note.length>50?'...':''):'No activity logged';
       return '<div style="padding:10px 0;border-bottom:1px solid var(--border)"><div style="display:flex;gap:8px">'
@@ -1857,7 +1857,7 @@ function renderCustomers(){
   <button class="btn btn-sm" style="background:#c0392b;color:#fff;border:none" onclick="bulkDeleteCusts()">🗑 Delete Selected</button>
   <button class="btn btn-sm btn-outline" style="border-color:#1a1a1a;color:#1a1a1a" onclick="selectedCusts.clear();renderCustomers()">✕ Clear</button>
 </div>
-${(()=>{ try{ return custViewMode==='card' ? renderCustCards(list) : renderCustTableHTML(list); } catch(e){ console.error('[CRM] card/table render error:',e); return `<div style="background:#fff0f0;border:1px solid #e74c3c;border-radius:10px;padding:20px;font-family:monospace;font-size:13px"><b>⚠️ Card render error:</b> ${e.message}<br><pre style="font-size:11px;margin-top:8px;white-space:pre-wrap">${e.stack}</pre></div>`; } })()}
+${(()=>{ try{ return custViewMode==='card' ? renderCustCards(list) : renderCustTableHTML(list); } catch(e){ console.error('[CRM] card/table render error:',e); return `<div style="background:#fff0f0;border:1px solid var(--red);border-radius:10px;padding:20px;font-family:monospace;font-size:13px"><b>⚠️ Card render error:</b> ${e.message}<br><pre style="font-size:11px;margin-top:8px;white-space:pre-wrap">${e.stack}</pre></div>`; } })()}
 </div>
 ${selectedCustId?`<div class="detail-panel">${detailHtml}</div>`:''}
 </div>`;
@@ -2152,7 +2152,7 @@ function buildCustForm(c){
       <input type="file" id="f-photo-input" accept="image/*" style="display:none" onchange="handlePhotoUpload(this)">
       <button type="button" class="btn btn-outline btn-sm" onclick="document.getElementById('f-photo-input').click()">📷 Upload Photo</button>
       <button type="button" class="btn btn-outline btn-sm" id="photo-remove-btn" onclick="clearCustPhoto()"
-        style="${photoSrc?'':'display:none'};margin-left:6px;color:#e74c3c;border-color:#e74c3c">✕ Remove</button>
+        style="${photoSrc?'':'display:none'};margin-left:6px;color:var(--red);border-color:var(--red)">✕ Remove</button>
       <div style="font-size:11px;color:var(--text3);margin-top:8px;line-height:1.5">
         JPG, PNG or WEBP · Shown on customer cards<br>
         <span style="color:var(--gold)">Tip: click the circle to upload</span>
@@ -2176,7 +2176,7 @@ function buildCustForm(c){
       <input type="file" id="f-bcimg-input" accept="image/*,.heic,.heif" style="display:none" onchange="handleBcImgUpload(this)">
       <button type="button" class="btn btn-outline btn-sm" onclick="document.getElementById('f-bcimg-input').click()">🪪 Upload Business Card</button>
       <button type="button" class="btn btn-outline btn-sm" id="bc-img-remove-btn" onclick="clearBcImg()"
-        style="${custBcImg?'':'display:none'};margin-left:6px;color:#e74c3c;border-color:#e74c3c">✕ Remove</button>
+        style="${custBcImg?'':'display:none'};margin-left:6px;color:var(--red);border-color:var(--red)">✕ Remove</button>
       <div style="font-size:11px;color:var(--text3);margin-top:8px;line-height:1.6">
         JPG, PNG, HEIC supported<br>HEIC auto-converted to JPEG
       </div>
@@ -2538,7 +2538,7 @@ function renderPipeline(){
     'Proposal':     { bg:'#e8f7ff', border:'#00a8cc', badge:'#00a8cc' },
     'Negotiation':  { bg:'#fff3e8', border:'#e67e22', badge:'#e67e22' },
     'Won':          { bg:'#eafaf1', border:'#27ae60', badge:'#27ae60' },
-    'Lost':         { bg:'#fdf0f0', border:'#e74c3c', badge:'#e74c3c' }
+    'Lost':         { bg:'#fdf0f0', border:'var(--red)', badge:'var(--red)' }
   };
 
   // Total value per stage
@@ -2617,7 +2617,7 @@ function renderPipeline(){
         </div>
         <div style="background:#fff;border:1.5px solid #e8e0d5;border-radius:12px;padding:14px 20px;min-width:140px">
           <div style="font-size:11px;color:#888;font-weight:600;text-transform:uppercase;letter-spacing:.5px">Lost Value</div>
-          <div class="page-title" style="color:#e74c3c;margin-top:2px">$${(totalLost/1000).toFixed(0)}k</div>
+          <div class="page-title" style="color:var(--red);margin-top:2px">$${(totalLost/1000).toFixed(0)}k</div>
         </div>
         <div style="background:#fff;border:1.5px solid #B48A50;border-radius:12px;padding:14px 20px;min-width:140px">
           <div style="font-size:11px;color:#888;font-weight:600;text-transform:uppercase;letter-spacing:.5px">Win Rate</div>
@@ -4165,7 +4165,7 @@ function buildMCEditForm(i, f){
       if(!tks.length) return '<div style="font-size:13px;color:var(--text3);padding:12px 0">No support tickets yet.</div>';
       return tks.slice().reverse().map(function(t){
         const safe = t.message.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
-        const color = t.resolved ? '#22c55e33' : 'var(--border)';
+        const color = t.resolved ? 'rgba(28,122,62,.2)' : 'var(--border)';
         const ts = new Date(t.timestamp).toLocaleString();
         return '<div style="background:var(--bg2);border:1px solid '+color+';border-radius:10px;padding:12px 14px;margin-bottom:10px">'
           +'<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px;flex-wrap:wrap">'
@@ -4174,8 +4174,8 @@ function buildMCEditForm(i, f){
           +'<div style="font-size:13px;color:var(--text);line-height:1.6">'+safe+'</div>'
           +'</div>'
           +'<div style="display:flex;gap:6px;flex-shrink:0">'
-          +(!t.resolved ? '<button class="btn" onclick="resolveTicket(\''+t.id+'\')" style="background:#0f2a0f;border:1px solid #22c55e;color:var(--green);font-size:12px;padding:5px 12px">✓ Resolve</button>' : '')
-          +'<button class="btn" onclick="deleteTicket(\''+t.id+'\')" style="background:#2a0f0f;border:1px solid #ef4444;color:#ef4444;font-size:12px;padding:5px 10px">🗑</button>'
+          +(!t.resolved ? '<button class="btn" onclick="resolveTicket(\''+t.id+'\')" style="background:var(--green-bg);border:1px solid var(--green);color:var(--green);font-size:12px;padding:5px 12px">✓ Resolve</button>' : '')
+          +'<button class="btn" onclick="deleteTicket(\''+t.id+'\')" style="background:#2a0f0f;border:1px solid var(--red);color:var(--red);font-size:12px;padding:5px 10px">🗑</button>'
           +'</div></div></div>';
       }).join('');
     })()}
@@ -5623,7 +5623,7 @@ function daysSince(dateStr){
 function freshnessBadge(c, style=''){
   const d=daysSince(c.lastContactedDate);
   if(d===null) return `<span style="font-size:10px;color:var(--text3);${style}">📵 Never</span>`;
-  const color=d<=7?'#22c55e':d<=30?'#f59e0b':'#ef4444';
+  const color=d<=7?'var(--green)':d<=30?'var(--orange)':'var(--red)';
   const label=d===0?'Today':d===1?'Yesterday':`${d}d ago`;
   return `<span style="font-size:10px;font-weight:600;color:${color};${style}">📞 ${label}</span>`;
 }
@@ -5674,7 +5674,7 @@ function kycStatusLabel(s){
   return {missing:'⚠️ Not Done',expiring:'⏰ Expiring Soon',expired:'❌ Expired',valid:'✅ Valid'}[s]||s;
 }
 function kycStatusColor(s){
-  return {missing:'#e74c3c',expiring:'#f59e0b',expired:'#e74c3c',valid:'#22c55e'}[s]||'#888';
+  return {missing:'var(--red)',expiring:'var(--orange)',expired:'var(--red)',valid:'var(--green)'}[s]||'var(--text3)';
 }
 
 function renderKYC(){
@@ -5710,9 +5710,9 @@ function renderKYC(){
 
 <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:20px">
   ${[
-    ['✅','Valid',valid,'#22c55e'],
-    ['⏰','Expiring ≤30d',expiring,'#f59e0b'],
-    ['❌','Expired / Missing',missing+expired,'#e74c3c'],
+    ['✅','Valid',valid,'var(--green)'],
+    ['⏰','Expiring ≤30d',expiring,'var(--orange)'],
+    ['❌','Expired / Missing',missing+expired,'var(--red)'],
     ['📋','Total Active',custs.length,'var(--gold)'],
   ].map(([icon,label,val,color])=>`
     <div class="card" style="text-align:center;padding:16px">
@@ -5765,7 +5765,7 @@ function openKycModal(custId){
         <div style="font-size:11px;color:var(--text3)">Uploaded ${fmtDate(d.uploadedAt)}</div>
       </div>
       <a href="${d.data}" download="${d.type}_${c.cif}.${d.ext}" class="btn btn-outline btn-sm">⬇ Download</a>
-      <button class="btn btn-sm" style="color:#e74c3c;border-color:#e74c3c;background:none" onclick="removeKycDoc('${custId}',${i})">✕</button>
+      <button class="btn btn-sm" style="color:var(--red);border-color:var(--red);background:none" onclick="removeKycDoc('${custId}',${i})">✕</button>
     </div>`).join(''):'<div style="color:var(--text3);font-size:13px;padding:8px 0">No documents uploaded yet.</div>'}
 </div>
 
