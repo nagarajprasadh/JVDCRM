@@ -2829,12 +2829,7 @@ function renderSalespeople(){
     +'<button class="btn btn-gold" onclick="openSPModal(null)">+ Add Salesperson</button></div>'
     +'<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:14px">'
     +(cards||'<div class="card" style="text-align:center;padding:40px;grid-column:1/-1"><div style="font-size:32px;margin-bottom:10px">👔</div><div style="font-size:18px;color:var(--text2);margin-bottom:8px">No salespeople yet</div><button class="btn btn-gold" onclick="openSPModal(null)">+ Add Salesperson</button></div>')
-    +'</div>'
-    +'<div id="modal-sp" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:1000;align-items:center;justify-content:center">'
-    +'<div class="modal" style="max-width:500px;width:95vw;max-height:90vh;overflow-y:auto">'
-    +'<button class="modal-close" onclick="document.getElementById(\x27modal-sp\x27).style.display=\x27none\x27">✕</button>'
-    +'<div class="modal-title" id="sp-modal-title">Add Salesperson</div>'
-    +'<div id="sp-modal-body"></div></div></div>';
+    +'</div>';
 }
 
 function openSPModal(id){
@@ -2856,10 +2851,10 @@ function openSPModal(id){
   <div class="field full"><label>Notes</label><textarea id="sp-notes" rows="2">${sp.notes||''}</textarea></div>
 </div>
 <div class="flex gap-2" style="justify-content:flex-end;margin-top:12px">
-  <button class="btn btn-outline" onclick="var m=document.getElementById('modal-sp');if(m)m.style.display='none';">Cancel</button>
+  <button class="btn btn-outline" onclick="closeModal('modal-sp')">Cancel</button>
   <button class="btn btn-gold" onclick="saveSP()">💾 Save</button>
 </div>`;
-  var m=document.getElementById('modal-sp');if(m){m.style.display='flex';}
+  showModal('modal-sp');
 }
 function saveSP(){
   const name=document.getElementById('sp-name').value.trim();
@@ -2871,7 +2866,7 @@ function saveSP(){
     startDate:document.getElementById('sp-start').value,notes:document.getElementById('sp-notes').value};
   if(editSPId){ const i=db.salespeople.findIndex(x=>x.id===editSPId); db.salespeople[i]=obj; }
   else db.salespeople.push(obj);
-  saveDB(); var m=document.getElementById('modal-sp');if(m)m.style.display='none'; renderSalespeople();
+  saveDB(); closeModal('modal-sp'); renderSalespeople();
 }
 function deleteSP(id){ if(confirm('Remove salesperson?')){ db.salespeople=db.salespeople.filter(s=>s.id!==id); saveDB(); renderSalespeople(); } }
 
