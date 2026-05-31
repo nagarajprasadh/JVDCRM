@@ -78,7 +78,8 @@ body{font-family:'Inter',-apple-system,BlinkMacSystemFont,sans-serif;background:
 
 /* ── SECTION HEADERS ── */
 .section-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px}
-.section-title{font-family:'Inter',sans-serif;font-variant-numeric:tabular-nums;font-size:17px;font-weight:600;color:var(--text);letter-spacing:-.1px;line-height:1.3}
+.section-title{font-family:'EB Garamond',Georgia,serif;font-size:17px;font-weight:600;color:var(--text);letter-spacing:-.1px;line-height:1.3}
+.page-title{font-family:'EB Garamond',Georgia,serif;font-size:24px;font-weight:600;color:var(--text);letter-spacing:-.2px;line-height:1.2}
 .section-sub{font-size:11px;color:var(--text3);margin-top:3px;letter-spacing:.2px}
 
 /* ── FUNNEL ── */
@@ -2772,8 +2773,8 @@ function renderInventory(){
 // ══════════════════════════════════════════════
 function renderSalespeople(){
   document.getElementById('content').innerHTML=`
-<div class="section-header">
-  <div class="section-title">Sales Team</div>
+<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;flex-wrap:wrap;gap:10px">
+  <div class="page-title">Salespeople</div>
   <button class="btn btn-gold" onclick="openSPModal(null)">+ Add Salesperson</button>
 </div>
 <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:12px">
