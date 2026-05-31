@@ -571,6 +571,7 @@ th[data-tip]{cursor:pointer}
   <div class="nav-item" data-mod="suppliers" onclick="nav('suppliers')"><span class="icon">🏭</span>Suppliers<span class="badge" id="nb-sup"></span></div>
   <div class="nav-item" data-mod="stockinv" onclick="nav('stockinv')"><span class="icon">💎</span>Stock Inventory<span class="badge" id="nb-inv"></span></div>
   <div class="nav-item" data-mod="deals" onclick="nav('deals')"><span class="icon">🤝</span>Deals<span class="badge" id="nb-deals"></span></div>
+  <div class="nav-item" data-mod="tasks" onclick="nav('tasks')"><span class="icon">✅</span>Tasks<span class="badge" id="nb-tasks"></span></div>
   <div class="nav-item" data-mod="accounting" onclick="nav('accounting')"><span class="icon">🧾</span>Invoices & Payments<span class="badge" id="nb-inv">0</span></div>
   <div class="nav-item" id="nav-users" onclick="nav('users')" style="display:none"><span class="icon">🔐</span>Users &amp; Access</div>
   <div class="nav-item" onclick="nav('help')"><span class="icon">❓</span>Help &amp; FAQ</div>
@@ -694,6 +695,7 @@ function loadDB(){
   if(!db.suppliers)     db.suppliers     = [];
   if(!db.stock)         db.stock         = [];
   if(!db.deals)         db.deals         = [];
+  if(!db.tasks)         db.tasks         = [];
   // Assign VID to any supplier missing one
   (db.suppliers||[]).forEach(s=>{ if(!s.vid) s.vid=generateVID(); });
   // Assign CIF to any customer missing one
@@ -731,6 +733,8 @@ function updateBadges(){
   if(invBadge){const avail=(db.stock||[]).filter(s=>s.status==='Available').length;invBadge.textContent=avail||'';}
   const dealBadge=document.getElementById('nb-deals');
   if(dealBadge){const openDeals=(db.deals||[]).filter(d=>d.status==='Open'||d.status==='Pending').length;dealBadge.textContent=openDeals||'';}
+  const taskBadge=document.getElementById('nb-tasks');
+  if(taskBadge){const myTasks=(db.tasks||[]).filter(t=>t.status!=='Done'&&(!t.assignedTo||t.assignedTo===(currentUser&&currentUser.name))).length;taskBadge.textContent=myTasks||'';}
   const kycDue=(db.customers||[]).filter(c=>isKycCustomer(c)&&isKycDue(c)).length;
   const kycBadge=document.getElementById('nb-kyc'); if(kycBadge) kycBadge.textContent=kycDue||'';
   const invBadge=document.getElementById('nb-inv'); if(invBadge) invBadge.textContent = (db.invoices||[]).filter(i=>['Draft','Sent','Overdue'].includes(i.status)).length;
@@ -740,7 +744,7 @@ function updateBadges(){
 // NAVIGATION
 // ══════════════════════════════════════════════
 let currentNav = 'dashboard';
-const TITLES = { dashboard:'Dashboard', customers:'Customers & Leads', pipeline:'Sales Pipeline', kyc:'KYC Management', suppliers:'Suppliers', stockinv:'Stock Inventory', deals:'Deal Records', users:'Users & Access',
+const TITLES = { dashboard:'Dashboard', customers:'Customers & Leads', pipeline:'Sales Pipeline', kyc:'KYC Management', suppliers:'Suppliers', stockinv:'Stock Inventory', deals:'Deal Records', tasks:'Task Manager', users:'Users & Access',
   inventory:'Inventory Interest', salespeople:'Salespeople', reports:'Reports',
   campaigns:'Campaigns', bizcard:'Business Cards', accounting:'Invoices & Payments', settings:'Settings', help:'Help & FAQ' };
 
@@ -1295,7 +1299,7 @@ function nav(section){
       </div>`;
     return;
   }
-  const renders = { dashboard:renderDashboard, customers:renderCustomers, pipeline:renderPipeline, kyc:renderKYC, suppliers:renderSuppliers, stockinv:renderStockInventory, deals:renderDeals,
+  const renders = { dashboard:renderDashboard, customers:renderCustomers, pipeline:renderPipeline, kyc:renderKYC, suppliers:renderSuppliers, stockinv:renderStockInventory, deals:renderDeals, tasks:renderTasks,
       inventory:renderInventory, salespeople:renderSalespeople, reports:renderReports,
       campaigns:renderCampaigns, bizcard:renderBizcard, accounting:renderAccounting,
       settings:renderSettings, users:renderUsers, help:renderHelp };
@@ -1403,6 +1407,7 @@ const DASH_WIDGETS = [
   {id:'campaigns_widget',label:'Active Campaigns',   icon:'📣', default:false},
   {id:'kyc_alerts',     label:'KYC Alerts',           icon:'🛂', default:true},
   {id:'not_contacted',  label:'Not Contacted',        icon:'📵', default:true},
+  {id:'my_tasks',       label:'My Tasks',             icon:'✅', default:true},
 ];
 
 function getDashConfig(){
@@ -1622,6 +1627,48 @@ function buildDashWidget(id){
       +'<div class="section-title">Not Contacted ('+days+'+ days)</div>'
       +'<span style="font-size:12px;color:var(--red);font-weight:600">'+overdue.length+' customers</span>'
       +'</div>'+(ncRows||'<div style="color:var(--green);font-size:13px;padding:8px 0">All recently contacted</div>')+'</div>';
+  }
+
+
+  if(id==='my_tasks'){
+    const user=currentUser&&currentUser.name;
+    const now=new Date(); now.setHours(0,0,0,0);
+    const tomorrow=new Date(now); tomorrow.setDate(tomorrow.getDate()+1);
+    const myTasks=(db.tasks||[]).filter(t=>t.status!=='Done'&&(!t.assignedTo||t.assignedTo===user))
+      .sort((a,b)=>{
+        const pa={High:0,Medium:1,Low:2}; const pb={High:0,Medium:1,Low:2};
+        const pd=(pa[a.priority]||1)-(pb[b.priority]||1);
+        if(pd!==0) return pd;
+        return new Date(a.dueDate||'9999')-new Date(b.dueDate||'9999');
+      }).slice(0,8);
+    const overdue=myTasks.filter(t=>t.dueDate&&new Date(t.dueDate)<now).length;
+    const dueToday=myTasks.filter(t=>t.dueDate&&new Date(t.dueDate)>=now&&new Date(t.dueDate)<tomorrow).length;
+    return '<div class="card" style="margin-bottom:16px">'
+      +'<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">'
+      +'<div class="section-title">My Tasks</div>'
+      +'<div style="display:flex;gap:8px">'
+      +(overdue?'<span style="font-size:11px;font-weight:600;color:var(--red)">'+overdue+' overdue</span>':'')
+      +(dueToday?'<span style="font-size:11px;font-weight:600;color:var(--orange)">'+dueToday+' due today</span>':'')
+      +'<button class="btn btn-outline btn-sm" style="font-size:11px" onclick="nav('tasks')">View All</button>'
+      +'</div></div>'
+      +(myTasks.length?myTasks.map(t=>{
+        const isOverdue=t.dueDate&&new Date(t.dueDate)<now;
+        const isToday=t.dueDate&&new Date(t.dueDate)>=now&&new Date(t.dueDate)<tomorrow;
+        const priCol={High:'var(--red)',Medium:'var(--orange)',Low:'var(--text3)'}[t.priority]||'var(--text3)';
+        return '<div style="display:flex;align-items:center;gap:10px;padding:7px 0;border-bottom:1px solid var(--border)">'
+          +'<input type="checkbox" style="accent-color:var(--green);width:16px;height:16px;flex-shrink:0" '
+          +'onchange="quickCompleteTask(''+t.id+'',this.checked)">'
+          +'<div style="flex:1;min-width:0">'
+          +'<div style="font-size:13px;font-weight:500;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+t.title+'</div>'
+          +(t.customerName?'<div style="font-size:11px;color:var(--text3)">'+t.customerName+'</div>':'')
+          +'</div>'
+          +'<div style="text-align:right;flex-shrink:0">'
+          +'<div style="font-size:10px;font-weight:600;color:'+priCol+'">'+t.priority+'</div>'
+          +(t.dueDate?'<div style="font-size:10px;color:'+(isOverdue?'var(--red)':isToday?'var(--orange)':'var(--text3)')+';">'+(isToday?'Today':isOverdue?'Overdue':fmtDate(t.dueDate))+'</div>':'')
+          +'</div>'
+          +'</div>';
+      }).join(''):'<div style="color:var(--text3);font-size:13px;padding:8px 0">✅ No pending tasks</div>')
+      +'</div>';
   }
 
   return '';
@@ -4892,6 +4939,15 @@ function showToast(msg, type){
   document.body.appendChild(t);
   setTimeout(()=>{ t.style.opacity='0'; t.style.transition='opacity .3s'; setTimeout(()=>t.remove(),300); }, 2500);
 }
+
+function quickCompleteTask(id, done){
+  const t=(db.tasks||[]).find(x=>x.id===id); if(!t) return;
+  t.status=done?'Done':'Open';
+  t.updatedAt=new Date().toISOString();
+  if(done) t.completedAt=new Date().toISOString();
+  saveDB(); updateBadges();
+  if(done) showToast('Task completed ✅');
+}
 // ══════════════════════════════════════════════
 // GLOBAL SEARCH
 // ══════════════════════════════════════════════
@@ -6621,6 +6677,294 @@ function exportDealsCSV(){
   a.download='Deals_'+new Date().toISOString().slice(0,10)+'.csv';
   a.click();
   showToast('Deals CSV downloaded');
+}
+
+// ══════════════════════════════════════════════
+// TASK MANAGER MODULE
+// ══════════════════════════════════════════════
+
+const TASK_PRIORITIES = ['High','Medium','Low'];
+const TASK_STATUSES   = ['Open','In Progress','Waiting','Done','Cancelled'];
+const TASK_TYPES      = ['Follow-up','Call','Meeting','Send Quote','Send Document','KYC Review','Payment Follow-up','Other'];
+
+function generateTaskNo(){
+  const existing=(db.tasks||[]).map(t=>parseInt((t.taskNo||'').replace(/\D/g,''))||0);
+  const next=existing.length?Math.max(...existing)+1:1001;
+  return 'TSK-'+new Date().getFullYear()+'-'+String(next).padStart(4,'0');
+}
+
+function daysDue(dateStr){
+  if(!dateStr) return null;
+  const d=new Date(dateStr); d.setHours(0,0,0,0);
+  const now=new Date(); now.setHours(0,0,0,0);
+  return Math.ceil((d-now)/86400000);
+}
+
+// ── renderTasks ───────────────────────────────────────────────────────────
+function renderTasks(){
+  const tasks=db.tasks||[];
+  const open=tasks.filter(t=>t.status==='Open'||t.status==='In Progress');
+  const done=tasks.filter(t=>t.status==='Done');
+  const overdue=open.filter(t=>t.dueDate&&daysDue(t.dueDate)<0);
+  const dueToday=open.filter(t=>t.dueDate&&daysDue(t.dueDate)===0);
+
+  if(!window._taskFilter) window._taskFilter={search:'',status:'Open',priority:'All',sp:'All'};
+  const f=window._taskFilter;
+
+  let list=[...tasks];
+  if(f.search){const q=f.search.toLowerCase();list=list.filter(t=>(t.title+' '+(t.customerName||'')+' '+(t.notes||'')).toLowerCase().includes(q));}
+  if(f.status!=='All')   list=list.filter(t=>t.status===f.status);
+  if(f.priority!=='All') list=list.filter(t=>t.priority===f.priority);
+  if(f.sp!=='All')       list=list.filter(t=>t.assignedTo===f.sp);
+
+  // Sort: overdue first, then by priority, then by due date
+  const priOrder={High:0,Medium:1,Low:2};
+  list.sort((a,b)=>{
+    const ad=daysDue(a.dueDate); const bd=daysDue(b.dueDate);
+    const aOver=ad!==null&&ad<0; const bOver=bd!==null&&bd<0;
+    if(aOver!==bOver) return aOver?-1:1;
+    const pp=(priOrder[a.priority]||1)-(priOrder[b.priority]||1);
+    if(pp!==0) return pp;
+    return new Date(a.dueDate||'9999')-new Date(b.dueDate||'9999');
+  });
+
+  const priColors={High:'var(--red)',Medium:'var(--orange)',Low:'var(--text3)'};
+  const stColors={Open:'var(--blue)','In Progress':'var(--orange)',Waiting:'var(--text3)',Done:'var(--green)',Cancelled:'var(--text4)'};
+  const spList=['All',...db.salespeople.map(s=>s.name)];
+
+  document.getElementById('content').innerHTML=`
+<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;flex-wrap:wrap;gap:10px">
+  <div style="font-family:'EB Garamond',Georgia,serif;font-size:24px;font-weight:600;letter-spacing:-.2px">Task Manager</div>
+  <div style="display:flex;gap:8px;flex-wrap:wrap">
+    <button class="btn btn-outline btn-sm" onclick="exportTasksCSV()">📊 Export CSV</button>
+    <button class="btn btn-gold" onclick="openTaskModal(null)">+ New Task</button>
+  </div>
+</div>
+
+<!-- KPIs -->
+<div style="display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin-bottom:18px">
+  ${[
+    ['Open Tasks',   open.length,     'pending',     'var(--blue)'],
+    ['Overdue',      overdue.length,  'need action', 'var(--red)'],
+    ['Due Today',    dueToday.length, 'today',       'var(--orange)'],
+    ['Completed',    done.length,     'all time',    'var(--green)'],
+    ['Total',        tasks.length,    'all tasks',   'var(--text)'],
+  ].map(([lb,vl,sb,col])=>`
+  <div class="card" style="padding:14px 12px;border-top:3px solid ${col}">
+    <div style="font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.6px;color:var(--text3);margin-bottom:5px">${lb}</div>
+    <div style="font-size:22px;font-weight:700;color:${col};font-variant-numeric:tabular-nums;letter-spacing:-.3px;line-height:1">${vl}</div>
+    <div style="font-size:10px;color:var(--text3);margin-top:3px">${sb}</div>
+  </div>`).join('')}
+</div>
+
+<!-- Filters -->
+<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px;align-items:center">
+  <input class="search-box" style="width:200px" placeholder="🔍 Task, customer…"
+    value="${f.search}" oninput="window._taskFilter.search=this.value;renderTasks()">
+  <select class="filter-select" onchange="window._taskFilter.status=this.value;renderTasks()">
+    ${['All',...TASK_STATUSES].map(s=>`<option ${f.status===s?'selected':''}>${s}</option>`).join('')}
+  </select>
+  <select class="filter-select" onchange="window._taskFilter.priority=this.value;renderTasks()">
+    ${['All',...TASK_PRIORITIES].map(p=>`<option ${f.priority===p?'selected':''}>${p}</option>`).join('')}
+  </select>
+  <select class="filter-select" onchange="window._taskFilter.sp=this.value;renderTasks()">
+    ${spList.map(s=>`<option ${f.sp===s?'selected':''}>${s}</option>`).join('')}
+  </select>
+  <span style="font-size:12px;color:var(--text3)">${list.length} task${list.length!==1?'s':''}</span>
+</div>
+
+<!-- Task list -->
+<div style="display:flex;flex-direction:column;gap:8px">
+  ${list.length ? list.map(t=>{
+    const dd=daysDue(t.dueDate);
+    const isOverdue=dd!==null&&dd<0;
+    const isToday=dd===0;
+    const isTomorrow=dd===1;
+    const priCol=priColors[t.priority]||'var(--text3)';
+    const stCol=stColors[t.status]||'var(--text3)';
+    const dueTxt=dd===null?'No due date':isOverdue?'Overdue '+Math.abs(dd)+'d':isToday?'Due today':isTomorrow?'Due tomorrow':'Due in '+dd+'d';
+    const dueCol=isOverdue?'var(--red)':isToday?'var(--orange)':isTomorrow?'var(--gold)':'var(--text3)';
+    return `<div class="card" style="padding:14px 16px;transition:box-shadow .15s;${t.status==='Done'?'opacity:.6':''}"
+      onmouseover="this.style.boxShadow='var(--shadow-md)'" onmouseout="this.style.boxShadow=''">
+      <div style="display:flex;align-items:flex-start;gap:12px">
+        <input type="checkbox" style="accent-color:var(--green);width:18px;height:18px;flex-shrink:0;margin-top:2px"
+          ${t.status==='Done'?'checked':''} onchange="quickCompleteTask('${t.id}',this.checked);renderTasks()">
+        <div style="flex:1;min-width:0">
+          <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:4px">
+            <span style="font-size:14px;font-weight:600;color:var(--text);${t.status==='Done'?'text-decoration:line-through;color:var(--text3)':''}">${t.title}</span>
+            <span style="font-size:10px;font-weight:700;color:${priCol};background:${priCol}18;padding:1px 7px;border-radius:20px">${t.priority}</span>
+            <span style="font-size:10px;font-weight:600;color:${stCol};background:${stCol}18;padding:1px 7px;border-radius:20px">${t.status}</span>
+            <span style="font-size:10px;background:var(--bg2);padding:1px 7px;border-radius:20px;color:var(--text3)">${t.taskType||'Task'}</span>
+          </div>
+          <div style="display:flex;gap:16px;flex-wrap:wrap;font-size:12px;color:var(--text3)">
+            ${t.customerName?`<span>👤 ${t.customerName}</span>`:''}
+            ${t.assignedTo?`<span>🧑 ${t.assignedTo}</span>`:''}
+            <span style="color:${dueCol};font-weight:${isOverdue||isToday?'600':'400'}">${dueTxt}</span>
+            <span style="color:var(--text4);font-size:11px">TSK: ${t.taskNo}</span>
+          </div>
+          ${t.notes?`<div style="font-size:12px;color:var(--text3);margin-top:5px;font-style:italic">${t.notes}</div>`:''}
+        </div>
+        <button class="btn btn-outline btn-sm" style="flex-shrink:0" onclick="openTaskModal('${t.id}')">Edit</button>
+      </div>
+    </div>`;
+  }).join('') : `<div class="card" style="text-align:center;padding:40px">
+    <div style="font-size:32px;margin-bottom:10px">✅</div>
+    <div style="font-family:'EB Garamond',serif;font-size:18px;color:var(--text2);margin-bottom:6px">No tasks found</div>
+    <div style="font-size:13px;color:var(--text3);margin-bottom:16px">Create tasks to track follow-ups, calls, meetings and to-dos</div>
+    <button class="btn btn-gold" onclick="openTaskModal(null)">+ New Task</button>
+  </div>`}
+</div>
+
+<!-- Task Modal -->
+<div id="modal-task" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:1000;align-items:center;justify-content:center">
+  <div class="modal" style="max-width:600px;width:95vw;max-height:90vh;overflow-y:auto">
+    <button class="modal-close" onclick="document.getElementById('modal-task').style.display='none'">✕</button>
+    <div class="modal-title" id="task-modal-title">New Task</div>
+    <div id="task-modal-body"></div>
+  </div>
+</div>`;
+}
+
+// ── openTaskModal ─────────────────────────────────────────────────────────
+function openTaskModal(id){
+  const t=id?(db.tasks||[]).find(x=>x.id===id)||{}:{};
+  const isNew=!id;
+  document.getElementById('task-modal-title').textContent=isNew?'New Task':('Edit Task — '+(t.taskNo||''));
+  const g=(f,v='')=>t[f]!==undefined?t[f]:v;
+
+  const custOpts=(db.customers||[])
+    .sort((a,b)=>(a.firstName||'').localeCompare(b.firstName||''))
+    .map(c=>`<option value="${c.id}" ${g('customerId')===c.id?'selected':''}>${c.firstName} ${c.lastName}${c.company?' ('+c.company+')':''}</option>`).join('');
+
+  // Default due date = tomorrow
+  const tomorrow=new Date(); tomorrow.setDate(tomorrow.getDate()+1);
+  const defaultDue=tomorrow.toISOString().slice(0,10);
+
+  document.getElementById('task-modal-body').innerHTML=`
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
+  <div class="field" style="grid-column:1/-1"><label class="form-label">Task Title *</label>
+    <input id="tk-title" class="form-input" value="${g('title')}" placeholder="e.g. Follow up with Rajesh re: 2ct Round"></div>
+
+  <div class="field"><label class="form-label">Task Type</label>
+    <select id="tk-type" class="form-input">
+      ${TASK_TYPES.map(t=>`<option ${g('taskType','Follow-up')===t?'selected':''}>${t}</option>`).join('')}
+    </select></div>
+  <div class="field"><label class="form-label">Priority</label>
+    <select id="tk-pri" class="form-input">
+      ${TASK_PRIORITIES.map(p=>`<option ${g('priority','Medium')===p?'selected':''}>${p}</option>`).join('')}
+    </select></div>
+
+  <div class="field"><label class="form-label">Due Date</label>
+    <input id="tk-due" class="form-input" type="date" value="${g('dueDate',defaultDue)}"></div>
+  <div class="field"><label class="form-label">Due Time (optional)</label>
+    <input id="tk-time" class="form-input" type="time" value="${g('dueTime')}"></div>
+
+  <div class="field"><label class="form-label">Assigned To</label>
+    <select id="tk-sp" class="form-input">
+      <option value="">-- Unassigned --</option>
+      ${db.salespeople.map(sp=>`<option ${g('assignedTo')===sp.name?'selected':''}>${sp.name}</option>`).join('')}
+    </select></div>
+  <div class="field"><label class="form-label">Status</label>
+    <select id="tk-status" class="form-input">
+      ${TASK_STATUSES.map(s=>`<option ${g('status','Open')===s?'selected':''}>${s}</option>`).join('')}
+    </select></div>
+
+  <div class="field" style="grid-column:1/-1"><label class="form-label">Linked Customer (optional)</label>
+    <select id="tk-cust" class="form-input" onchange="prefillTaskFromCust(this.value)">
+      <option value="">-- No customer --</option>
+      ${custOpts}
+    </select></div>
+
+  <div class="field" style="grid-column:1/-1"><label class="form-label">Notes</label>
+    <textarea id="tk-notes" class="form-input" rows="3" style="resize:vertical">${g('notes')}</textarea></div>
+</div>
+<div style="display:flex;gap:8px;justify-content:space-between;margin-top:20px;padding-top:16px;border-top:1px solid var(--border)">
+  <div>${id?`<button class="btn btn-outline" style="color:var(--red);border-color:var(--red)" onclick="deleteTask('${id}')">🗑 Delete</button>`:''}</div>
+  <div style="display:flex;gap:8px">
+    <button class="btn btn-outline" onclick="document.getElementById('modal-task').style.display='none'">Cancel</button>
+    <button class="btn btn-gold" onclick="saveTask('${id||''}')">💾 Save Task</button>
+  </div>
+</div>`;
+  document.getElementById('modal-task').style.display='flex';
+}
+
+function prefillTaskFromCust(custId){
+  if(!custId) return;
+  const c=(db.customers||[]).find(x=>x.id===custId); if(!c) return;
+  // Auto-assign to SP1 if unassigned
+  const spEl=document.getElementById('tk-sp');
+  if(spEl&&!spEl.value&&c.assignedTo){
+    for(let o of spEl.options) if(o.text===c.assignedTo){o.selected=true;break;}
+  }
+}
+
+function saveTask(id){
+  const g=f=>(document.getElementById(f)||{}).value||'';
+  const title=g('tk-title');
+  if(!title.trim()){alert('Task title is required');return;}
+  const custId=g('tk-cust');
+  const cust=(db.customers||[]).find(x=>x.id===custId);
+  const obj={
+    title:title.trim(),
+    taskType:g('tk-type'),
+    priority:g('tk-pri'),
+    dueDate:g('tk-due'),
+    dueTime:g('tk-time'),
+    assignedTo:g('tk-sp'),
+    status:g('tk-status'),
+    customerId:custId,
+    customerName:cust?cust.firstName+' '+cust.lastName:'',
+    notes:g('tk-notes'),
+  };
+  if(!db.tasks) db.tasks=[];
+  if(id){
+    const idx=db.tasks.findIndex(x=>x.id===id);
+    if(idx>-1){
+      obj.id=id;obj.taskNo=db.tasks[idx].taskNo;
+      obj.createdAt=db.tasks[idx].createdAt;
+      if(obj.status==='Done'&&db.tasks[idx].status!=='Done') obj.completedAt=new Date().toISOString();
+      else obj.completedAt=db.tasks[idx].completedAt;
+      obj.updatedAt=new Date().toISOString();
+      db.tasks[idx]=obj;
+    }
+  } else {
+    obj.id='tsk_'+Date.now();
+    obj.taskNo=generateTaskNo();
+    obj.createdAt=new Date().toISOString();obj.updatedAt=new Date().toISOString();
+    db.tasks.push(obj);
+  }
+  saveDB();
+  document.getElementById('modal-task').style.display='none';
+  renderTasks();
+  updateBadges();
+  showToast(id?'Task updated':'Task created — '+obj.taskNo);
+}
+
+function deleteTask(id){
+  if(!confirm('Delete this task?')) return;
+  db.tasks=(db.tasks||[]).filter(x=>x.id!==id);
+  saveDB();
+  document.getElementById('modal-task').style.display='none';
+  renderTasks();
+  updateBadges();
+  showToast('Task deleted','error');
+}
+
+function exportTasksCSV(){
+  const tasks=db.tasks||[];
+  if(!tasks.length){showToast('No tasks to export','error');return;}
+  const rows=[['Task No','Title','Type','Priority','Status','Assigned To','Customer','Due Date','Due Time','Completed At','Notes']];
+  tasks.forEach(t=>{
+    rows.push([t.taskNo||'',t.title||'',t.taskType||'',t.priority||'',t.status||'',
+      t.assignedTo||'',t.customerName||'',t.dueDate||'',t.dueTime||'',
+      t.completedAt?new Date(t.completedAt).toLocaleDateString('en-GB'):'',t.notes||'']);
+  });
+  const csv=rows.map(r=>r.map(x=>'"'+String(x==null?'':x).replace(/"/g,'""')+'"').join(',')).join('\n');
+  const a=document.createElement('a');
+  a.href='data:text/csv;charset=utf-8,\uFEFF'+encodeURIComponent(csv);
+  a.download='Tasks_'+new Date().toISOString().slice(0,10)+'.csv';
+  a.click();
+  showToast('Tasks CSV downloaded');
 }
 
 // ══════════════════════════════════════════════
