@@ -2970,14 +2970,28 @@ function renderPdfReportsTab(){
   document.getElementById('report-tab-content').innerHTML=`
 <div class="card" style="margin-bottom:16px;padding:14px 18px">
   <div style="display:flex;align-items:center;gap:16px;flex-wrap:wrap">
-    <div style="font-size:13px;font-weight:700;color:var(--text)">📅 Date Range Filter</div>
-    <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+    <div style="font-size:13px;font-weight:700;color:var(--text)">📅 Date Range</div>
+    <!-- Mode toggle -->
+    <div style="display:flex;gap:0;border:1px solid var(--border2);border-radius:8px;overflow:hidden">
+      <button id="rpt-mode-all"   onclick="setRptMode('all')"    style="padding:5px 12px;font-size:11px;font-weight:600;background:var(--green);color:#fff;border:none;cursor:pointer">All Time</button>
+      <button id="rpt-mode-month" onclick="setRptMode('month')"  style="padding:5px 12px;font-size:11px;font-weight:600;background:var(--card);color:var(--text2);border:none;cursor:pointer;border-left:1px solid var(--border2)">By Month</button>
+      <button id="rpt-mode-custom" onclick="setRptMode('custom')" style="padding:5px 12px;font-size:11px;font-weight:600;background:var(--card);color:var(--text2);border:none;cursor:pointer;border-left:1px solid var(--border2)">Custom</button>
+    </div>
+    <!-- Month selectors -->
+    <div id="rpt-month-inputs" style="display:none;align-items:center;gap:8px;flex-wrap:wrap">
       <label style="font-size:12px;color:var(--text3)">From</label>
       <select id="rpt-from" style="padding:5px 10px;border:1px solid var(--border);border-radius:7px;background:var(--card);color:var(--text);font-size:12px">${monthOpts}</select>
       <label style="font-size:12px;color:var(--text3)">To</label>
       <select id="rpt-to" style="padding:5px 10px;border:1px solid var(--border);border-radius:7px;background:var(--card);color:var(--text);font-size:12px">${monthOpts}</select>
     </div>
-    <div style="font-size:11px;color:var(--text3)">Leave blank for all-time data</div>
+    <!-- Custom date inputs -->
+    <div id="rpt-custom-inputs" style="display:none;align-items:center;gap:8px;flex-wrap:wrap">
+      <label style="font-size:12px;color:var(--text3)">From</label>
+      <input type="date" id="rpt-from-date" style="padding:5px 10px;border:1px solid var(--border);border-radius:7px;background:var(--card);color:var(--text);font-size:12px">
+      <label style="font-size:12px;color:var(--text3)">To</label>
+      <input type="date" id="rpt-to-date"   style="padding:5px 10px;border:1px solid var(--border);border-radius:7px;background:var(--card);color:var(--text);font-size:12px">
+    </div>
+    <div id="rpt-range-label" style="font-size:11px;color:var(--text3)">All data included</div>
   </div>
 </div>
 <div style="font-size:12px;color:var(--text3);margin-bottom:14px">Download as PDF for formal reporting or CSV for Excel analysis.</div>
@@ -2996,15 +3010,40 @@ function renderPdfReportsTab(){
 </div>`;
 }
 
-// Helper: get date range from selectors
+// Helper: set report mode (all / month / custom)
+function setRptMode(mode){
+  window._rptMode = mode;
+  const mI=document.getElementById('rpt-month-inputs');
+  const cI=document.getElementById('rpt-custom-inputs');
+  const lb=document.getElementById('rpt-range-label');
+  const btnAll=document.getElementById('rpt-mode-all');
+  const btnMo=document.getElementById('rpt-mode-month');
+  const btnCu=document.getElementById('rpt-mode-custom');
+  const activeStyle='background:var(--green);color:#fff';
+  const inactiveStyle='background:var(--card);color:var(--text2)';
+  if(btnAll)  { btnAll.style.cssText=  (mode==='all'   ?activeStyle:inactiveStyle)+';padding:5px 12px;font-size:11px;font-weight:600;border:none;cursor:pointer'; }
+  if(btnMo)   { btnMo.style.cssText=   (mode==='month' ?activeStyle:inactiveStyle)+';padding:5px 12px;font-size:11px;font-weight:600;border:none;cursor:pointer;border-left:1px solid var(--border2)'; }
+  if(btnCu)   { btnCu.style.cssText=   (mode==='custom'?activeStyle:inactiveStyle)+';padding:5px 12px;font-size:11px;font-weight:600;border:none;cursor:pointer;border-left:1px solid var(--border2)'; }
+  if(mI) mI.style.display = mode==='month'  ? 'flex':'none';
+  if(cI) cI.style.display = mode==='custom' ? 'flex':'none';
+  if(lb) lb.textContent = mode==='all' ? 'All data included' : mode==='month' ? 'Select month range below' : 'Select exact date range below';
+}
+
+// Helper: get date range from current mode
 function getRptDateRange(){
-  const fromEl=document.getElementById('rpt-from');
-  const toEl=document.getElementById('rpt-to');
-  const fromVal=fromEl?fromEl.value:'';
-  const toVal=toEl?toEl.value:'';
+  const mode = window._rptMode || 'all';
   let from=null, to=null;
-  if(fromVal){ const p=fromVal.split('-'); from=new Date(+p[0],+p[1]-1,1); }
-  if(toVal){   const p=toVal.split('-');   to=new Date(+p[0],+p[1]-1+1,0,23,59,59); } // last day of month
+  if(mode==='month'){
+    const fv=(document.getElementById('rpt-from')||{}).value||'';
+    const tv=(document.getElementById('rpt-to')||{}).value||'';
+    if(fv){ const p=fv.split('-'); from=new Date(+p[0],+p[1]-1,1); }
+    if(tv){ const p=tv.split('-'); to=new Date(+p[0],+p[1]-1+1,0,23,59,59); }
+  } else if(mode==='custom'){
+    const fv=(document.getElementById('rpt-from-date')||{}).value||'';
+    const tv=(document.getElementById('rpt-to-date')||{}).value||'';
+    if(fv) from=new Date(fv+'T00:00:00');
+    if(tv) to=new Date(tv+'T23:59:59');
+  }
   return{from,to};
 }
 
