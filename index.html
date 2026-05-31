@@ -567,6 +567,7 @@ th[data-tip]{cursor:pointer}
   <div class="nav-item" data-mod="campaigns" onclick="nav('campaigns')"><span class="icon">📣</span>Campaigns<span class="badge" id="nb-camp">0</span></div>
   <div class="nav-item" data-mod="bizcard" onclick="nav('bizcard')"><span class="icon">🪪</span>Business Cards<span class="badge" id="nb-bc">0</span></div>
   <div class="nav-item" data-mod="kyc" onclick="nav('kyc')"><span class="icon">🛂</span>KYC<span class="badge" id="nb-kyc">0</span></div>
+  <div class="nav-item" data-mod="suppliers" onclick="nav('suppliers')"><span class="icon">🏭</span>Suppliers<span class="badge" id="nb-sup"></span></div>
   <div class="nav-item" data-mod="accounting" onclick="nav('accounting')"><span class="icon">🧾</span>Invoices & Payments<span class="badge" id="nb-inv">0</span></div>
   <div class="nav-item" id="nav-users" onclick="nav('users')" style="display:none"><span class="icon">🔐</span>Users &amp; Access</div>
   <div class="nav-item" onclick="nav('help')"><span class="icon">❓</span>Help &amp; FAQ</div>
@@ -687,6 +688,9 @@ function loadDB(){
   if(!db.invoices)      db.invoices      = JSON.parse(JSON.stringify(DEMO_DB.invoices));
   if(!db.savedReports)  db.savedReports  = [];
   if(!db.settings)      db.settings      = {};
+  if(!db.suppliers)     db.suppliers     = [];
+  // Assign VID to any supplier missing one
+  (db.suppliers||[]).forEach(s=>{ if(!s.vid) s.vid=generateVID(); });
   // Assign CIF to any customer missing one
   (db.customers||[]).forEach(c=>{ if(!c.cif) c.cif=generateCIF(); });
   if(!db.users || !db.users.length) db.users = JSON.parse(JSON.stringify(DEMO_DB.users||[]));
@@ -716,6 +720,8 @@ function updateBadges(){
   document.getElementById('nb-cust').textContent = (db.customers||[]).length;
   document.getElementById('nb-camp').textContent = (db.campaigns||[]).length;
   document.getElementById('nb-bc').textContent   = (db.businessCards||[]).length;
+  const supBadge=document.getElementById('nb-sup');
+  if(supBadge){const supKycDue=(db.suppliers||[]).filter(s=>isSupKycDue(s)).length;supBadge.textContent=supKycDue||'';}
   const kycDue=(db.customers||[]).filter(c=>isKycCustomer(c)&&isKycDue(c)).length;
   const kycBadge=document.getElementById('nb-kyc'); if(kycBadge) kycBadge.textContent=kycDue||'';
   const invBadge=document.getElementById('nb-inv'); if(invBadge) invBadge.textContent = (db.invoices||[]).filter(i=>['Draft','Sent','Overdue'].includes(i.status)).length;
@@ -725,7 +731,7 @@ function updateBadges(){
 // NAVIGATION
 // ══════════════════════════════════════════════
 let currentNav = 'dashboard';
-const TITLES = { dashboard:'Dashboard', customers:'Customers & Leads', pipeline:'Sales Pipeline', kyc:'KYC Management', users:'Users & Access',
+const TITLES = { dashboard:'Dashboard', customers:'Customers & Leads', pipeline:'Sales Pipeline', kyc:'KYC Management', suppliers:'Suppliers', users:'Users & Access',
   inventory:'Inventory Interest', salespeople:'Salespeople', reports:'Reports',
   campaigns:'Campaigns', bizcard:'Business Cards', accounting:'Invoices & Payments', settings:'Settings', help:'Help & FAQ' };
 
@@ -1280,7 +1286,7 @@ function nav(section){
       </div>`;
     return;
   }
-  const renders = { dashboard:renderDashboard, customers:renderCustomers, pipeline:renderPipeline, kyc:renderKYC,
+  const renders = { dashboard:renderDashboard, customers:renderCustomers, pipeline:renderPipeline, kyc:renderKYC, suppliers:renderSuppliers,
       inventory:renderInventory, salespeople:renderSalespeople, reports:renderReports,
       campaigns:renderCampaigns, bizcard:renderBizcard, accounting:renderAccounting,
       settings:renderSettings, users:renderUsers, help:renderHelp };
@@ -5557,6 +5563,358 @@ function exportKycReport(){
   a.href='data:text/csv;charset=utf-8,'+encodeURIComponent(csv);
   a.download=`KYC_Report_${new Date().toISOString().slice(0,10)}.csv`;
   a.click();
+}
+
+// ══════════════════════════════════════════════
+// SUPPLIER MODULE
+// ══════════════════════════════════════════════
+
+const SUPPLIER_TYPES = ['Rough Diamond','Polished Diamond','Lab-Grown Diamond','Settings & Jewellery','Coloured Stones','Other'];
+const SUPPLIER_CURRENCIES = ['USD','THB','AED','SGD','HKD','EUR','INR','JPY'];
+
+function generateVID(){
+  const existing=(db.suppliers||[]).map(s=>parseInt((s.vid||'').replace(/\D/g,''))||0);
+  const next=existing.length?Math.max(...existing)+1:1001;
+  return 'VID-'+new Date().getFullYear()+'-'+String(next).padStart(4,'0');
+}
+
+function isSupKycDue(s){
+  if(!s.kycDocs||!s.kycDocs.length) return true;
+  if(!s.kycNextDate) return true;
+  return new Date(s.kycNextDate)<=new Date();
+}
+
+function supKycStatus(s){
+  if(!s.kycDocs||!s.kycDocs.length) return 'missing';
+  if(!s.kycNextDate) return 'expiring';
+  const diff=Math.ceil((new Date(s.kycNextDate)-new Date())/86400000);
+  if(diff<0) return 'expired';
+  if(diff<=30) return 'expiring';
+  return 'valid';
+}
+
+// ── renderSuppliers ───────────────────────────────────────────────────────
+function renderSuppliers(){
+  const sups=db.suppliers||[];
+  const total=sups.length;
+  const byType={};
+  SUPPLIER_TYPES.forEach(t=>byType[t]=0);
+  sups.forEach(s=>{if(byType[s.type]!==undefined)byType[s.type]++;});
+  const kycDue=sups.filter(s=>supKycStatus(s)!=='valid').length;
+  const totalPurchases=sups.reduce((sum,s)=>{
+    return sum+(s.purchases||[]).reduce((ps,p)=>ps+(p.amount||0),0);
+  },0);
+
+  document.getElementById('content').innerHTML=`
+<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;flex-wrap:wrap;gap:10px">
+  <div style="font-family:'EB Garamond',Georgia,serif;font-size:24px;font-weight:600;letter-spacing:-.2px">Suppliers</div>
+  <button class="btn btn-gold" onclick="openSupModal(null)">+ Add Supplier</button>
+</div>
+
+<!-- KPI row -->
+<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:20px">
+  ${[
+    ['Total Suppliers', total,       'registered','var(--text)'],
+    ['Active Sources',  sups.filter(s=>s.status==='Active').length, 'active','var(--green)'],
+    ['KYC Attention',  kycDue,      'need review','var(--red)'],
+    ['Total Purchases', fmt(totalPurchases),'all time','var(--blue)'],
+  ].map(([lb,vl,sb,col])=>`
+  <div class="card" style="padding:16px;border-top:3px solid ${col}">
+    <div style="font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.7px;color:var(--text3);margin-bottom:6px">${lb}</div>
+    <div style="font-size:26px;font-weight:700;color:${col};font-variant-numeric:tabular-nums;letter-spacing:-.5px;line-height:1">${vl}</div>
+    <div style="font-size:11px;color:var(--text3);margin-top:4px">${sb}</div>
+  </div>`).join('')}
+</div>
+
+<!-- Supplier cards -->
+<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:14px">
+  ${sups.length ? sups.map(s=>{
+    const st=supKycStatus(s);
+    const stCol={valid:'var(--green)',expiring:'var(--orange)',expired:'var(--red)',missing:'var(--red)'}[st]||'var(--text3)';
+    const stLbl={valid:'✅ KYC Valid',expiring:'⏰ KYC Expiring',expired:'❌ KYC Expired',missing:'⚠️ KYC Missing'}[st];
+    const purchases=(s.purchases||[]);
+    const totalSpend=purchases.reduce((sum,p)=>sum+(p.amount||0),0);
+    return `<div class="card" style="padding:0;overflow:hidden;transition:box-shadow .15s"
+      onmouseover="this.style.boxShadow='var(--shadow-md)'" onmouseout="this.style.boxShadow=''">
+      <div style="padding:14px 16px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:flex-start">
+        <div style="flex:1;min-width:0">
+          <div style="font-size:14px;font-weight:600;color:var(--text);margin-bottom:2px">${s.company||s.name}</div>
+          <div style="font-size:11px;color:var(--text3)">${s.name||''}${s.country?' · '+s.country:''}</div>
+        </div>
+        <span style="font-size:10px;background:var(--bg2);border:1px solid var(--border);border-radius:20px;padding:2px 8px;color:var(--text3);flex-shrink:0;margin-left:8px">${s.type||'--'}</span>
+      </div>
+      <div style="padding:12px 16px">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:10px">
+          ${[['VID',s.vid||'--'],['Currency',s.currency||'--'],['Payment Terms',s.paymentTerms||'--'],['Purchases',purchases.length+' orders']].map(([l,v])=>`
+          <div><div style="font-size:9px;text-transform:uppercase;letter-spacing:.5px;color:var(--text3);margin-bottom:1px">${l}</div><div style="font-size:12px;font-weight:500;color:var(--text2)">${v}</div></div>`).join('')}
+        </div>
+        ${totalSpend?`<div style="font-size:11px;color:var(--text3)">Total spend: <span style="font-weight:700;color:var(--green)">${fmt(totalSpend)} ${s.currency||''}</span></div>`:''}
+        <div style="font-size:11px;font-weight:600;color:${stCol};margin-top:6px">${stLbl}</div>
+        <div style="display:flex;gap:6px;margin-top:10px;flex-wrap:wrap">
+          ${waBtn(s,'padding:3px 9px;font-size:11px')}
+          ${lineBtn(s,'padding:3px 9px;font-size:11px')}
+          ${viberCallBtn(s,'padding:3px 9px;font-size:11px')}
+          <button class="btn btn-outline btn-sm" onclick="openSupModal('${s.id}')">Edit</button>
+          <button class="btn btn-outline btn-sm" onclick="openSupKycModal('${s.id}')">🛂 KYC</button>
+          <button class="btn btn-outline btn-sm" onclick="openSupPurchaseModal('${s.id}')">🛒 Purchases</button>
+        </div>
+      </div>
+    </div>`;
+  }).join('') : `<div class="card" style="grid-column:1/-1;text-align:center;padding:40px">
+    <div style="font-size:32px;margin-bottom:10px">🏭</div>
+    <div style="font-family:'EB Garamond',serif;font-size:18px;color:var(--text2);margin-bottom:6px">No suppliers yet</div>
+    <div style="font-size:13px;color:var(--text3);margin-bottom:16px">Add your diamond suppliers, rough stone dealers and settings manufacturers</div>
+    <button class="btn btn-gold" onclick="openSupModal(null)">+ Add First Supplier</button>
+  </div>`}
+</div>
+
+<!-- Supplier Modal -->
+<div id="modal-sup" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:1000;align-items:center;justify-content:center">
+  <div class="modal" style="max-width:640px;width:95vw;max-height:90vh;overflow-y:auto">
+    <button class="modal-close" onclick="document.getElementById('modal-sup').style.display='none'">✕</button>
+    <div class="modal-title" id="sup-modal-title">Add Supplier</div>
+    <div id="sup-modal-body"></div>
+  </div>
+</div>
+
+<!-- KYC Modal -->
+<div id="modal-sup-kyc" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:1000;align-items:center;justify-content:center">
+  <div class="modal" style="max-width:600px;width:95vw;max-height:90vh;overflow-y:auto">
+    <button class="modal-close" onclick="document.getElementById('modal-sup-kyc').style.display='none'">✕</button>
+    <div class="modal-title" id="sup-kyc-title">Supplier KYC</div>
+    <div id="sup-kyc-body"></div>
+  </div>
+</div>
+
+<!-- Purchases Modal -->
+<div id="modal-sup-pur" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:1000;align-items:center;justify-content:center">
+  <div class="modal" style="max-width:620px;width:95vw;max-height:90vh;overflow-y:auto">
+    <button class="modal-close" onclick="document.getElementById('modal-sup-pur').style.display='none'">✕</button>
+    <div class="modal-title" id="sup-pur-title">Purchase History</div>
+    <div id="sup-pur-body"></div>
+  </div>
+</div>`;
+}
+
+// ── openSupModal ──────────────────────────────────────────────────────────
+function openSupModal(id){
+  const s=id?(db.suppliers||[]).find(x=>x.id===id)||{}:{};
+  const isNew=!id;
+  document.getElementById('sup-modal-title').textContent=isNew?'Add Supplier':'Edit Supplier';
+  const g=(f,v='')=>s[f]!==undefined?s[f]:v;
+  document.getElementById('sup-modal-body').innerHTML=`
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
+  <div class="field"><label class="form-label">Company Name *</label><input id="sf-company" class="form-input" value="${g('company')}" placeholder="e.g. Rapaport Diamond Co."></div>
+  <div class="field"><label class="form-label">Contact Name</label><input id="sf-name" class="form-input" value="${g('name')}" placeholder="Contact person"></div>
+  <div class="field"><label class="form-label">Supplier Type</label>
+    <select id="sf-type" class="form-input">
+      ${SUPPLIER_TYPES.map(t=>`<option ${g('type')===t?'selected':''}>${t}</option>`).join('')}
+    </select></div>
+  <div class="field"><label class="form-label">Status</label>
+    <select id="sf-status" class="form-input">
+      ${['Active','Inactive','On Hold'].map(t=>`<option ${g('status','Active')===t?'selected':''}>${t}</option>`).join('')}
+    </select></div>
+  <div class="field"><label class="form-label">Country</label><input id="sf-country" class="form-input" value="${g('country')}" placeholder="e.g. Belgium"></div>
+  <div class="field"><label class="form-label">City</label><input id="sf-city" class="form-input" value="${g('city')}" placeholder="e.g. Antwerp"></div>
+  <div class="field"><label class="form-label">Email</label><input id="sf-email" class="form-input" type="email" value="${g('email')}"></div>
+  <div class="field"><label class="form-label">Phone / WhatsApp</label><input id="sf-phone" class="form-input" value="${g('phone')}" placeholder="+32 ..."></div>
+  <div class="field"><label class="form-label">LINE ID</label><input id="sf-line" class="form-input" value="${g('wechat')}" placeholder="@lineID"></div>
+  <div class="field"><label class="form-label">Website</label><input id="sf-web" class="form-input" value="${g('website')}" placeholder="https://..."></div>
+  <div class="field"><label class="form-label">Currency</label>
+    <select id="sf-currency" class="form-input">
+      ${SUPPLIER_CURRENCIES.map(c=>`<option ${g('currency','USD')===c?'selected':''}>${c}</option>`).join('')}
+    </select></div>
+  <div class="field"><label class="form-label">Payment Terms</label>
+    <select id="sf-terms" class="form-input">
+      ${['Net 30','Net 60','Net 90','COD','Advance','Consignment','Memo'].map(t=>`<option ${g('paymentTerms')===t?'selected':''}>${t}</option>`).join('')}
+    </select></div>
+  <div class="field" style="grid-column:1/-1"><label class="form-label">Certifications Carried</label>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:4px">
+      ${['GIA','IGI','AGS','HRD','Kimberley Process'].map(c=>`
+      <label style="display:flex;align-items:center;gap:5px;font-size:12px;cursor:pointer">
+        <input type="checkbox" value="${c}" ${(g('certifications',[])).includes(c)?'checked':''} class="sf-cert"> ${c}
+      </label>`).join('')}
+    </div></div>
+  <div class="field" style="grid-column:1/-1"><label class="form-label">Notes</label>
+    <textarea id="sf-notes" class="form-input" rows="2" style="resize:vertical">${g('notes')}</textarea></div>
+</div>
+<div style="display:flex;gap:8px;justify-content:flex-end;margin-top:20px;padding-top:16px;border-top:1px solid var(--border)">
+  <button class="btn btn-outline" onclick="document.getElementById('modal-sup').style.display='none'">Cancel</button>
+  <button class="btn btn-gold" onclick="saveSupplier('${id||''}')">💾 Save Supplier</button>
+</div>`;
+  document.getElementById('modal-sup').style.display='flex';
+}
+
+function saveSupplier(id){
+  const g=f=>(document.getElementById(f)||{}).value||'';
+  const certs=[...document.querySelectorAll('.sf-cert:checked')].map(c=>c.value);
+  const obj={
+    company:g('sf-company'),name:g('sf-name'),type:g('sf-type'),status:g('sf-status'),
+    country:g('sf-country'),city:g('sf-city'),email:g('sf-email'),phone:g('sf-phone'),
+    wechat:g('sf-line'),website:g('sf-web'),currency:g('sf-currency'),
+    paymentTerms:g('sf-terms'),certifications:certs,
+    notes:g('sf-notes'),
+  };
+  if(!obj.company){alert('Company name is required');return;}
+  if(!db.suppliers) db.suppliers=[];
+  if(id){
+    const idx=db.suppliers.findIndex(x=>x.id===id);
+    if(idx>-1){ obj.id=id; obj.vid=db.suppliers[idx].vid; obj.kycDocs=db.suppliers[idx].kycDocs; obj.kycNextDate=db.suppliers[idx].kycNextDate; obj.purchases=db.suppliers[idx].purchases||[]; obj.updatedAt=new Date().toISOString(); db.suppliers[idx]=obj; }
+  } else {
+    obj.id='sup_'+Date.now();
+    obj.vid=generateVID();
+    obj.kycDocs=[];obj.purchases=[];
+    obj.createdAt=new Date().toISOString();obj.updatedAt=new Date().toISOString();
+    db.suppliers.push(obj);
+  }
+  saveDB();
+  document.getElementById('modal-sup').style.display='none';
+  renderSuppliers();
+  updateBadges();
+  showToast(id?'Supplier updated':'Supplier added');
+}
+
+// ── Supplier KYC Modal ────────────────────────────────────────────────────
+function openSupKycModal(id){
+  const s=(db.suppliers||[]).find(x=>x.id===id); if(!s) return;
+  if(!s.vid){s.vid=generateVID();saveDB();}
+  const docs=s.kycDocs||[];
+  const st=supKycStatus(s);
+  const stCol={valid:'var(--green)',expiring:'var(--orange)',expired:'var(--red)',missing:'var(--red)'}[st];
+  const stLbl={valid:'✅ Valid',expiring:'⏰ Expiring Soon',expired:'❌ Expired',missing:'⚠️ Not Done'}[st];
+  document.getElementById('sup-kyc-title').textContent=`KYC — ${s.company} (${s.vid})`;
+  document.getElementById('sup-kyc-body').innerHTML=`
+<div style="background:var(--bg2);border-radius:10px;padding:12px 16px;margin-bottom:16px;display:flex;gap:16px;flex-wrap:wrap">
+  <div><div style="font-size:9px;text-transform:uppercase;letter-spacing:.5px;color:var(--text3)">VID</div><div style="font-weight:700;color:var(--gold)">${s.vid}</div></div>
+  <div><div style="font-size:9px;text-transform:uppercase;letter-spacing:.5px;color:var(--text3)">KYC Status</div><div style="font-weight:700;color:${stCol}">${stLbl}</div></div>
+  <div><div style="font-size:9px;text-transform:uppercase;letter-spacing:.5px;color:var(--text3)">Next Review</div><div style="font-weight:700">${s.kycNextDate?fmtDate(s.kycNextDate):'Not set'}</div></div>
+</div>
+
+<div style="margin-bottom:14px">
+  <div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">Documents</div>
+  ${docs.length?docs.map((d,i)=>`
+  <div style="display:flex;align-items:center;gap:10px;padding:8px 12px;background:var(--card);border:1px solid var(--border);border-radius:8px;margin-bottom:6px">
+    <span style="font-size:16px">📄</span>
+    <div style="flex:1"><div style="font-size:13px;font-weight:500">${d.type}</div><div style="font-size:11px;color:var(--text3)">Uploaded ${fmtDate(d.uploadedAt)}</div></div>
+    <a href="${d.data}" download="${d.type}_${s.vid}.${d.ext}" class="btn btn-outline btn-sm">⬇</a>
+    <button class="btn btn-sm" style="color:var(--red);border-color:var(--red);background:none" onclick="removeSupKycDoc('${id}',${i})">✕</button>
+  </div>`).join(''):'<div style="font-size:12px;color:var(--text3);padding:4px 0">No documents uploaded yet.</div>'}
+</div>
+
+<div style="border-top:1px solid var(--border);padding-top:14px;margin-bottom:14px">
+  <div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px">Upload Document</div>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px">
+    <div class="field"><label class="form-label">Document Type</label>
+      <select id="sup-kyc-type" class="form-input">
+        <option>Business Registration</option>
+        <option>Owner Passport</option>
+        <option>National ID</option>
+        <option>Kimberley Process Certificate</option>
+        <option>AML Declaration</option>
+        <option>Bank Letter</option>
+        <option>Other</option>
+      </select></div>
+    <div class="field"><label class="form-label">Next KYC Review Date</label>
+      <input type="date" id="sup-kyc-date" class="form-input" value="${s.kycNextDate||''}"></div>
+  </div>
+  <label style="display:block;border:2px dashed var(--border2);border-radius:10px;padding:16px;text-align:center;cursor:pointer;background:var(--bg2)" onmouseover="this.style.borderColor='var(--green)'" onmouseout="this.style.borderColor='var(--border2)'">
+    <input type="file" id="sup-kyc-file" accept=".pdf,.jpg,.jpeg,.png" style="display:none" onchange="handleSupKycUpload('${id}',this)">
+    <div style="font-size:24px;margin-bottom:4px">📄</div>
+    <div style="font-size:13px;font-weight:500">Click to upload PDF or JPEG</div>
+    <div style="font-size:11px;color:var(--text3);margin-top:2px">Max 5MB</div>
+  </label>
+</div>
+<div style="display:flex;gap:8px;justify-content:flex-end">
+  <button class="btn btn-outline" onclick="document.getElementById('modal-sup-kyc').style.display='none'">Close</button>
+  <button class="btn btn-gold" onclick="saveSupKycDate('${id}')">💾 Save Date</button>
+</div>`;
+  document.getElementById('modal-sup-kyc').style.display='flex';
+}
+
+function handleSupKycUpload(supId,input){
+  const file=input.files[0];if(!file)return;
+  if(file.size>5*1024*1024){alert('Max 5MB');return;}
+  const ext=file.name.split('.').pop().toLowerCase();
+  const reader=new FileReader();
+  reader.onload=e=>{
+    const s=(db.suppliers||[]).find(x=>x.id===supId);if(!s)return;
+    if(!s.kycDocs)s.kycDocs=[];
+    const docType=document.getElementById('sup-kyc-type').value;
+    const nd=document.getElementById('sup-kyc-date').value;
+    s.kycDocs.push({type:docType,data:e.target.result,ext,uploadedAt:new Date().toISOString()});
+    if(nd)s.kycNextDate=nd;
+    s.updatedAt=new Date().toISOString();
+    saveDB();openSupKycModal(supId);updateBadges();
+  };
+  reader.readAsDataURL(file);
+}
+
+function removeSupKycDoc(supId,idx){
+  if(!confirm('Remove this document?'))return;
+  const s=(db.suppliers||[]).find(x=>x.id===supId);if(!s)return;
+  s.kycDocs.splice(idx,1);saveDB();openSupKycModal(supId);updateBadges();
+}
+
+function saveSupKycDate(supId){
+  const s=(db.suppliers||[]).find(x=>x.id===supId);if(!s)return;
+  const d=document.getElementById('sup-kyc-date').value;
+  if(!d){alert('Please set a review date');return;}
+  s.kycNextDate=d;s.updatedAt=new Date().toISOString();
+  saveDB();openSupKycModal(supId);updateBadges();showToast('KYC date saved');
+}
+
+// ── Purchase History Modal ────────────────────────────────────────────────
+function openSupPurchaseModal(id){
+  const s=(db.suppliers||[]).find(x=>x.id===id);if(!s)return;
+  const purs=s.purchases||[];
+  const total=purs.reduce((sum,p)=>sum+(p.amount||0),0);
+  document.getElementById('sup-pur-title').textContent=`Purchases — ${s.company}`;
+  document.getElementById('sup-pur-body').innerHTML=`
+<div style="margin-bottom:16px">
+  <div style="font-size:22px;font-weight:700;color:var(--green);font-variant-numeric:tabular-nums">${fmt(total)} <span style="font-size:13px;color:var(--text3);font-weight:400">${s.currency||'USD'} total · ${purs.length} orders</span></div>
+</div>
+
+${purs.length?`<div style="margin-bottom:16px">
+${purs.map((p,i)=>`<div style="display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid var(--border)">
+  <div style="flex:1"><div style="font-size:13px;font-weight:500">${p.description||'Purchase'}</div><div style="font-size:11px;color:var(--text3)">${p.date?fmtDate(p.date):'--'}${p.refNo?' · Ref: '+p.refNo:''}</div></div>
+  <div style="font-size:14px;font-weight:700;color:var(--text)">${fmt(p.amount)} ${s.currency||''}</div>
+  <button class="btn btn-sm" style="color:var(--red);border-color:var(--red);background:none;padding:2px 7px;font-size:11px" onclick="removeSupPurchase('${id}',${i})">✕</button>
+</div>`).join('')}
+</div>`:'<div style="font-size:12px;color:var(--text3);margin-bottom:16px">No purchases recorded yet.</div>'}
+
+<div style="background:var(--bg2);border-radius:10px;padding:14px;border:1px solid var(--border)">
+  <div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px">Add Purchase</div>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px">
+    <div class="field"><label class="form-label">Description</label><input id="pur-desc" class="form-input" placeholder="e.g. Round 1.5ct D-VVS1"></div>
+    <div class="field"><label class="form-label">Amount (${s.currency||'USD'})</label><input id="pur-amt" class="form-input" type="number" placeholder="0"></div>
+    <div class="field"><label class="form-label">Date</label><input id="pur-date" class="form-input" type="date" value="${new Date().toISOString().slice(0,10)}"></div>
+    <div class="field"><label class="form-label">Reference No.</label><input id="pur-ref" class="form-input" placeholder="Invoice/PO number"></div>
+  </div>
+  <button class="btn btn-gold" onclick="addSupPurchase('${id}')">+ Add Purchase</button>
+</div>
+<div style="display:flex;justify-content:flex-end;margin-top:16px;padding-top:14px;border-top:1px solid var(--border)">
+  <button class="btn btn-outline" onclick="document.getElementById('modal-sup-pur').style.display='none'">Close</button>
+</div>`;
+  document.getElementById('modal-sup-pur').style.display='flex';
+}
+
+function addSupPurchase(supId){
+  const desc=(document.getElementById('pur-desc')||{}).value||'';
+  const amt=parseFloat((document.getElementById('pur-amt')||{}).value)||0;
+  const date=(document.getElementById('pur-date')||{}).value||'';
+  const ref=(document.getElementById('pur-ref')||{}).value||'';
+  if(!amt){alert('Enter an amount');return;}
+  const s=(db.suppliers||[]).find(x=>x.id===supId);if(!s)return;
+  if(!s.purchases)s.purchases=[];
+  s.purchases.push({description:desc,amount:amt,date,refNo:ref,addedAt:new Date().toISOString()});
+  s.updatedAt=new Date().toISOString();
+  saveDB();openSupPurchaseModal(supId);showToast('Purchase added');
+}
+
+function removeSupPurchase(supId,idx){
+  if(!confirm('Remove this purchase record?'))return;
+  const s=(db.suppliers||[]).find(x=>x.id===supId);if(!s)return;
+  s.purchases.splice(idx,1);saveDB();openSupPurchaseModal(supId);
 }
 
 // ══════════════════════════════════════════════
