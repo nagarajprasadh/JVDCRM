@@ -2772,36 +2772,57 @@ function renderInventory(){
 // SALESPEOPLE
 // ══════════════════════════════════════════════
 function renderSalespeople(){
-  document.getElementById('content').innerHTML=`
-<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;flex-wrap:wrap;gap:10px">
-  <div class="page-title">Salespeople</div>
-  <button class="btn btn-gold" onclick="openSPModal(null)">+ Add Salesperson</button>
-</div>
-<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:12px">
-${db.salespeople.length?db.salespeople.map(sp=>{
-  const custs=db.customers.filter(c=>c.assignedTo===sp.name||c.assignedTo===sp.id);
-  const pipeVal=custs.filter(c=>!['Won','Lost'].includes(c.leadStatus)).reduce((s,c)=>s+(c.dealValue||0),0);
-  const wonCnt=custs.filter(c=>c.leadStatus==='Won').length;
-  return `<div class="salesperson-card">
-    <div class="flex items-center gap-3 mb-2">
-      <div class="avatar">${(sp.name||'?')[0]}</div>
-      <div style="flex:1"><div style="font-weight:700;font-size:14px">${sp.name}</div><div class="text-xs">${sp.role||'Sales Consultant'} ${sp.team?'· '+sp.team:''}</div></div>
-      <button class="btn btn-outline btn-sm" onclick="openSPModal('${sp.id}')">✏️</button>
-    </div>
-    <div class="grid-2" style="gap:6px;font-size:12px">
-      <div><div class="text-xs">Customers</div><div style="font-weight:700;color:var(--gold)">${custs.length}</div></div>
-      <div><div class="text-xs">Pipeline</div><div style="font-weight:700;color:var(--gold)">${fmt(pipeVal)}</div></div>
-      <div><div class="text-xs">Won Deals</div><div style="font-weight:700;color:var(--green)">${wonCnt}</div></div>
-      <div><div class="text-xs">Commission</div><div style="font-weight:700">${sp.commRate||0}%</div></div>
-    </div>
-    ${sp.email?`<div class="text-xs mt-1">📧 ${sp.email}</div>`:''}
-    ${sp.phone?`<div class="text-xs">📱 ${sp.phone}</div>`:''}
-    <button class="btn btn-red btn-sm" style="margin-top:8px" onclick="deleteSP('${sp.id}')">Remove</button>
-  </div>`;}).join(''):`<div class="empty-state"><div class="empty-icon">👔</div><p>No salespeople yet</p><button class="btn btn-gold mt-2" onclick="openSPModal(null)">+ Add First</button></div>`}
-</div>`;
+  const sps=db.salespeople||[];
+  function spCard(sp){
+    const custs=(db.customers||[]).filter(c=>c.assignedTo===sp.name||c.assignedTo2===sp.name);
+    const won=custs.filter(c=>c.leadStatus==='Won');
+    const lost=custs.filter(c=>c.leadStatus==='Lost');
+    const active=custs.filter(c=>!['Won','Lost','Dormant'].includes(c.leadStatus));
+    const winRate=custs.length?Math.round(won.length/Math.max(1,won.length+lost.length)*100):0;
+    const commission=(db.deals||[]).filter(d=>d.status==='Completed'&&(d.sp1===sp.name||d.sp2===sp.name))
+      .reduce((s,d)=>{const c=calcCommissionForDeal(d);return s+(d.sp1===sp.name?c.sp1:c.sp2);},0);
+    const pipeVal=active.reduce((s,c)=>s+(c.dealValue||0),0);
+    const stats=[['Customers',custs.length,'var(--text)'],['Active',active.length,'var(--blue)'],
+      ['Won',won.length,'var(--green)'],['Win Rate',winRate+'%','var(--green)'],
+      ['Pipeline',fmt(pipeVal),'var(--gold)'],['Commission',fmt(commission),'var(--green)']];
+    const el=document.createElement('div');
+    el.className='card';
+    el.style.cssText='padding:0;overflow:hidden;cursor:default';
+    el.innerHTML='<div style="padding:16px;display:flex;align-items:center;gap:12px;border-bottom:1px solid var(--border)">'
+      +renderAvatar(sp.name,'av-lg')
+      +'<div style="flex:1;min-width:0"><div style="font-size:14px;font-weight:600;color:var(--text)">'+sp.name+'</div>'
+      +'<div style="font-size:11px;color:var(--text3);margin-top:2px">'+(sp.role||'Sales')+(sp.specialty?' · '+sp.specialty:'')+'</div></div>'
+      +'<button class="btn btn-outline btn-sm" onclick="openSPModal(\x27'+sp.id+'\x27)">Edit</button>'
+      +'</div>'
+      +'<div style="padding:12px 16px;display:grid;grid-template-columns:1fr 1fr;gap:10px">'
+      +stats.map(([l,v,c])=>'<div><div style="font-size:9px;text-transform:uppercase;letter-spacing:.5px;color:var(--text3)">'+l+'</div>'
+        +'<div style="font-size:14px;font-weight:700;color:'+c+';font-variant-numeric:tabular-nums">'+v+'</div></div>').join('')
+      +'</div>';
+    el.onmouseover=function(){this.style.boxShadow='var(--shadow-md)';};
+    el.onmouseout=function(){this.style.boxShadow='';};
+    return el.outerHTML;
+  }
+  const cards=sps.map(spCard).join('');
+  const empty='<div class="card" style="text-align:center;padding:40px;grid-column:1/-1">'
+    +'<div style="font-size:32px;margin-bottom:10px">👔</div>'
+    +'<div style="font-size:18px;color:var(--text2);margin-bottom:8px">No salespeople yet</div>'
+    +'<button class="btn btn-gold" onclick="openSPModal(null)">+ Add Salesperson</button></div>';
+  document.getElementById('content').innerHTML=
+    '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;flex-wrap:wrap;gap:10px">'
+    +'<div class="page-title">Salespeople</div>'
+    +'<button class="btn btn-gold" onclick="openSPModal(null)">+ Add Salesperson</button>'
+    +'</div>'
+    +'<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:14px">'
+    +(cards||empty)
+    +'</div>'
+    +'<div id="modal-sp" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:1000;align-items:center;justify-content:center">'
+    +'<div class="modal" style="max-width:500px;width:95vw;max-height:90vh;overflow-y:auto">'
+    +'<button class="modal-close" onclick="document.getElementById(\x27modal-sp\x27).style.display=\x27none\x27">✕</button>'
+    +'<div class="modal-title" id="sp-modal-title">Add Salesperson</div>'
+    +'<div id="sp-modal-body"></div>'
+    +'</div></div>';
 }
 
-let editSPId=null;
 function openSPModal(id){
   editSPId=id;
   const sp=id?db.salespeople.find(x=>x.id===id):{};
