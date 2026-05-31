@@ -2813,7 +2813,7 @@ function renderSalespeople(){
       ['Pipeline',fmt(pipeVal),'var(--gold)'],['Commission',fmt(commission),'var(--green)']];
     return '<div class="card" style="padding:0;overflow:hidden">'
       +'<div style="padding:16px;display:flex;align-items:center;gap:12px;border-bottom:1px solid var(--border)">'
-      +renderAvatar(sp.name,'av-lg')
+      +(sp.photo?'<div style="width:52px;height:52px;border-radius:50%;overflow:hidden;flex-shrink:0;border:2px solid var(--border)"><img src="'+sp.photo+'" style="width:100%;height:100%;object-fit:cover"></div>':renderAvatar(sp.name,'av-lg'))
       +'<div style="flex:1;min-width:0"><div style="font-size:14px;font-weight:600;color:var(--text)">'+sp.name+'</div>'
       +'<div style="font-size:11px;color:var(--text3);margin-top:2px">'+(sp.role||'Sales')+(sp.specialty?' &middot; '+sp.specialty:'')+'</div></div>'
       +'<button class="btn btn-outline btn-sm" onclick="openSPModal(\x27'+sp.id+'\x27)">Edit</button>'
@@ -2834,9 +2834,28 @@ function renderSalespeople(){
 
 function openSPModal(id){
   editSPId=id;
+  _spPhoto=undefined;
   const sp=id?db.salespeople.find(x=>x.id===id):{};
   document.getElementById('modal-sp-title').textContent=id?'Edit Salesperson':'Add Salesperson';
+  const photoSrc=sp.photo||null;
   document.getElementById('modal-sp-body').innerHTML=`
+<div style="display:flex;align-items:center;gap:18px;margin-bottom:16px">
+  <div id="sp-photo-wrap" onclick="document.getElementById('sp-photo-input').click()"
+    style="width:80px;height:80px;border-radius:50%;overflow:hidden;background:var(--hover);
+           border:2px dashed var(--border);display:flex;align-items:center;justify-content:center;
+           cursor:pointer;flex-shrink:0;transition:border-color .2s"
+    onmouseover="this.style.borderColor='var(--gold)'" onmouseout="this.style.borderColor='var(--border)'">
+    ${photoSrc
+      ? `<img id="sp-photo-preview" src="${photoSrc}" style="width:100%;height:100%;object-fit:cover">`
+      : `<div id="sp-photo-preview" style="text-align:center;font-size:11px;color:var(--text3);line-height:1.5">📷<br>Photo</div>`}
+  </div>
+  <div>
+    <input type="file" id="sp-photo-input" accept="image/*" style="display:none" onchange="handleSPPhoto(this)">
+    <button type="button" class="btn btn-outline btn-sm" onclick="document.getElementById('sp-photo-input').click()">📷 Upload Photo</button>
+    <button type="button" class="btn btn-outline btn-sm" id="sp-photo-remove" onclick="clearSPPhoto()" style="${photoSrc?'':'display:none'};margin-left:6px;color:var(--red);border-color:var(--red)">✕ Remove</button>
+    <div style="font-size:11px;color:var(--text3);margin-top:6px">JPG or PNG · shown on team cards</div>
+  </div>
+</div>
 <div class="fields">
   <div class="field full"><label>Full Name *</label><input id="sp-name" value="${sp.name||''}" placeholder="Full name"></div>
   <div class="field"><label>Employee ID</label><input id="sp-eid" value="${sp.empId||''}" placeholder="EMP-001"></div>
@@ -2856,14 +2875,38 @@ function openSPModal(id){
 </div>`;
   showModal('modal-sp');
 }
+var _spPhoto=undefined;
+function handleSPPhoto(input){
+  const file=input.files[0]; if(!file) return;
+  if(file.size>3*1024*1024){ alert('Photo must be under 3MB'); input.value=''; return; }
+  const reader=new FileReader();
+  reader.onload=function(e){
+    _spPhoto=e.target.result;
+    const wrap=document.getElementById('sp-photo-wrap');
+    wrap.innerHTML='<img src="'+_spPhoto+'" style="width:100%;height:100%;object-fit:cover">';
+    const btn=document.getElementById('sp-photo-remove');
+    if(btn) btn.style.display='';
+  };
+  reader.readAsDataURL(file);
+}
+function clearSPPhoto(){
+  _spPhoto=null;
+  const wrap=document.getElementById('sp-photo-wrap');
+  wrap.innerHTML='<div id="sp-photo-preview" style="text-align:center;font-size:11px;color:var(--text3);line-height:1.5">📷<br>Photo</div>';
+  const btn=document.getElementById('sp-photo-remove');
+  if(btn) btn.style.display='none';
+  const fi=document.getElementById('sp-photo-input');
+  if(fi) fi.value='';
+}
 function saveSP(){
   const name=document.getElementById('sp-name').value.trim();
   if(!name){ alert('Name required'); return; }
-  const existing=editSPId?db.salespeople.find(x=>x.id===editSPId):{};
+  const existing=editSPId?db.salespeople.find(x=>x.id===editSPId)||{}:{};
+  const photo = _spPhoto!==undefined ? _spPhoto : (existing.photo||null);
   const obj={id:editSPId||uid(),name,empId:document.getElementById('sp-eid').value,email:document.getElementById('sp-email').value,
     phone:document.getElementById('sp-phone').value,role:document.getElementById('sp-role').value,
     team:document.getElementById('sp-team').value,commRate:+document.getElementById('sp-comm').value||0,
-    startDate:document.getElementById('sp-start').value,notes:document.getElementById('sp-notes').value};
+    startDate:document.getElementById('sp-start').value,notes:document.getElementById('sp-notes').value,photo};
   if(editSPId){ const i=db.salespeople.findIndex(x=>x.id===editSPId); db.salespeople[i]=obj; }
   else db.salespeople.push(obj);
   saveDB(); closeModal('modal-sp'); renderSalespeople();
