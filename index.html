@@ -1198,26 +1198,43 @@ function doChangePassword(userId){
   nav('dashboard');
 }
 
-// Saved on first load — used to restore after TOTP screens replace innerHTML
-var _loginOverlayHTML = null;
-
 function _restoreLoginOverlay(){
-  const overlay = document.getElementById('login-overlay');
-  // If TOTP screens replaced innerHTML, restore from saved snapshot
-  if(!document.getElementById('panel-signin')){
-    if(_loginOverlayHTML){
-      overlay.innerHTML = _loginOverlayHTML;
-    }
-  }
-  // Reset all fields safely
-  ['login-user','login-pass','su-name','su-user','su-pass','su-pass2'].forEach(function(id){
-    var el=document.getElementById(id); if(el) el.value='';
-  });
-  var err=document.getElementById('login-error'); if(err){err.textContent='';err.style.display='none';}
-  var suErr=document.getElementById('su-error'); if(suErr) suErr.style.display='none';
-  var suSucc=document.getElementById('su-success'); if(suSucc) suSucc.style.display='none';
-  var suBtn=document.getElementById('su-btn'); if(suBtn) suBtn.style.display='';
-  switchLoginTab('signin');
+  const overlay=document.getElementById('login-overlay');
+  overlay.innerHTML=`
+  <div class="login-box">
+    <div style="display:flex;gap:0;margin-bottom:28px;border-radius:10px;overflow:hidden;border:1px solid var(--border2)">
+      <button id="tab-signin" onclick="switchLoginTab('signin')" style="flex:1;padding:11px;font-size:13px;font-weight:700;cursor:pointer;border:none;font-family:'Inter',sans-serif;background:var(--gold);color:#fff">Sign In</button>
+      <button id="tab-signup" onclick="switchLoginTab('signup')" style="flex:1;padding:11px;font-size:13px;font-weight:700;cursor:pointer;border:none;font-family:'Inter',sans-serif;background:var(--bg2);color:var(--text2)">Sign Up</button>
+    </div>
+    <div id="panel-signin">
+      <div style="display:flex;flex-direction:column;gap:12px">
+        <input id="login-user" type="text" placeholder="Username"
+          style="padding:10px 14px;border:1.5px solid var(--border);border-radius:9px;font-size:14px;background:var(--bg2);color:var(--text);outline:none;width:100%;box-sizing:border-box"
+          onkeydown="if(event.key==='Enter')document.getElementById('login-pass').focus()">
+        <input id="login-pass" type="password" placeholder="Password"
+          style="padding:10px 14px;border:1.5px solid var(--border);border-radius:9px;font-size:14px;background:var(--bg2);color:var(--text);outline:none;width:100%;box-sizing:border-box"
+          onkeydown="if(event.key==='Enter')doLogin()">
+        <div id="login-error" style="display:none;color:var(--red);font-size:13px;text-align:center"></div>
+        <button onclick="doLogin()" style="padding:11px;background:var(--green);color:#fff;border:none;border-radius:9px;font-size:15px;font-weight:700;cursor:pointer;font-family:'Inter',sans-serif">Sign In</button>
+      </div>
+    </div>
+    <div id="panel-signup" style="display:none">
+      <div style="text-align:center;margin-bottom:16px">
+        <div style="font-family:'EB Garamond',Georgia,serif;font-size:20px;font-weight:600;color:var(--text)">Request Access</div>
+        <div style="font-size:12px;color:var(--text3);margin-top:4px">Submit details. Admin will review and approve.</div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:10px">
+        <input id="su-name" type="text" placeholder="Full Name" style="padding:10px 14px;border:1.5px solid var(--border);border-radius:9px;font-size:14px;background:var(--bg2);color:var(--text);outline:none;width:100%;box-sizing:border-box">
+        <input id="su-user" type="text" placeholder="Username (lowercase)" style="padding:10px 14px;border:1.5px solid var(--border);border-radius:9px;font-size:14px;background:var(--bg2);color:var(--text);outline:none;width:100%;box-sizing:border-box" oninput="this.value=this.value.toLowerCase()">
+        <input id="su-pass" type="password" placeholder="Password (min 6)" style="padding:10px 14px;border:1.5px solid var(--border);border-radius:9px;font-size:14px;background:var(--bg2);color:var(--text);outline:none;width:100%;box-sizing:border-box">
+        <input id="su-pass2" type="password" placeholder="Confirm password" style="padding:10px 14px;border:1.5px solid var(--border);border-radius:9px;font-size:14px;background:var(--bg2);color:var(--text);outline:none;width:100%;box-sizing:border-box">
+        <div id="su-error" style="display:none;background:#FEF0EE;border:1px solid #E8A090;border-radius:8px;padding:8px 12px;font-size:12px;color:#B03020"></div>
+        <div id="su-success" style="display:none;background:#EBF7EE;border:1px solid #7DC997;border-radius:8px;padding:10px 12px;font-size:12px;color:#1C6B3A;text-align:center;line-height:1.6">✅ <strong>Request submitted!</strong><br>Please wait for admin approval.</div>
+        <button id="su-btn" onclick="doSignUp()" style="padding:11px;background:var(--green);color:#fff;border:none;border-radius:9px;font-size:15px;font-weight:700;cursor:pointer;font-family:'Inter',sans-serif">Request Access</button>
+        <div style="text-align:center;font-size:12px;color:var(--text3)">Already have an account? <a href="#" onclick="switchLoginTab('signin');return false" style="color:var(--gold);text-decoration:none;font-weight:600">Sign In</a></div>
+      </div>
+    </div>
+  </div>`;
 }
 
 function showLoginError(msg){
@@ -5862,12 +5879,8 @@ setInterval(loadTickerData,5*60*1000);
 
 // Show login overlay only after page fully loaded — avoids flash of unstyled logo
 window.addEventListener('load', function(){
-  // Snapshot the original login box HTML (with logo) before any TOTP screens can replace it
-  var overlay = document.getElementById('login-overlay');
-  var box = overlay ? overlay.querySelector('.login-box') : null;
-  if(box) _loginOverlayHTML = box.outerHTML;
   if(!currentUser){
-    overlay.style.display='flex';
+    document.getElementById('login-overlay').style.display='flex';
   }
 });
 
@@ -5891,7 +5904,12 @@ const HELP_TIPS = [
   '💡 Campaign ROI is calculated automatically — track open rates, reply rates and revenue in Reports.',
   '💡 The gold/platinum price ticker on the Dashboard updates live from public market APIs.',
   '💡 Invoices support multiple currencies (THB, USD, AED, HKD) — set per invoice at creation time.',
-  '💡 For best OCR results, photograph business cards on a plain background under good lighting.'
+  '💡 For best OCR results, photograph business cards on a plain background under good lighting.',
+  '🔐 Two-Factor Authentication is mandatory for all users — set it up on first login with Google Authenticator.',
+  '🔐 Lost your phone? Ask an admin to reset your 2FA from Settings → Users & Access. You will re-enrol on next login.',
+  '👤 New to the CRM? Click Sign Up on the login page and submit your details. An admin will review and activate your account.',
+  '👤 Red cells in the permission matrix mean No Access for that module. Green = Full, Gold = Edit, Blue = View.',
+  '💡 After login, you land directly on the first module you have access to — no more locked dashboard screens.'
 ];
 let _helpTipTimer = null;
 
@@ -5927,7 +5945,16 @@ function renderHelp(){
           "Settings - Thresholds: configure not-contacted alert days, KYC review months, margin alert %, and task warning days.",
           "Settings - VIP Tiers: set THB thresholds for Bronze, Silver, Gold, and Platinum. The system recalculates all customers automatically when you save.",
           "Settings - General: company name, base currency, date format.",
-          "Settings - Users: add users and assign roles. Roles available are Admin, Manager, Salesperson, Read Only, and Custom."
+          "Settings - Users &amp; Access: manage all user accounts, approve sign-up requests, assign roles, and reset 2FA."
+        ]},
+        {title:"Security &amp; Two-Factor Authentication",steps:[
+          "Two-Factor Authentication (2FA) is mandatory for every user in the system — no exceptions.",
+          "On first login, each user is shown a QR code. They scan it with Google Authenticator (or Authy / Microsoft Authenticator) on their phone.",
+          "After scanning, they enter the 6-digit code shown in the app to confirm enrolment. From that point, every login requires: username → password → 6-digit code.",
+          "The 2FA code changes every 30 seconds. The system accepts codes within a ±30 second window to allow for minor clock differences.",
+          "If a user gets a new phone or loses access to their authenticator app, go to Settings → Users &amp; Access, find their row, and click 🔄 Reset 2FA. They will be prompted to re-enrol with a new QR code on next login.",
+          "The user list shows 🔐 2FA On (green) or ⚠ 2FA Not Set (red) for each account so you can see at a glance who is protected.",
+          "New users who sign up via the login page cannot access the system until an admin approves their account from the Pending Approval queue in Settings → Users &amp; Access."
         ]}]},
     salesperson:{icon:"🤝",title:"Salesperson",color:"var(--blue)",
       intro:"Your workspace: Customers, Tasks, and Deals. You see your own assigned leads. Dashboard shows your personal task list.",
@@ -6009,12 +6036,17 @@ function renderHelp(){
           "Click the Purchases button to record purchase history: description, amount, date, and reference number."
         ]},
         {title:"Managing Users and Access",steps:[
-          "Go to Settings in the sidebar.",
-          "Click + Add User. Set a username, display name, and password.",
-          "Select a Role: Admin (full access to everything), Manager (full access except Settings), Salesperson (sees only their own assigned leads), Read Only (view only, cannot create or edit anything).",
-          "For Salesperson role: link the user to their Salesperson record in the dropdown. This is what the system uses to filter which leads they see.",
-          "The permission matrix below the role selector shows module-level access. Changing the role auto-fills it. You can override individual modules if needed.",
-          "Use the Active toggle to suspend a user without deleting their history."
+          "Go to Settings → Users &amp; Access in the sidebar.",
+          "The top section shows Pending Approval requests — users who signed up via the login page and are waiting for you to activate them. An amber badge shows the count.",
+          "Click ✅ Approve on a pending request to assign a role and linked salesperson, then activate the account. The user will see a green welcome banner on their first login.",
+          "Click ✕ Reject to delete the sign-up request if it is not a legitimate employee.",
+          "To create a user manually: click + Add User. Set a username, display name, and password.",
+          "Select a Role: Admin (full access), or User (permissions set individually in the matrix below).",
+          "For a salesperson: link their user account to their Salesperson record in the dropdown so they only see their own leads.",
+          "The permission matrix shows module-level access: — (No Access, red), View (blue), Edit (gold), Full (green). Changing the role auto-fills defaults. You can override individual modules.",
+          "Use the Active toggle to suspend a user without deleting their history.",
+          "To reset a user's Two-Factor Authentication (e.g. they got a new phone), click 🔄 Reset 2FA on their row. They will re-enrol with a new QR code on next login.",
+          "The 🔐 2FA On / ⚠ 2FA Not Set badge shows at a glance which users have enrolled in two-factor authentication."
         ]},
         {title:"Running Operational Reports",steps:[
           "Reports - Overview: visual summary with status breakdown bars, lead source chart, SP leaderboard, and a 6-month bar chart of new leads.",
@@ -6059,6 +6091,38 @@ function renderHelp(){
           "Use the Stone Type dropdown to filter by Natural Diamond, Lab-Grown, Coloured Gemstone, etc.",
           "Use the Shape dropdown to filter by Round, Cushion, Oval, etc.",
           "Click Export CSV for a full spec sheet of all (or filtered) stones including cost, asking price, cert numbers, supplier, and location."
+        ]}]},
+    newuser:{icon:"🆕",title:"New User",color:"#6B7B74",
+      intro:"First time here? Follow these steps to request access, set up security, and get started.",
+      sections:[{title:"Requesting an Account",steps:[
+          "Go to the CRM login page. You will see two tabs: Sign In and Sign Up.",
+          "Click Sign Up.",
+          "Enter your Full Name, choose a Username (lowercase letters, numbers and _ only, minimum 3 characters), and set a Password (minimum 6 characters). Confirm the password.",
+          "Click Request Access. You will see a confirmation: ✅ Request submitted! Please wait for admin approval.",
+          "Your request is now visible to the admin under Settings → Users &amp; Access in the Pending Approval section. You do not need to do anything else.",
+          "Once the admin approves your account, you can sign in. There is no email notification — your admin will let you know directly."
+        ]},
+        {title:"Signing In for the First Time",steps:[
+          "Go to the login page and click Sign In.",
+          "Enter your username and password. Click Sign In.",
+          "You will be shown a QR code screen titled Set Up Two-Factor Auth. This is mandatory for all users.",
+          "Open Google Authenticator (or Authy or Microsoft Authenticator) on your phone and tap the + button to add a new account.",
+          "Tap Scan a QR code and point your camera at the QR code on screen.",
+          "Your account appears in the app showing a 6-digit code that refreshes every 30 seconds.",
+          "Enter that 6-digit code in the field on screen and click Confirm &amp; Activate 2FA.",
+          "You are now logged in. A green welcome banner confirms your account is active. This setup only happens once."
+        ]},
+        {title:"Every Day: Signing In",steps:[
+          "Enter your username and password on the Sign In tab.",
+          "You will be taken to a Two-Factor Auth screen. Open your authenticator app and find the DiamondCRM entry.",
+          "Enter the current 6-digit code (it refreshes every 30 seconds — enter it quickly or wait for a new one if it is about to expire).",
+          "Click Verify &amp; Sign In. You will land directly on the first module you have access to."
+        ]},
+        {title:"If You Lose Access to Your Authenticator App",steps:[
+          "If you get a new phone or lose access to your authenticator app, you cannot log in on your own.",
+          "Contact your system admin and ask them to reset your 2FA.",
+          "They go to Settings → Users &amp; Access, find your name, and click 🔄 Reset 2FA.",
+          "On your next login, after your password is accepted, you will be shown the QR code setup screen again to re-enrol with your new device."
         ]}]},
     campaigns:{icon:"📣",title:"Campaigns",color:"var(--purple)",
       intro:"Manage all marketing: targeted email, WhatsApp, and SMS campaigns by customer segment.",
@@ -6118,6 +6182,12 @@ function renderHelp(){
     ["Advanced Search","Customers → Filters button"],
     ["Customise Dashboard","Dashboard → ⚙ top-right"],
     ["Zoom In/Out","± buttons bottom-right corner"],
+    ["Request Account","Login page → Sign Up tab"],
+    ["Approve New User","Settings → Users → Pending Approval → ✅ Approve"],
+    ["Reset User 2FA","Settings → Users → 🔄 Reset 2FA"],
+    ["Set Up 2FA (new)","Auto-shown on first login — scan QR with Google Authenticator"],
+    ["Sign In with 2FA","Username → Password → 6-digit code from app"],
+    ["Reject Sign-Up","Settings → Users → Pending Approval → ✕ Reject"],
   ];
 
   document.getElementById("content").innerHTML=`
