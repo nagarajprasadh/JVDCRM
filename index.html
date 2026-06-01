@@ -804,7 +804,18 @@ function loadDB(){
   if(!db.tasks)         db.tasks         = [];
   (db.suppliers||[]).forEach(s=>{ if(!s.vid) s.vid=generateVID(); });
   (db.customers||[]).forEach(c=>{ if(!c.cif) c.cif=generateCIF(); });
-  if(!db.users || !db.users.length) db.users = JSON.parse(JSON.stringify(DEMO_DB.users||[]));
+  // Seed only the admin user if no users exist
+  if(!db.users || !db.users.length){
+    const adminOnly = (DEMO_DB.users||[]).filter(u=>u.role==='admin');
+    db.users = JSON.parse(JSON.stringify(adminOnly));
+  }
+  // Remove any non-admin test users (one-time cleanup)
+  if(db.users.length > 1){
+    const hasRealNonAdmin = db.users.filter(u=>u.role!=='admin').some(u=>u.username!=='arjun'&&u.username!=='priya'&&u.username!=='kanokwan'&&u.username!=='david'&&u.username!=='nadia');
+    // Remove all non-admin demo users (arjun, priya, kanokwan, david, nadia)
+    const demoUsernames = new Set(['arjun','priya','kanokwan','david','nadia']);
+    db.users = db.users.filter(u=> u.role==='admin' || !demoUsernames.has(u.username));
+  }
   (db.users||[]).forEach(u=>{
     if(!u.permissions){
       u.permissions = u.role==='admin'
