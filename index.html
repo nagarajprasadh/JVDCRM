@@ -11,6 +11,8 @@
 <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 <script src="https://cdn.sheetjs.com/xlsx-0.20.2/package/dist/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/otpauth/9.3.4/otpauth.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 <style>
 :root{
   --bg:#F5F5F7;--bg2:#EBEBED;--card:#FFFFFF;--card2:#FAFAFA;--hover:#F0F0F2;
@@ -951,6 +953,38 @@ function hashPwd(str){
   return h.toString(16).padStart(8,'0');
 }
 
+// ── TOTP helpers ────────────────────────────────────────
+function totpGenSecret(){
+  // 20 random bytes → base32
+  const arr=new Uint8Array(20); crypto.getRandomValues(arr);
+  const B32='ABCDEFGHIJKLMNOPQRSTUVWXYZ234567';
+  let bits=0,val=0,out='';
+  for(let i=0;i<arr.length;i++){ val=(val<<8)|arr[i]; bits+=8; while(bits>=5){ out+=B32[(val>>>(bits-5))&31]; bits-=5; } }
+  if(bits>0) out+=B32[(val<<(5-bits))&31];
+  return out;
+}
+
+function totpCode(secret){
+  // RFC 6238 TOTP using OTPAuth library
+  if(typeof OTPAuth==='undefined') return null;
+  const totp=new OTPAuth.TOTP({secret:OTPAuth.Secret.fromBase32(secret),digits:6,period:30});
+  return totp.generate();
+}
+
+function totpVerify(secret, token){
+  if(typeof OTPAuth==='undefined') return false;
+  const totp=new OTPAuth.TOTP({secret:OTPAuth.Secret.fromBase32(secret),digits:6,period:30});
+  // Allow ±1 window (30s drift tolerance)
+  return OTPAuth.TOTP.validate({token,secret:OTPAuth.Secret.fromBase32(secret),digits:6,period:30,window:1})!==null;
+}
+
+function totpOtpauthUrl(secret, username){
+  return 'otpauth://totp/DiamondCRM:'+encodeURIComponent(username)+'?secret='+secret+'&issuer=DiamondCRM&algorithm=SHA1&digits=6&period=30';
+}
+
+// ── Login + 2FA flow ─────────────────────────────────────
+let _pendingLoginUser = null; // holds user object during 2FA challenge
+
 function doLogin(){
   const uname=(document.getElementById('login-user').value||'').trim().toLowerCase();
   const pass=document.getElementById('login-pass').value||'';
@@ -963,21 +997,143 @@ function doLogin(){
   }
   const user=users.find(u=>u.username.toLowerCase()===uname && u.active!==false);
   if(!user||user.pwd!==hashPwd(pass)){ showLoginError('Incorrect username or password.'); return; }
-  // Force password change on first login
-  if(user.mustChangePwd){
-    showChangePwdScreen(user);
-    return;
+  if(user.mustChangePwd){ showChangePwdScreen(user); return; }
+
+  // ── 2FA check ──
+  _pendingLoginUser = user;
+  if(!user.totpSecret){
+    // First time — generate secret and show setup QR
+    user.totpSecret = totpGenSecret();
+    user.totpEnrolled = false;
+    saveDB();
+    showTotpSetup(user);
+  } else if(!user.totpEnrolled){
+    // Secret exists but not yet confirmed
+    showTotpSetup(user);
+  } else {
+    // Enrolled — ask for code
+    showTotpVerify(user);
   }
+}
+
+function showTotpSetup(user){
+  const url = totpOtpauthUrl(user.totpSecret, user.username);
+  const overlay = document.getElementById('login-overlay');
+  overlay.innerHTML = `
+  <div class="login-box" style="max-width:440px">
+    <div style="text-align:center;margin-bottom:18px">
+      <div style="font-size:32px;margin-bottom:8px">🔐</div>
+      <div style="font-family:'EB Garamond',Georgia,serif;font-size:22px;font-weight:600;color:var(--text)">Set Up Two-Factor Auth</div>
+      <div style="font-size:12px;color:var(--text3);margin-top:6px;line-height:1.6">Scan this QR code with <strong>Google Authenticator</strong> (or Authy, Microsoft Authenticator), then enter the 6-digit code to confirm.</div>
+    </div>
+    <div id="totp-qr" style="display:flex;justify-content:center;margin-bottom:16px;background:#fff;padding:12px;border-radius:10px;border:1px solid var(--border)"></div>
+    <div style="font-size:10px;color:var(--text3);text-align:center;margin-bottom:16px;word-break:break-all">
+      Manual key: <strong style="color:var(--text2);font-size:11px;letter-spacing:1px">${user.totpSecret}</strong>
+    </div>
+    <div class="login-field">
+      <label>Enter 6-digit code from app</label>
+      <input type="text" id="totp-setup-code" inputmode="numeric" maxlength="6" placeholder="000000"
+        style="letter-spacing:6px;font-size:20px;text-align:center;font-weight:700"
+        onkeydown="if(event.key==='Enter')confirmTotpSetup()">
+    </div>
+    <div id="totp-setup-error" style="display:none;background:#FEF0EE;border:1px solid #E8A090;border-radius:8px;padding:8px 12px;font-size:12px;color:#B03020;margin-bottom:10px"></div>
+    <button class="login-btn" onclick="confirmTotpSetup()">✅ Confirm &amp; Activate 2FA</button>
+    <div style="text-align:center;margin-top:12px;font-size:11px;color:var(--text3)">
+      <a href="#" onclick="cancelTotpSetup();return false" style="color:var(--text3)">Cancel — sign in as different user</a>
+    </div>
+  </div>`;
+  overlay.style.display='flex';
+
+  // Render QR code after DOM is ready
+  setTimeout(()=>{
+    const qrEl=document.getElementById('totp-qr');
+    if(qrEl && typeof QRCode!=='undefined'){
+      new QRCode(qrEl,{text:url,width:180,height:180,colorDark:'#1C1810',colorLight:'#ffffff',correctLevel:QRCode.CorrectLevel.M});
+    }
+  },100);
+}
+
+function confirmTotpSetup(){
+  const code=(document.getElementById('totp-setup-code').value||'').trim().replace(/\s/g,'');
+  const errEl=document.getElementById('totp-setup-error');
+  errEl.style.display='none';
+  if(!code||code.length!==6||!/^\d{6}$/.test(code)){
+    errEl.textContent='Please enter the 6-digit code from your authenticator app.';
+    errEl.style.display='block'; return;
+  }
+  const user=_pendingLoginUser;
+  if(!user){ cancelTotpSetup(); return; }
+  if(!totpVerify(user.totpSecret, code)){
+    errEl.textContent='Incorrect code. Make sure your device clock is correct and try again.';
+    errEl.style.display='block'; return;
+  }
+  user.totpEnrolled=true;
+  saveDB();
+  completeLogin(user);
+}
+
+function showTotpVerify(user){
+  const overlay=document.getElementById('login-overlay');
+  overlay.innerHTML=`
+  <div class="login-box" style="max-width:380px">
+    <div style="text-align:center;margin-bottom:22px">
+      <div style="font-size:32px;margin-bottom:8px">🔑</div>
+      <div style="font-family:'EB Garamond',Georgia,serif;font-size:22px;font-weight:600;color:var(--text)">Two-Factor Auth</div>
+      <div style="font-size:12px;color:var(--text3);margin-top:6px">Enter the 6-digit code from your authenticator app for <strong>${user.name}</strong></div>
+    </div>
+    <div class="login-field">
+      <label>Authenticator Code</label>
+      <input type="text" id="totp-verify-code" inputmode="numeric" maxlength="6" placeholder="000000"
+        style="letter-spacing:6px;font-size:24px;text-align:center;font-weight:700"
+        onkeydown="if(event.key==='Enter')verifyTotp()" autofocus>
+    </div>
+    <div id="totp-verify-error" style="display:none;background:#FEF0EE;border:1px solid #E8A090;border-radius:8px;padding:8px 12px;font-size:12px;color:#B03020;margin-bottom:10px"></div>
+    <button class="login-btn" onclick="verifyTotp()">Verify &amp; Sign In</button>
+    <div style="text-align:center;margin-top:12px;font-size:11px;color:var(--text3)">
+      <a href="#" onclick="cancelTotpSetup();return false" style="color:var(--text3)">← Back to Sign In</a>
+    </div>
+  </div>`;
+  overlay.style.display='flex';
+  setTimeout(()=>{ const el=document.getElementById('totp-verify-code'); if(el) el.focus(); },100);
+}
+
+function verifyTotp(){
+  const code=(document.getElementById('totp-verify-code').value||'').trim().replace(/\s/g,'');
+  const errEl=document.getElementById('totp-verify-error');
+  errEl.style.display='none';
+  if(!code||code.length!==6||!/^\d{6}$/.test(code)){
+    errEl.textContent='Please enter the 6-digit code from your authenticator app.';
+    errEl.style.display='block'; return;
+  }
+  const user=_pendingLoginUser;
+  if(!user){ cancelTotpSetup(); return; }
+  if(!totpVerify(user.totpSecret, code)){
+    errEl.textContent='Incorrect code. Check your app and try again.';
+    errEl.style.display='block'; return;
+  }
+  completeLogin(user);
+}
+
+function cancelTotpSetup(){
+  _pendingLoginUser=null;
+  _restoreLoginOverlay();
+  document.getElementById('login-overlay').style.display='flex';
+  switchLoginTab('signin');
+}
+
+function completeLogin(user){
   currentUser=user;
   const isFirstApprovedLogin = user.approvedAt && !user.lastLoginAt;
   user.lastLoginAt = new Date().toISOString();
   saveDB();
   try{ sessionStorage.setItem(AUTH_KEY, JSON.stringify({id:user.id,username:user.username})); }catch(e){}
+  _restoreLoginOverlay();
   document.getElementById('login-overlay').style.display='none';
   updateUserBadge();
   applyNavPermissions();
   nav('dashboard');
   if(isFirstApprovedLogin){ setTimeout(()=>showWelcomeBanner(user.name),400); }
+  _pendingLoginUser=null;
 }
 
 function showWelcomeBanner(name){
@@ -1193,6 +1349,17 @@ function tryAutoLogin(){
 /* ══════════════════════════════════════════════
    USER MANAGEMENT (Admin only)
    ══════════════════════════════════════════════ */
+function resetUserTotp(id){
+  const u=(db.users||[]).find(x=>x.id===id);
+  if(!u) return;
+  if(!confirm('Reset 2FA for '+u.name+'? They will be prompted to re-enrol on their next login.')) return;
+  u.totpSecret=null;
+  u.totpEnrolled=false;
+  saveDB();
+  renderUsers();
+  showToast('2FA reset for '+u.name+'. They will re-enrol on next login.');
+}
+
 function approveUser(id){
   const u=(db.users||[]).find(x=>x.id===id);if(!u)return;
   const spOpts=(db.salespeople||[]).map(s=>`<option value="${s.id}">${s.name}</option>`).join('');
@@ -1273,11 +1440,13 @@ function renderUsers(){
             <span style="font-size:11px;color:var(--text3)">${u.name}</span>
             ${sp?`<span style="font-size:11px;color:var(--text3)">· ${sp.name}</span>`:''}
             ${u.mustChangePwd?'<span style="font-size:10px;background:#FFF3CD;color:#856404;border:1px solid #FFEEBA;border-radius:20px;padding:1px 7px">⚠ Must change password</span>':''}
+            ${u.totpEnrolled?'<span style="font-size:10px;background:#EBF7EE;color:#1C6B3A;border:1px solid #7DC997;border-radius:20px;padding:1px 7px">🔐 2FA On</span>':'<span style="font-size:10px;background:#FEF0EE;color:#B03020;border:1px solid #E8A090;border-radius:20px;padding:1px 7px">⚠ 2FA Not Set</span>'}
           </div>
           <div style="margin-top:5px;display:flex;flex-wrap:wrap;gap:2px">${chips}</div>
         </div>
-        <div style="display:flex;gap:6px;flex-shrink:0">
+        <div style="display:flex;gap:6px;flex-shrink:0;flex-wrap:wrap">
           <button class="btn btn-outline btn-sm" onclick="editUserModal('${u.id}')">✏️ Edit</button>
+          ${u.totpEnrolled?`<button class="btn btn-outline btn-sm" style="color:var(--orange)" title="Reset 2FA — user will re-enrol on next login" onclick="resetUserTotp('${u.id}')">🔄 Reset 2FA</button>`:''}
           ${!isSelf?`<button class="btn btn-outline btn-sm" style="color:var(--red)" onclick="deleteUser('${u.id}')">🗑</button>`:''}
         </div>
       </div>
