@@ -1198,45 +1198,21 @@ function doChangePassword(userId){
   nav('dashboard');
 }
 
+var _loginOverlayHTML = null;
+
 function _restoreLoginOverlay(){
   const overlay=document.getElementById('login-overlay');
-  overlay.innerHTML=`
-  <div class="login-box">
-    <div style="display:flex;gap:0;margin-bottom:28px;border-radius:10px;overflow:hidden;border:1px solid var(--border2)">
-      <button id="tab-signin" onclick="switchLoginTab('signin')" style="flex:1;padding:11px;font-size:13px;font-weight:700;cursor:pointer;border:none;font-family:'Inter',sans-serif;background:var(--gold);color:#fff">Sign In</button>
-      <button id="tab-signup" onclick="switchLoginTab('signup')" style="flex:1;padding:11px;font-size:13px;font-weight:700;cursor:pointer;border:none;font-family:'Inter',sans-serif;background:var(--bg2);color:var(--text2)">Sign Up</button>
-    </div>
-    <div id="panel-signin">
-      <div style="display:flex;flex-direction:column;gap:12px">
-        <input id="login-user" type="text" placeholder="Username"
-          style="padding:10px 14px;border:1.5px solid var(--border);border-radius:9px;font-size:14px;background:var(--bg2);color:var(--text);outline:none;width:100%;box-sizing:border-box"
-          onkeydown="if(event.key==='Enter')document.getElementById('login-pass').focus()" oninput="var n=document.getElementById('signout-notice');if(n)n.remove()">
-        <input id="login-pass" type="password" placeholder="Password"
-          style="padding:10px 14px;border:1.5px solid var(--border);border-radius:9px;font-size:14px;background:var(--bg2);color:var(--text);outline:none;width:100%;box-sizing:border-box"
-          onkeydown="if(event.key==='Enter')doLogin()">
-        <div id="login-error" style="display:none;color:var(--red);font-size:13px;text-align:center"></div>
-        <button onclick="doLogin()" style="padding:11px;background:var(--green);color:#fff;border:none;border-radius:9px;font-size:15px;font-weight:700;cursor:pointer;font-family:'Inter',sans-serif">Sign In</button>
-      </div>
-    </div>
-    <div id="panel-signup" style="display:none">
-      <div style="text-align:center;margin-bottom:16px">
-        <div style="font-family:'EB Garamond',Georgia,serif;font-size:20px;font-weight:600;color:var(--text)">Request Access</div>
-        <div style="font-size:12px;color:var(--text3);margin-top:4px">Submit details. Admin will review and approve.</div>
-      </div>
-      <div style="display:flex;flex-direction:column;gap:10px">
-        <input id="su-name" type="text" placeholder="Full Name" style="padding:10px 14px;border:1.5px solid var(--border);border-radius:9px;font-size:14px;background:var(--bg2);color:var(--text);outline:none;width:100%;box-sizing:border-box">
-        <input id="su-user" type="text" placeholder="Username (lowercase)" style="padding:10px 14px;border:1.5px solid var(--border);border-radius:9px;font-size:14px;background:var(--bg2);color:var(--text);outline:none;width:100%;box-sizing:border-box" oninput="this.value=this.value.toLowerCase()">
-        <input id="su-pass" type="password" placeholder="Password (min 6)" style="padding:10px 14px;border:1.5px solid var(--border);border-radius:9px;font-size:14px;background:var(--bg2);color:var(--text);outline:none;width:100%;box-sizing:border-box">
-        <input id="su-pass2" type="password" placeholder="Confirm password" style="padding:10px 14px;border:1.5px solid var(--border);border-radius:9px;font-size:14px;background:var(--bg2);color:var(--text);outline:none;width:100%;box-sizing:border-box">
-        <div id="su-error" style="display:none;background:#FEF0EE;border:1px solid #E8A090;border-radius:8px;padding:8px 12px;font-size:12px;color:#B03020"></div>
-        <div id="su-success" style="display:none;background:#EBF7EE;border:1px solid #7DC997;border-radius:8px;padding:10px 12px;font-size:12px;color:#1C6B3A;text-align:center;line-height:1.6">✅ <strong>Request submitted!</strong><br>Please wait for admin approval.</div>
-        <button id="su-btn" onclick="doSignUp()" style="padding:11px;background:var(--green);color:#fff;border:none;border-radius:9px;font-size:15px;font-weight:700;cursor:pointer;font-family:'Inter',sans-serif">Request Access</button>
-        <div style="text-align:center;font-size:12px;color:var(--text3)">Already have an account? <a href="#" onclick="switchLoginTab('signin');return false" style="color:var(--gold);text-decoration:none;font-weight:600">Sign In</a></div>
-      </div>
-    </div>
-  </div>`;
+  if(!document.getElementById('panel-signin')){
+    if(_loginOverlayHTML){ overlay.innerHTML=_loginOverlayHTML; }
+  }
+  ['login-user','login-pass','su-name','su-user','su-pass','su-pass2'].forEach(function(id){
+    var el=document.getElementById(id); if(el) el.value='';
+  });
+  var err=document.getElementById('login-error'); if(err){err.textContent='';err.style.display='none';}
+  var suErr=document.getElementById('su-error'); if(suErr) suErr.style.display='none';
+  var suSucc=document.getElementById('su-success'); if(suSucc) suSucc.style.display='none';
+  var suBtn=document.getElementById('su-btn'); if(suBtn) suBtn.style.display='';
 }
-
 function showLoginError(msg){
   const el=document.getElementById('login-error');
   el.textContent=msg; el.style.display='block';
@@ -5897,9 +5873,10 @@ setInterval(loadTickerData,5*60*1000);
 
 // Show login overlay only after page fully loaded — avoids flash of unstyled logo
 window.addEventListener('load', function(){
-  if(!currentUser){
-    document.getElementById('login-overlay').style.display='flex';
-  }
+  var ov=document.getElementById('login-overlay');
+  var box=ov?ov.querySelector('.login-box'):null;
+  if(box) _loginOverlayHTML=box.outerHTML;
+  if(!currentUser){ ov.style.display='flex'; }
 });
 
 loadDB();
@@ -6182,6 +6159,106 @@ function renderHelp(){
           "Add multiple rows. All rows apply as AND conditions by default.",
           "The customer list filters in real time as you type. Use this to build your target list, then create a campaign for exactly that segment."
         ]}]},
+
+    bizcard:{icon:"▣",title:"Business Cards",color:"#8B5CF6",
+      intro:"Scan physical business cards and extract contact details directly into the CRM.",
+      sections:[
+        {title:"Scanning a Business Card",steps:[
+          "Click Business Cards in the sidebar.",
+          "Click + Scan Card and upload a photo (JPG, PNG) or PDF of a business card.",
+          "The OCR engine automatically extracts: name, company, email, phone, and address.",
+          "Review each extracted field — correct any OCR errors before saving.",
+          "Click Save as Customer to create the customer record directly from the extracted data.",
+          "For best results: photograph cards on a plain background under good even lighting."
+        ]},
+        {title:"Batch Scanning",steps:[
+          "Multi-page PDFs are supported — upload a whole stack of cards in one PDF.",
+          "Each page is processed separately and presented for review in sequence.",
+          "Click Save as Customer or Skip to move through each card.",
+          "Useful after exhibitions or events where you collect many cards at once."
+        ]},
+        {title:"Managing Scanned Cards",steps:[
+          "All scanned cards appear in the Business Cards list with extraction date and status.",
+          "Cards saved as customers show a linked badge — click it to jump to their profile.",
+          "Cards not yet saved remain in the queue for later review.",
+          "Delete any duplicate or unwanted scans from the list."
+        ]}
+      ]},
+
+    reports:{icon:"↗",title:"Reports",color:"#0066CC",
+      intro:"Full reporting suite: visual overview, 8 PDF reports, and CSV exports for every dataset.",
+      sections:[
+        {title:"Overview Dashboard",steps:[
+          "Click Reports in the sidebar and stay on the Overview tab.",
+          "Status Breakdown bar chart shows lead count by pipeline stage.",
+          "Lead Source chart shows where leads originate: Referral, Walk-in, Social Media, Exhibition, etc.",
+          "SP Leaderboard ranks salespeople by revenue for the selected period.",
+          "Monthly bar chart shows new leads added each month for the last 6 months.",
+          "Set the date range at the top — All Time, By Month, or Custom — to filter all charts simultaneously."
+        ]},
+        {title:"PDF Reports",steps:[
+          "Click the PDF Reports tab to access all 8 canned reports.",
+          "Customer Summary: full list with status, source, SP, deal value, and VIP tier.",
+          "Lead Source Analysis: breakdown by source with conversion rates.",
+          "SP Performance: deals and revenue per salesperson for the period.",
+          "KYC Status Report: compliance status for all active customers.",
+          "Follow-Up Overdue: leads not contacted within threshold days, sorted by urgency.",
+          "Invoice &amp; Payments: outstanding invoices, amounts due, and overdue flags.",
+          "Campaign ROI: campaigns with sent count, conversions, cost, and return.",
+          "Deal Records: all deals with stone details, margin, and commission.",
+          "Click PDF to download a formatted document. Click CSV for a spreadsheet."
+        ]},
+        {title:"CSV Exports",steps:[
+          "Every report has a CSV export button for raw data.",
+          "CSV files use UTF-8 BOM encoding so Thai characters display correctly in Excel.",
+          "Commission → Export CSV: payroll-ready per-deal breakdown.",
+          "KYC → Export KYC Report: full compliance register.",
+          "Stock Inventory → Export CSV: full spec sheet with cost and asking prices.",
+          "Customers → Export: full customer database."
+        ]},
+        {title:"Date Range Filtering",steps:[
+          "All Time: no filter — every record ever created.",
+          "By Month: dropdown of the last 24 months — select any single month.",
+          "Custom: set an exact From and To date for any range.",
+          "The same date filter applies across all tabs and all 8 PDF reports simultaneously."
+        ]}
+      ]},
+
+    settings:{icon:"⚙",title:"Settings",color:"#555",
+      intro:"Configure every aspect of the CRM: company, commissions, thresholds, VIP tiers, and data.",
+      sections:[
+        {title:"General Settings",steps:[
+          "Click Settings in the sidebar and select the General tab.",
+          "Set Company Name — appears on all exported reports and invoices.",
+          "Set Base Currency (default THB) and Date Format.",
+          "Click Save Settings to apply changes."
+        ]},
+        {title:"Commission Settings",steps:[
+          "Calculation Basis: commission on Sale Price, Margin, or Deal Value.",
+          "Default Rate %: applied to all deals unless overridden.",
+          "Per-SP Custom Rates: set different rates per salesperson.",
+          "Tiered Rates: different rates for different deal value bands (e.g. 3% under ฿500K, 5% above).",
+          "Split Rules: when two SPs close a deal, set how commission is divided (e.g. 60/40)."
+        ]},
+        {title:"Thresholds and Alerts",steps:[
+          "Not Contacted Days: days without activity before a lead appears in the Not Contacted widget (default 30).",
+          "KYC Review Months: how far in advance to flag KYC as Expiring (default 1 month).",
+          "Margin Alert %: deals below this % are highlighted in red on the Deals page.",
+          "Task Warning Days: tasks due within this many days are highlighted on the Tasks page."
+        ]},
+        {title:"VIP Tier Configuration",steps:[
+          "Set THB purchase thresholds for Bronze, Silver, Gold, and Platinum tiers.",
+          "The system assigns tiers automatically based on total recorded payments.",
+          "Saving new thresholds triggers immediate recalculation for all customers.",
+          "VIP badges appear on customer cards and can be used as a campaign audience filter."
+        ]},
+        {title:"Data Management",steps:[
+          "Export All Data: full JSON backup — customers, deals, tasks, invoices, stock, suppliers, campaigns, and users.",
+          "Store this backup securely — use it to restore the CRM if needed.",
+          "Import Data: restore from a previously exported JSON file.",
+          "Export at least once a week as a safety precaution."
+        ]}
+      ]}
   };
 
   const g=guides[tab];
