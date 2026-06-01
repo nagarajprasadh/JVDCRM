@@ -5921,271 +5921,456 @@ function renderHelp(){
   const guides={
     owner:{icon:"👑",title:"Owner / MD",color:"var(--gold)",
       intro:"Full access to every section. Daily focus: Dashboard, Reports, Commission, and Settings.",
-      sections:[{title:"Getting Started",steps:[
-          "Log in with your admin credentials. You land on the Dashboard automatically.",
-          "Click the gear icon (Customise Dashboard) top-right to add, remove, or reorder widgets. Your layout saves per user.",
+      sections:[
+        {title:"Getting Started",steps:[
+          "Log in with your admin credentials and complete Two-Factor Authentication. You land on the Dashboard automatically.",
+          "Click the gear icon ⚙ (Customise Dashboard) top-right to add, remove, or reorder widgets. Your layout saves per user.",
           "The dashboard shows: KPI summary, pipeline funnel, monthly trend, team performance, KYC alerts, not-contacted leads, pending invoices, and your task list.",
-          "Use the zoom controls (bottom-right corner) to make any section larger or smaller for readability."
+          "Use the zoom controls (± buttons bottom-right corner) to make any section larger or smaller for readability.",
+          "The live ticker at the bottom of the login screen shows gold and platinum spot prices updated from public market feeds."
         ]},
         {title:"Monitoring the Business",steps:[
           "Pipeline funnel widget shows deal count and value at every stage from Awareness to Won/Lost.",
           "Team Performance widget ranks salespeople by revenue. Click Commission in the sidebar for a full per-deal breakdown.",
           "KYC Alerts widget highlights customers with expired or missing compliance documents.",
-          "Not Contacted widget shows leads with no activity in 30+ days (threshold set in Settings - Thresholds).",
-          "Pending Invoices widget shows all unpaid invoices sorted by due date."
+          "Not Contacted widget shows leads with no activity in 30+ days (threshold set in Settings → Thresholds).",
+          "Pending Invoices widget shows all unpaid invoices sorted by due date.",
+          "Active Campaigns widget shows all currently running marketing campaigns."
+        ]},
+        {title:"Sales Pipeline (Kanban)",steps:[
+          "Click Sales Pipeline in the sidebar to see all active deals as Kanban cards across stages.",
+          "Stages run left to right: Awareness → Qualified → Proposal → Negotiation → Won / Lost.",
+          "Drag any card from one column to another to update the lead status instantly — no need to open the record.",
+          "Each card shows the customer name, deal value, salesperson, and days since last contact.",
+          "Use the pipeline view for your daily standup or weekly review to spot stalled deals."
         ]},
         {title:"Running Reports",steps:[
           "Go to Reports and click the Overview tab for a visual dashboard: status breakdown, source chart, SP leaderboard, monthly bar chart.",
           "Click the PDF Reports tab to see 8 canned reports. Each has a PDF button and a CSV button.",
           "Set a date range at the top: All Time, By Month (dropdown of last 24 months), or Custom (exact from and to dates).",
-          "Commission report: go to Commission in the sidebar, click Export CSV for a full deal-by-deal breakdown with SP rates and margin."
+          "Available reports: Customer Summary, Lead Source Analysis, SP Performance, KYC Status, Follow-Up Overdue, Invoice &amp; Payments, Campaign ROI, and Deal Records.",
+          "Commission report: go to Commission in the sidebar, click Export CSV for a full deal-by-deal breakdown with SP rates and margin.",
+          "All CSV exports use UTF-8 BOM encoding so Thai characters display correctly in Excel."
+        ]},
+        {title:"Commission Management",steps:[
+          "Click Commission in the sidebar to see all completed deals with commission calculations.",
+          "Each row shows: deal number, customer, salesperson(s), sale price, cost, margin, margin %, commission rate, and commission amount.",
+          "If two salespeople closed a deal together, the split is shown per the commission split rules in Settings.",
+          "Use the date filter at the top to view commissions for a specific month or custom range.",
+          "Click Export CSV for a full breakdown ready for payroll processing.",
+          "Click Settings → Commission to configure: calculation basis (Sale Price, Margin, or Deal Value), default rate %, per-SP custom rates, tiered rates by deal value, and split rules."
+        ]},
+        {title:"Managing Salespeople",steps:[
+          "Click Salespeople in the sidebar to manage SP records.",
+          "Click + Add Salesperson. Enter their name, phone, email, LINE ID, and set their commission rate %.",
+          "Each SP card shows their total deals, total revenue, and active lead count.",
+          "Link a Salesperson record to a user account in Settings → Users &amp; Access (Linked Salesperson dropdown). This controls which leads that user sees.",
+          "SP records are also used in commission calculations, deal assignment, and campaign targeting."
         ]},
         {title:"Configuring the System",steps:[
-          "Settings - Commission: set calculation basis (Sale Price, Margin, or Deal Value), default rate %, custom rate per salesperson, tiered rates by deal value, and split rules when two SPs close a deal.",
-          "Settings - Thresholds: configure not-contacted alert days, KYC review months, margin alert %, and task warning days.",
-          "Settings - VIP Tiers: set THB thresholds for Bronze, Silver, Gold, and Platinum. The system recalculates all customers automatically when you save.",
-          "Settings - General: company name, base currency, date format.",
-          "Settings - Users &amp; Access: manage all user accounts, approve sign-up requests, assign roles, and reset 2FA."
+          "Settings → General: company name, base currency, date format.",
+          "Settings → Commission: calculation basis, default rate %, per-SP custom rates, tiered rates, and split rules.",
+          "Settings → Thresholds: not-contacted alert days, KYC review months, margin alert %, and task warning days.",
+          "Settings → VIP Tiers: set THB thresholds for Bronze, Silver, Gold, and Platinum. The system recalculates all customers automatically when you save.",
+          "Settings → Data Management: export a full JSON backup of all CRM data. Import to restore. Use regularly.",
+          "Settings → Users &amp; Access: manage all user accounts, approve sign-up requests, assign roles, and reset 2FA."
         ]},
         {title:"Security &amp; Two-Factor Authentication",steps:[
-          "Two-Factor Authentication (2FA) is mandatory for every user in the system — no exceptions.",
+          "Two-Factor Authentication (2FA) is mandatory for every user — no exceptions.",
           "On first login, each user is shown a QR code. They scan it with Google Authenticator (or Authy / Microsoft Authenticator) on their phone.",
-          "After scanning, they enter the 6-digit code shown in the app to confirm enrolment. From that point, every login requires: username → password → 6-digit code.",
-          "The 2FA code changes every 30 seconds. The system accepts codes within a ±30 second window to allow for minor clock differences.",
-          "If a user gets a new phone or loses access to their authenticator app, go to Settings → Users &amp; Access, find their row, and click 🔄 Reset 2FA. They will be prompted to re-enrol with a new QR code on next login.",
-          "The user list shows 🔐 2FA On (green) or ⚠ 2FA Not Set (red) for each account so you can see at a glance who is protected.",
-          "New users who sign up via the login page cannot access the system until an admin approves their account from the Pending Approval queue in Settings → Users &amp; Access."
-        ]}]},
+          "After scanning, they enter the 6-digit code from the app to confirm enrolment. Every subsequent login requires: username → password → 6-digit code.",
+          "The code refreshes every 30 seconds. The system accepts a ±30 second window to allow for clock differences.",
+          "If a user gets a new phone or loses their authenticator, go to Settings → Users &amp; Access, find their row, and click 🔄 Reset 2FA.",
+          "The user list shows 🔐 2FA On (green) or ⚠ 2FA Not Set (red) for each account.",
+          "New users who sign up via the login page cannot access the system until an admin approves from the Pending Approval queue in Users &amp; Access."
+        ]}
+      ]},
+
     salesperson:{icon:"🤝",title:"Salesperson",color:"var(--blue)",
-      intro:"Your workspace: Customers, Tasks, and Deals. You see your own assigned leads. Dashboard shows your personal task list.",
-      sections:[{title:"Adding a New Lead or Contact",steps:[
+      intro:"Your workspace: Customers, Pipeline, Tasks, and Deals. You see only your assigned leads.",
+      sections:[
+        {title:"Adding a New Lead or Contact",steps:[
           "Click Customers and Leads in the sidebar.",
           "Click + Add Customer in the top-right corner.",
           "Fill in: First Name, Last Name (required), Company, Email, Phone/WhatsApp, and LINE ID.",
-          "Under Lead Information: set Lead Status (New, Qualified, Proposal, Negotiation, Won, Lost, Dormant), Deal Value (your estimate), Lead Source (Referral, Walk-in, Social Media, Exhibition, etc.), and Expected Close Date.",
-          "Under Diamond Preferences: select Diamond Type (Natural, Lab-Grown, or Both), preferred Shapes (multi-select), Carat Min and Max range, and Purchase Purpose (Gift, Investment, Personal, etc.).",
-          "Under Assignment: set yourself as Primary Salesperson. A second SP can be assigned for commission split deals.",
-          "Click Save. The customer is created with an auto-generated CIF number (e.g. CIF-2026-0001).",
-          "If the lead status qualifies (Proposal, Negotiation, Qualified, or Won), a KYC badge appears reminding you to collect documents."
+          "Under Lead Information: set Lead Status, Deal Value (your estimate), Lead Source, and Expected Close Date.",
+          "Under Diamond Preferences: select Diamond Type, preferred Shapes (multi-select), Carat Min/Max range, and Purchase Purpose.",
+          "Under Assignment: set yourself as Primary Salesperson. A second SP can be added for commission split deals.",
+          "Click Save. The customer gets an auto-generated CIF number (e.g. CIF-2026-0001)."
         ]},
         {title:"Logging a Follow-up or Activity",steps:[
-          "Open any customer record by clicking their card (in card view) or row (in table view).",
-          "The detail panel slides open on the right side.",
+          "Open any customer record by clicking their card (card view) or row (table view).",
           "Scroll down to Activity Log and click + Add Activity.",
-          "Select the activity type: Call, Meeting, WhatsApp, Email, or Note. Add your notes and save.",
-          "This updates the Last Contacted date, which the Not Contacted widget and follow-up reminders use to track dormant leads."
+          "Select the type: Call, Meeting, WhatsApp, Email, or Note. Add your notes and save.",
+          "This updates the Last Contacted date, which the Not Contacted widget uses to flag dormant leads."
         ]},
         {title:"Contacting a Customer Directly",steps:[
-          "On any customer card, find the contact buttons at the bottom.",
-          "Green WA button: opens WhatsApp directly to that contact.",
-          "Blue LINE button: opens LINE chat (requires LINE ID saved on the customer profile).",
+          "On any customer card, use the contact buttons at the bottom.",
+          "Green WA button: opens WhatsApp to that contact.",
+          "Blue LINE button: opens LINE chat (requires LINE ID on profile).",
           "Purple Viber button: initiates a Viber voice call.",
-          "You can also click the phone number to call or the email to open your mail client."
+          "Click the phone number to call or the email to open your mail client."
+        ]},
+        {title:"Using the Sales Pipeline",steps:[
+          "Click Sales Pipeline in the sidebar to see your assigned leads as Kanban cards.",
+          "Drag a card to a new stage column to update the lead status instantly.",
+          "Stages: Awareness → Qualified → Proposal → Negotiation → Won / Lost.",
+          "Each card shows the customer name, deal value, and days since last contact.",
+          "Use this view to prioritise who to contact next — focus on Negotiation and Proposal columns."
         ]},
         {title:"Managing Your Tasks",steps:[
-          "Click Tasks in the sidebar, or use the My Tasks widget on the Dashboard.",
-          "Click + New Task. Fill in: Title (required), Task Type (Follow-up, Call, Meeting, Send Quote, Send Document, KYC Review, Payment Follow-up, or Other), Priority (High, Medium, or Low), Due Date, and optionally link to a customer.",
-          "Your name is available in the Assigned To dropdown. Change status as work progresses: Open, In Progress, Waiting, Done, or Cancelled.",
-          "Tick the checkbox on any task row to mark it Done instantly without opening the modal. The Dashboard widget also has checkboxes.",
-          "Overdue tasks sort to the top in red. Tasks due today appear in orange. Tasks due within 3 days appear highlighted (threshold in Settings)."
+          "Click Tasks in the sidebar or use the My Tasks widget on the Dashboard.",
+          "Click + New Task. Fill in: Title, Task Type (Follow-up, Call, Meeting, Send Quote, Send Document, KYC Review, Payment Follow-up, or Other), Priority, Due Date, and optionally link to a customer.",
+          "Change status as work progresses: Open, In Progress, Waiting, Done, or Cancelled.",
+          "Tick the checkbox on any task row to mark it Done instantly.",
+          "Overdue tasks sort to the top in red. Tasks due today appear in orange."
         ]},
         {title:"Recording a Deal",steps:[
           "Click Deals in the sidebar and click + New Deal.",
           "Select the Customer from the dropdown. Their assigned salespeople auto-fill.",
-          "Optionally select a Stone from your inventory. When selected, the stone description, cert number, cost price, and asking price all fill in automatically.",
+          "Optionally select a Stone from inventory — the stone description, cert number, cost and asking price all fill automatically.",
           "If not from inventory, type the stone description manually and enter cost and sale price.",
-          "The Margin and Margin % calculate live as you type. Watch the preview box.",
-          "Set Status: Open (negotiating), Pending Payment (agreed, awaiting funds), or Completed (done).",
-          "When you mark a deal Completed: the inventory stone automatically changes to Sold, and the customer status automatically changes to Won.",
-          "Each deal gets a number: DEAL-2026-0001."
+          "Margin and Margin % calculate live as you type.",
+          "Set Status: Open, Pending Payment, or Completed.",
+          "When marked Completed: the inventory stone changes to Sold and the customer status changes to Won automatically."
+        ]},
+        {title:"Viewing Your Commission",steps:[
+          "Click Commission in the sidebar to see your deals with commission earned.",
+          "Each row shows: deal number, customer, sale price, margin, your commission rate, and commission amount.",
+          "If a deal was split with another SP, your share is shown separately.",
+          "Use the date filter to view a specific month. Click Export CSV for your records."
+        ]},
+        {title:"Scanning Business Cards",steps:[
+          "Click Business Cards in the sidebar.",
+          "Click + Scan Card and upload a photo or PDF of a business card.",
+          "The OCR engine extracts: name, company, email, phone, and address.",
+          "Review the extracted fields, correct any errors, and click Save as Customer to create the record directly.",
+          "For best results, photograph cards on a plain background under good lighting.",
+          "Multi-page PDFs are supported — drop a whole card stack and extract all at once."
         ]},
         {title:"Uploading KYC Documents",steps:[
           "Go to KYC in the sidebar. Only customers with qualifying statuses appear: Won, Proposal, Negotiation, Qualified.",
           "Find your customer and click Manage.",
-          "Select Document Type from the dropdown: Passport, ID Card, Business Registration, Address Proof, etc.",
-          "Click the upload area and select a PDF or JPEG (max 5MB).",
-          "Set the Next KYC Review Date and click Save Date.",
-          "Status updates automatically: green Valid, orange Expiring (within 30 days), red Expired, or grey Missing.",
-          "Completed KYC documents are downloadable at any time by clicking the download button next to each file."
-        ]}]},
+          "Select Document Type: Passport, ID Card, Business Registration, Address Proof, etc.",
+          "Click the upload area and select a PDF or JPEG (max 5MB). Set the Next KYC Review Date and click Save.",
+          "Status updates automatically: green Valid, orange Expiring (within 30 days), red Expired, or grey Missing."
+        ]}
+      ]},
+
     operations:{icon:"⚙",title:"Operations",color:"var(--green)",
-      intro:"Back-office focus: Invoices, KYC compliance, Suppliers, User management, and Reports.",
-      sections:[{title:"Creating and Managing Invoices",steps:[
+      intro:"Back-office focus: Invoices, KYC, Suppliers, User management, and Reports.",
+      sections:[
+        {title:"Creating and Managing Invoices",steps:[
           "Click Invoices and Payments in the sidebar.",
-          "Click + New Invoice. Select the customer, set the invoice date and due date.",
-          "Add line items: click + Add Item for each product or service. Enter description, quantity, and unit price. The total calculates automatically.",
-          "Set currency (THB, USD, AED, etc.) and add any notes.",
-          "Save as Draft first. When ready to send, change status to Sent.",
+          "Click + New Invoice. Select the customer, set invoice date and due date.",
+          "Add line items: click + Add Item for each product. Enter description, quantity, and unit price. Total calculates automatically.",
+          "Set currency (THB, USD, AED, HKD, etc.) and add any notes.",
+          "Save as Draft first. When ready, change status to Sent.",
           "As payments arrive, update to Partial (with amount paid) or Paid.",
-          "Overdue invoices automatically flag when past the due date.",
+          "Overdue invoices flag automatically when past the due date.",
           "Each invoice has a PDF button to download a formatted invoice document."
         ]},
         {title:"Managing KYC Compliance",steps:[
-          "Go to KYC in the sidebar. The summary at the top shows: Valid count, Expiring within 30 days, Expired or Missing, and Total Active customers.",
+          "Go to KYC in the sidebar. The summary shows: Valid count, Expiring within 30 days, Expired or Missing, and Total Active.",
           "Click Manage on any customer to upload documents or update the review date.",
-          "Document types supported: Passport, National ID, Business Registration, Bank Statement, Address Proof, and Others.",
-          "Click Export KYC Report (CSV) to download a full compliance register for auditing.",
-          "The KYC Alerts widget on the Dashboard surfaces the 5 most urgent cases needing attention."
+          "Document types: Passport, National ID, Business Registration, Bank Statement, Address Proof, and Others.",
+          "Click Export KYC Report (CSV) for a full compliance register for auditing.",
+          "The KYC Alerts widget on the Dashboard surfaces the 5 most urgent cases."
         ]},
         {title:"Managing Suppliers and Vendor KYC",steps:[
           "Click Suppliers in the sidebar.",
-          "Click + Add Supplier. Fill in: Company Name (required), Contact Person, Type (Rough Diamond, Polished Diamond, Lab-Grown Diamond, Settings and Jewellery, or Coloured Stones), Country, Email, Phone, LINE ID, Currency, and Payment Terms.",
-          "Tick the certifications the supplier carries: GIA, IGI, AGS, HRD, Kimberley Process.",
+          "Click + Add Supplier. Fill in: Company Name, Contact Person, Type (Rough Diamond, Polished, Lab-Grown, Settings &amp; Jewellery, or Coloured Stones), Country, Email, Phone, LINE ID, Currency, and Payment Terms.",
+          "Tick certifications the supplier carries: GIA, IGI, AGS, HRD, Kimberley Process.",
           "Save. A VID is auto-generated (e.g. VID-2026-0001).",
           "Click the KYC button on the supplier card to upload: Business Registration, Owner Passport, Kimberley Process Certificate, and AML Declaration.",
-          "Click the Purchases button to record purchase history: description, amount, date, and reference number."
+          "Click the Purchases button to record purchase history: description, amount, date, and reference number.",
+          "Click Export CSV on any supplier for a full purchase history export."
         ]},
         {title:"Managing Users and Access",steps:[
           "Go to Settings → Users &amp; Access in the sidebar.",
-          "The top section shows Pending Approval requests — users who signed up via the login page and are waiting for you to activate them. An amber badge shows the count.",
-          "Click ✅ Approve on a pending request to assign a role and linked salesperson, then activate the account. The user will see a green welcome banner on their first login.",
-          "Click ✕ Reject to delete the sign-up request if it is not a legitimate employee.",
-          "To create a user manually: click + Add User. Set a username, display name, and password.",
-          "Select a Role: Admin (full access), or User (permissions set individually in the matrix below).",
-          "For a salesperson: link their user account to their Salesperson record in the dropdown so they only see their own leads.",
-          "The permission matrix shows module-level access: — (No Access, red), View (blue), Edit (gold), Full (green). Changing the role auto-fills defaults. You can override individual modules.",
-          "Use the Active toggle to suspend a user without deleting their history.",
-          "To reset a user's Two-Factor Authentication (e.g. they got a new phone), click 🔄 Reset 2FA on their row. They will re-enrol with a new QR code on next login.",
-          "The 🔐 2FA On / ⚠ 2FA Not Set badge shows at a glance which users have enrolled in two-factor authentication."
+          "The Pending Approval section at the top shows sign-up requests waiting for activation. Amber badge shows the count.",
+          "Click ✅ Approve to assign a role and linked salesperson, then activate the account.",
+          "Click ✕ Reject to delete a sign-up request.",
+          "To add a user manually: click + Add User. Set username, display name, and password.",
+          "The permission matrix shows: — (No Access, red), View (blue), Edit (gold), Full (green). Changing role auto-fills defaults. Override individual modules as needed.",
+          "Click 🔄 Reset 2FA on any user row to clear their authenticator — they will re-enrol on next login.",
+          "🔐 2FA On (green) and ⚠ 2FA Not Set (red) badges show 2FA status at a glance.",
+          "Use the Active toggle to suspend a user without deleting their history."
         ]},
         {title:"Running Operational Reports",steps:[
-          "Reports - Overview: visual summary with status breakdown bars, lead source chart, SP leaderboard, and a 6-month bar chart of new leads.",
-          "Reports - PDF Reports tab: click Follow-Up Overdue to see all leads not contacted in 14+ days sorted by urgency. Click KYC Status Report for a full compliance snapshot. Click Invoice and Payments for outstanding balances.",
+          "Reports → Overview: visual summary with status breakdown, lead source chart, SP leaderboard, and 6-month bar chart.",
+          "Reports → PDF Reports: click Follow-Up Overdue for all leads not contacted in 14+ days. Click KYC Status Report for a compliance snapshot. Click Invoice and Payments for outstanding balances.",
           "All reports support date range filtering: All Time, By Month, or Custom exact dates.",
-          "CSV exports open directly in Excel. UTF-8 BOM encoding ensures Thai characters display correctly."
-        ]}]},
+          "CSV exports open directly in Excel with correct Thai character encoding.",
+          "Commission report: click Commission in the sidebar → Export CSV for a payroll-ready breakdown."
+        ]},
+        {title:"Interest Map",steps:[
+          "Click Interest Map in the sidebar.",
+          "The Interest Map cross-references customer diamond preferences against current stock.",
+          "Each row shows a customer with their preferred shape, carat range, and diamond type.",
+          "Matching stones from inventory are shown alongside each customer.",
+          "Use this to proactively contact customers when a stone matching their preferences arrives."
+        ]}
+      ]},
+
     inventory:{icon:"💎",title:"Inventory",color:"var(--gold2)",
       intro:"Your workspace: Stock Inventory and Suppliers. Track every stone from purchase to sale.",
-      sections:[{title:"Adding a Stone to Inventory",steps:[
-          "Click Stock Inventory in the sidebar.",
-          "Click + Add Stone.",
+      sections:[
+        {title:"Adding a Stone to Inventory",steps:[
+          "Click Stock Inventory in the sidebar and click + Add Stone.",
           "Select Stone Type: Natural Diamond, Lab-Grown Diamond, Coloured Diamond, Fancy Coloured, Rough Diamond, Coloured Gemstone, or Other.",
-          "Select Shape from the dropdown: Round, Princess, Cushion, Oval, Pear, Marquise, Emerald, Radiant, Asscher, Heart, or Trillion.",
-          "Enter Carat Weight (e.g. 1.52).",
-          "Select Color (D through M), Clarity (FL through I3), and Cut (Excellent through Poor).",
+          "Enter Shape, Carat Weight, Color (D–M), Clarity (FL–I3), and Cut (Excellent–Poor).",
           "Select Polish, Symmetry, and Fluorescence from their dropdowns.",
           "Select Cert Lab (GIA, IGI, AGS, HRD, EGL, or None) and enter the Certificate Number.",
-          "Enter Cost Price (what you paid, in THB) and Asking Price (your selling price).",
-          "Link to a Supplier from the dropdown (suppliers you have added appear here).",
-          "Enter Location (e.g. Safe A-3) and Measurements (e.g. 7.24x7.27x4.48mm) and Purchase Date.",
+          "Enter Cost Price (THB) and Asking Price. Link to a Supplier, enter Location (e.g. Safe A-3), Measurements, and Purchase Date.",
           "Click Save. A SKU is auto-generated (e.g. SKU-2026-0001)."
         ]},
+        {title:"Editing and Updating Stones",steps:[
+          "Click any stone card to open the edit panel.",
+          "Update asking price, status, location, or any other field and click Save.",
+          "To update status manually: Available, Reserved, On Memo, Returned. (Sold is set automatically by the system when a linked deal is marked Completed.)",
+          "Add notes to the stone record to track memo history or price negotiations."
+        ]},
         {title:"Reading the Customer Match Engine",steps:[
-          "As soon as you save a stone, the system immediately checks all active customers whose diamond preferences match.",
-          "Matching is based on: shape preference (the customer listed this shape) and carat range (the stone weight falls within their min-max range).",
-          "The match count appears on the stone card: 3 customers interested.",
+          "As soon as you save a stone, the system checks all active customers whose diamond preferences match.",
+          "Matching is based on: shape preference and carat range (stone weight falls within their min–max).",
+          "The match count appears on the stone card: e.g. 3 customers interested.",
           "Click any matched customer name to jump directly to their profile.",
-          "Use this every time a new stone arrives: call the matching customers first."
+          "Use this every time a new stone arrives — call the matching customers first."
         ]},
         {title:"Managing Stock Status",steps:[
           "Available: in stock, ready to show clients.",
           "Reserved: held for a specific customer pending confirmation.",
-          "On Memo: physically with a client or dealer on approval basis.",
-          "Sold: automatically set by the system when a Deal linked to this stone is marked Completed. Do not change manually.",
+          "On Memo: physically with a client or dealer on approval.",
+          "Sold: set automatically when a deal linked to this stone is marked Completed.",
           "Returned: came back from memo or a reversed sale.",
           "The sidebar badge on Stock Inventory always shows the current count of Available stones."
         ]},
-        {title:"Searching and Filtering Inventory",steps:[
-          "Type in the search bar to find by SKU (e.g. SKU-2026-0001), certificate number, or description keywords.",
+        {title:"Searching, Filtering, and Exporting",steps:[
+          "Type in the search bar to find by SKU, certificate number, or description keywords.",
           "Use the Status dropdown to show only Available, On Memo, Reserved, Sold, or Returned stones.",
-          "Use the Stone Type dropdown to filter by Natural Diamond, Lab-Grown, Coloured Gemstone, etc.",
-          "Use the Shape dropdown to filter by Round, Cushion, Oval, etc.",
-          "Click Export CSV for a full spec sheet of all (or filtered) stones including cost, asking price, cert numbers, supplier, and location."
-        ]}]},
+          "Use the Stone Type and Shape dropdowns to narrow results further.",
+          "Click Export CSV for a full spec sheet including cost, asking price, cert numbers, supplier, and location.",
+          "Use the Inventory Interest / Interest Map module to see which customers match which stones."
+        ]},
+        {title:"Supplier Management from Inventory",steps:[
+          "Click Suppliers in the sidebar to manage vendor records.",
+          "Each stone can be linked to a supplier at creation time — use this for margin tracking and source auditing.",
+          "Click Purchases on any supplier card to record what you bought from them: description, amount, date, reference.",
+          "Click KYC on a supplier card to upload their compliance documents: Business Registration, Passport, Kimberley Process Certificate, AML Declaration."
+        ]}
+      ]},
+
     newuser:{icon:"🆕",title:"New User",color:"#6B7B74",
       intro:"First time here? Follow these steps to request access, set up security, and get started.",
-      sections:[{title:"Requesting an Account",steps:[
+      sections:[
+        {title:"Requesting an Account",steps:[
           "Go to the CRM login page. You will see two tabs: Sign In and Sign Up.",
           "Click Sign Up.",
           "Enter your Full Name, choose a Username (lowercase letters, numbers and _ only, minimum 3 characters), and set a Password (minimum 6 characters). Confirm the password.",
-          "Click Request Access. You will see a confirmation: ✅ Request submitted! Please wait for admin approval.",
-          "Your request is now visible to the admin under Settings → Users &amp; Access in the Pending Approval section. You do not need to do anything else.",
-          "Once the admin approves your account, you can sign in. There is no email notification — your admin will let you know directly."
+          "Click Request Access. You will see: ✅ Request submitted! Please wait for admin approval.",
+          "Your request is visible to the admin under Settings → Users &amp; Access in the Pending Approval section.",
+          "Once the admin approves, you can sign in. Your admin will notify you directly."
         ]},
         {title:"Signing In for the First Time",steps:[
           "Go to the login page and click Sign In.",
-          "Enter your username and password. Click Sign In.",
-          "You will be shown a QR code screen titled Set Up Two-Factor Auth. This is mandatory for all users.",
-          "Open Google Authenticator (or Authy or Microsoft Authenticator) on your phone and tap the + button to add a new account.",
-          "Tap Scan a QR code and point your camera at the QR code on screen.",
-          "Your account appears in the app showing a 6-digit code that refreshes every 30 seconds.",
+          "Enter your username and password and click Sign In.",
+          "You will be shown a QR code screen: Set Up Two-Factor Auth. This is mandatory for all users.",
+          "Open Google Authenticator (or Authy or Microsoft Authenticator) on your phone. Tap + to add a new account, then tap Scan a QR code.",
+          "Point your camera at the QR code on screen. Your DiamondCRM account appears in the app showing a 6-digit code.",
           "Enter that 6-digit code in the field on screen and click Confirm &amp; Activate 2FA.",
-          "You are now logged in. A green welcome banner confirms your account is active. This setup only happens once."
+          "You are now logged in. A green welcome banner confirms your account is active. This setup only happens once.",
+          "You will land directly on the first module you have access to — not a locked screen."
         ]},
-        {title:"Every Day: Signing In",steps:[
-          "Enter your username and password on the Sign In tab.",
-          "You will be taken to a Two-Factor Auth screen. Open your authenticator app and find the DiamondCRM entry.",
-          "Enter the current 6-digit code (it refreshes every 30 seconds — enter it quickly or wait for a new one if it is about to expire).",
-          "Click Verify &amp; Sign In. You will land directly on the first module you have access to."
+        {title:"Every Day: Signing In with 2FA",steps:[
+          "Enter your username and password on the Sign In tab and click Sign In.",
+          "You will be taken to the Two-Factor Auth screen. Open your authenticator app and find the DiamondCRM entry.",
+          "Enter the current 6-digit code (it refreshes every 30 seconds — if it is about to expire, wait for the next one).",
+          "Click Verify &amp; Sign In. You land on your first accessible module."
         ]},
-        {title:"If You Lose Access to Your Authenticator App",steps:[
+        {title:"If You Lose Your Authenticator App",steps:[
           "If you get a new phone or lose access to your authenticator app, you cannot log in on your own.",
           "Contact your system admin and ask them to reset your 2FA.",
           "They go to Settings → Users &amp; Access, find your name, and click 🔄 Reset 2FA.",
-          "On your next login, after your password is accepted, you will be shown the QR code setup screen again to re-enrol with your new device."
-        ]}]},
+          "On your next login, after your password is accepted, the QR code setup screen appears again to re-enrol."
+        ]}
+      ]},
+
     campaigns:{icon:"📣",title:"Campaigns",color:"var(--purple)",
       intro:"Manage all marketing: targeted email, WhatsApp, and SMS campaigns by customer segment.",
-      sections:[{title:"Creating a Campaign",steps:[
-          "Click Campaigns in the sidebar.",
-          "Click + New Campaign.",
+      sections:[
+        {title:"Creating a Campaign",steps:[
+          "Click Campaigns in the sidebar and click + New Campaign.",
           "Enter the Campaign Name (e.g. Diwali 2026 Natural Diamond Promotion).",
           "Select Type: Email, WhatsApp, SMS, or In-Person Event.",
-          "Set Start Date and End Date.",
-          "Leave Status as Draft while you are building it."
+          "Set Start Date and End Date. Leave Status as Draft while building."
         ]},
         {title:"Setting the Target Audience",steps:[
-          "Under Target Audience on the campaign form, set your filters.",
-          "VIP Level filter: All customers, or specifically Bronze, Silver, Gold, or Platinum tier customers only.",
-          "Diamond Type filter: All, Natural, Lab-Grown, or Both.",
-          "Lead Status filter: target specific pipeline stages such as Qualified and Proposal only.",
-          "Salesperson filter: target only one SP's customers (useful for individual campaigns).",
-          "Watch the Estimated Recipients count update live as you change each filter. This tells you exactly how many customers match before you commit."
+          "Under Target Audience, set your filters.",
+          "VIP Level: All customers, or specifically Bronze, Silver, Gold, or Platinum only.",
+          "Diamond Type: All, Natural, Lab-Grown, or Both.",
+          "Lead Status: target specific pipeline stages such as Qualified and Proposal only.",
+          "Salesperson: target only one SP's customers (useful for individual campaigns).",
+          "Watch the Estimated Recipients count update live as you change each filter."
         ]},
         {title:"Writing the Message",steps:[
           "Enter your message in the Content field.",
-          "For Email campaigns: add a Subject line. Write a full message with paragraphs.",
+          "For Email: add a Subject line and write a full message.",
           "For WhatsApp and SMS: keep it concise, ideally under 300 characters.",
           "Add a Call to Action (e.g. Reply YES to book a private viewing).",
           "Save as Draft. Review the estimated recipients. Edit if needed.",
           "When ready: change Status to Scheduled (future date) or Active (running now)."
         ]},
-        {title:"Tracking Performance",steps:[
+        {title:"Tracking and Editing Campaigns",steps:[
           "On the Campaigns list, each row shows Sent Count, Opens, Clicks, and Conversions.",
-          "Update these manually after each send or when aggregating responses.",
-          "The Active Campaigns widget on the Dashboard shows all currently running campaigns at a glance.",
-          "Go to Reports - PDF Reports - Campaign ROI for a comparison across all campaigns: cost per lead, conversion rate, and return."
+          "Click any campaign card to edit it — update status, message content, or audience filters.",
+          "To duplicate a campaign: open it, change the name and dates, and save as a new record.",
+          "Change Status to Completed when the campaign has ended.",
+          "The Active Campaigns widget on the Dashboard shows all currently running campaigns."
         ]},
-        {title:"Finding the Right Audience with Advanced Filters",steps:[
-          "In Customers and Leads, click the Filters button (funnel icon) to open the advanced filter panel.",
-          "Click + Add Filter to add a condition row.",
-          "Choose a field (18 available: name, email, status, source, nationality, VIP level, diamond type, shape, carat, purpose, salesperson, last contacted, birth month, deal value, and more).",
-          "Choose an operator: equals, not equals, contains, starts with, is empty, or birth month is.",
-          "Add multiple rows. All rows apply as AND conditions by default.",
-          "The customer list filters in real time as you type. Use this to build your target list, then create a campaign for exactly that segment."
-        ]}]},
+        {title:"Analysing Performance",steps:[
+          "Go to Reports → PDF Reports → Campaign ROI for a comparison across all campaigns: cost per lead, conversion rate, and return.",
+          "Update Opens, Clicks, and Conversions manually after each send or when aggregating responses.",
+          "Cross-reference with Deals to see which campaigns resulted in actual sales.",
+          "Use the advanced customer filter (Customers → Filters button) to build precise audience segments before creating a campaign."
+        ]}
+      ]},
+
+    bizcard:{icon:"▣",title:"Business Cards",color:"#8B5CF6",
+      intro:"Scan physical business cards and extract contact details directly into the CRM.",
+      sections:[
+        {title:"Scanning a Business Card",steps:[
+          "Click Business Cards in the sidebar.",
+          "Click + Scan Card and upload a photo (JPG, PNG) or PDF of a business card.",
+          "The OCR engine automatically extracts: name, company, email, phone, and address.",
+          "Review each extracted field — correct any OCR errors before saving.",
+          "Click Save as Customer to create the customer record directly from the extracted data.",
+          "For best OCR results: photograph cards on a plain background under good even lighting, avoid shadows and glare."
+        ]},
+        {title:"Batch Scanning",steps:[
+          "Multi-page PDFs are supported — scan a whole stack of cards into one PDF file and upload it.",
+          "Each page is processed separately and presented for review in sequence.",
+          "After reviewing each card, click Save as Customer or Skip to move to the next.",
+          "This is useful after exhibitions or events where you collect many cards at once."
+        ]},
+        {title:"Managing Scanned Cards",steps:[
+          "All scanned cards appear in the Business Cards list with extraction date and status.",
+          "Cards saved as customers show a linked customer badge — click it to jump to their profile.",
+          "Cards not yet saved remain in the queue for later review.",
+          "Delete any duplicate or unwanted scans from the list."
+        ]}
+      ]},
+
+    reports:{icon:"↗",title:"Reports",color:"#0066CC",
+      intro:"Full reporting suite: visual overview, 8 PDF reports, and CSV exports for every data set.",
+      sections:[
+        {title:"Overview Dashboard",steps:[
+          "Click Reports in the sidebar and stay on the Overview tab.",
+          "Status Breakdown bar chart shows lead count by pipeline stage.",
+          "Lead Source chart shows where leads are coming from: Referral, Walk-in, Social Media, Exhibition, etc.",
+          "SP Leaderboard ranks salespeople by revenue for the selected period.",
+          "Monthly bar chart shows new leads added each month for the last 6 months.",
+          "Set the date range at the top — All Time, By Month, or Custom dates — to filter all charts simultaneously."
+        ]},
+        {title:"PDF Reports",steps:[
+          "Click the PDF Reports tab to see all 8 canned reports.",
+          "Customer Summary: full customer list with status, source, assigned SP, deal value, and VIP tier.",
+          "Lead Source Analysis: breakdown of leads by source with conversion rates.",
+          "SP Performance: deals and revenue per salesperson for the period.",
+          "KYC Status Report: compliance status for all active customers — use for audits.",
+          "Follow-Up Overdue: all leads not contacted within the threshold days, sorted by urgency.",
+          "Invoice &amp; Payments: outstanding invoices, amounts due, and overdue flags.",
+          "Campaign ROI: all campaigns with sent count, conversions, cost, and return.",
+          "Deal Records: all deals with stone details, margin, and commission.",
+          "Click PDF on any report to download a formatted document. Click CSV for a spreadsheet."
+        ]},
+        {title:"CSV Exports",steps:[
+          "Every report has a CSV export button for raw data.",
+          "CSV files use UTF-8 BOM encoding so Thai characters display correctly when opened in Excel.",
+          "Commission CSV: go to Commission in the sidebar → Export CSV. Payroll-ready with per-deal breakdown.",
+          "KYC CSV: go to KYC → Export KYC Report. Full compliance register.",
+          "Inventory CSV: go to Stock Inventory → Export CSV. Full spec sheet with cost and asking prices.",
+          "Customer CSV: go to Customers → Export to download your full customer database."
+        ]},
+        {title:"Date Range Filtering",steps:[
+          "All reports respect the date range set at the top of the Reports page.",
+          "All Time: no filter — every record ever created.",
+          "By Month: dropdown of the last 24 months. Select any single month.",
+          "Custom: set an exact From date and To date for any range.",
+          "The same date filter applies across all tabs and all 8 PDF reports simultaneously."
+        ]}
+      ]},
+
+    settings:{icon:"⚙",title:"Settings",color:"#6B7B74",
+      intro:"Configure every aspect of the CRM: company details, commissions, thresholds, VIP tiers, and data.",
+      sections:[
+        {title:"General Settings",steps:[
+          "Click Settings in the sidebar and select the General tab.",
+          "Set Company Name — this appears on all exported reports and invoices.",
+          "Set Base Currency (default THB) and Date Format.",
+          "Changes save immediately when you click Save Settings."
+        ]},
+        {title:"Commission Settings",steps:[
+          "Click the Commission tab in Settings.",
+          "Calculation Basis: choose whether commission is calculated on Sale Price, Margin (sale minus cost), or Deal Value.",
+          "Default Rate %: the commission rate applied to all deals unless overridden.",
+          "Per-SP Custom Rates: set a different rate for individual salespeople — useful for senior vs junior SPs.",
+          "Tiered Rates: set different rates for different deal value bands (e.g. 3% for deals under ฿500K, 5% above).",
+          "Split Rules: when two SPs close a deal together, set how the commission is divided (e.g. 60/40)."
+        ]},
+        {title:"Thresholds and Alerts",steps:[
+          "Click the Thresholds tab in Settings.",
+          "Not Contacted Days: number of days without activity before a lead appears in the Not Contacted widget (default 30).",
+          "KYC Review Months: how far in advance to flag KYC as Expiring (default 1 month).",
+          "Margin Alert %: deals below this margin % are highlighted in red on the Deals page.",
+          "Task Warning Days: tasks due within this many days are highlighted as approaching on the Tasks page."
+        ]},
+        {title:"VIP Tier Configuration",steps:[
+          "Click the VIP Tiers tab in Settings.",
+          "Set THB purchase thresholds for each tier: Bronze, Silver, Gold, and Platinum.",
+          "The system calculates each customer's total payments recorded and assigns the appropriate tier automatically.",
+          "When you save new thresholds, the system recalculates all customers immediately.",
+          "VIP badges appear on customer cards and can be used as a campaign audience filter."
+        ]},
+        {title:"Data Management",steps:[
+          "Click the Data Management tab in Settings.",
+          "Click Export All Data to download a full JSON backup of all CRM data: customers, deals, tasks, invoices, stock, suppliers, campaigns, and users.",
+          "Store this backup securely. It can be used to restore the CRM if needed.",
+          "Click Import Data to restore from a previously exported JSON file.",
+          "Export regularly — recommended at least once a week."
+        ]}
+      ]},
   };
 
-  const g=guides[tab];
+    const g=guides[tab];
   const qref=[
     ["Add Customer","Customers → + Add Customer"],
     ["Add Task","Tasks → + New Task"],
     ["Record a Deal","Deals → + New Deal"],
     ["Add Stone","Stock Inventory → + Add Stone"],
+    ["Scan Business Card","Business Cards → + Scan Card"],
     ["Add Supplier","Suppliers → + Add Supplier"],
+    ["Record a Purchase","Suppliers → card → Purchases"],
     ["Upload KYC Doc","KYC → Manage → Upload"],
+    ["Supplier KYC","Suppliers → card → KYC"],
     ["Create Campaign","Campaigns → + New Campaign"],
     ["Run a Report","Reports → PDF Reports tab"],
+    ["Export CSV","Any module → Export CSV button"],
+    ["View Commission","Commission → sidebar"],
     ["Set Commission","Settings → Commission tab"],
     ["Configure Alerts","Settings → Thresholds tab"],
+    ["Set VIP Tiers","Settings → VIP Tiers tab"],
+    ["Backup Data","Settings → Data Management → Export"],
     ["WhatsApp a Lead","Any customer card → WA button"],
     ["Advanced Search","Customers → Filters button"],
+    ["Drag Pipeline Card","Sales Pipeline → drag card to new stage"],
     ["Customise Dashboard","Dashboard → ⚙ top-right"],
     ["Zoom In/Out","± buttons bottom-right corner"],
+    ["Interest Map","Interest Map → sidebar"],
     ["Request Account","Login page → Sign Up tab"],
     ["Approve New User","Settings → Users → Pending Approval → ✅ Approve"],
     ["Reset User 2FA","Settings → Users → 🔄 Reset 2FA"],
-    ["Set Up 2FA (new)","Auto-shown on first login — scan QR with Google Authenticator"],
+    ["Set Up 2FA","Auto-shown on first login — scan QR in Google Authenticator"],
     ["Sign In with 2FA","Username → Password → 6-digit code from app"],
     ["Reject Sign-Up","Settings → Users → Pending Approval → ✕ Reject"],
   ];
