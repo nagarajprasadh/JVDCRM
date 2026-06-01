@@ -706,12 +706,18 @@ async function supaSaveTable(table, rows){
     method:'DELETE', headers:{'apikey':SUPA_KEY,'Authorization':'Bearer '+SUPA_KEY}
   });
   if(!rows.length) return;
+  // Strip large base64 blobs before cloud sync — photos stay in localStorage only
+  const STRIP_KEYS = ['photo','bcImg','kycDocs','activityLog'];
   const clean=rows.map(r=>{
     const uid=r.uid||r.id||('u'+Math.random().toString(36).slice(2));
-    return {uid, data:r};
+    const slim={};
+    Object.keys(r).forEach(k=>{ if(!STRIP_KEYS.includes(k)) slim[k]=r[k]; });
+    slim.uid=uid;
+    return {uid, data:slim};
   });
   for(let i=0;i<clean.length;i+=100){
-    await supaFetch(table,'POST',clean.slice(i,i+100));
+    const res = await supaFetch(table,'POST',clean.slice(i,i+100));
+    if(res===null) console.warn('[SUPA] Insert failed for',table,'chunk',i);
   }
 }
 async function supaDeleteMissing(table, currentRows){
