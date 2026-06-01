@@ -688,7 +688,7 @@ th[data-tip]{cursor:pointer}
 </div>
 
 <!-- Approve User Modal -->
-<div class="modal-overlay" id="modal-approve">
+<div class="modal-overlay" id="modal-approve" style="display:none">
   <div class="modal" style="max-width:460px">
     <input type="hidden" id="modal-approve-uid">
     <div class="modal-header"><div class="modal-title">✅ Approve Sign-Up Request</div><button class="modal-close" onclick="closeModal('modal-approve')">✕</button></div>
@@ -969,11 +969,23 @@ function doLogin(){
     return;
   }
   currentUser=user;
+  const isFirstApprovedLogin = user.approvedAt && !user.lastLoginAt;
+  user.lastLoginAt = new Date().toISOString();
+  saveDB();
   try{ sessionStorage.setItem(AUTH_KEY, JSON.stringify({id:user.id,username:user.username})); }catch(e){}
   document.getElementById('login-overlay').style.display='none';
   updateUserBadge();
   applyNavPermissions();
   nav('dashboard');
+  if(isFirstApprovedLogin){ setTimeout(()=>showWelcomeBanner(user.name),400); }
+}
+
+function showWelcomeBanner(name){
+  const b=document.createElement('div');
+  b.style.cssText='position:fixed;top:0;left:0;right:0;z-index:9998;background:linear-gradient(90deg,#1C7A3E,#2A9A55);color:#fff;text-align:center;padding:14px 20px;font-size:14px;font-weight:600;font-family:Inter,sans-serif;box-shadow:0 4px 20px rgba(0,0,0,.2);display:flex;align-items:center;justify-content:center;gap:12px';
+  b.innerHTML='<span style="font-size:20px">&#x1F389;</span> Welcome, <strong>'+name+'</strong>! Your account has been approved. <button onclick="this.parentElement.remove()" style="margin-left:16px;background:rgba(255,255,255,.2);border:1px solid rgba(255,255,255,.4);color:#fff;border-radius:6px;padding:4px 12px;cursor:pointer;font-size:12px">Dismiss</button>';
+  document.body.appendChild(b);
+  setTimeout(function(){ if(b.parentElement){b.style.transition='opacity .5s';b.style.opacity='0';setTimeout(function(){b.remove();},500);} },7000);
 }
 
 function showChangePwdScreen(user){
@@ -1192,7 +1204,7 @@ function approveUser(id){
     </div>
     <div style="font-size:12px;color:var(--text3);margin-top:10px">Default permissions will be applied. You can edit them after approval.</div>`;
   document.getElementById('modal-approve-uid').value=id;
-  showModal('modal-approve');
+  openModal('modal-approve');
 }
 
 function doApproveUser(){
