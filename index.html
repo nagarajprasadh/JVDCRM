@@ -683,7 +683,7 @@ async function supaFetch(table, method='GET', body=null, params=''){
       'apikey': SUPA_KEY,
       'Authorization': 'Bearer '+SUPA_KEY,
       'Content-Type': 'application/json',
-      'Prefer': method==='POST' ? 'return=minimal' : ''
+      'Prefer': 'return=minimal'
     },
     body: body ? JSON.stringify(body) : null
   });
@@ -700,9 +700,26 @@ async function supaLoadAll(){
   return result;
 }
 async function supaSaveTable(table, rows){
-  if(!rows || !rows.length) return;
-  // upsert all rows — Supabase merges on uid
-  await supaFetch(table,'POST', rows.map(r=>({...r})), 'on_conflict=uid');
+  if(!rows) return;
+  // Delete all existing rows then re-insert
+  await fetch(SUPA_URL+'/rest/v1/'+table+'?uid=neq.NOMATCH', {
+    method:'DELETE',
+    headers:{'apikey':SUPA_KEY,'Authorization':'Bearer '+SUPA_KEY}
+  });
+  await fetch(SUPA_URL+'/rest/v1/'+table+'?id=gte.0', {
+    method:'DELETE',
+    headers:{'apikey':SUPA_KEY,'Authorization':'Bearer '+SUPA_KEY}
+  });
+  if(!rows.length) return;
+  const clean=rows.map(r=>{
+    const o={};
+    Object.keys(r).forEach(k=>{ if(r[k]!==undefined && typeof r[k]!=='function') o[k]=r[k]; });
+    if(!o.uid) o.uid=o.id||('u'+Math.random().toString(36).slice(2));
+    return o;
+  });
+  for(let i=0;i<clean.length;i+=100){
+    await supaFetch(table,'POST',clean.slice(i,i+100));
+  }
 }
 async function supaDeleteMissing(table, currentRows){
   // Get all uids in Supabase, delete ones not in currentRows
