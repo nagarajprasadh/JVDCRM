@@ -694,28 +694,21 @@ async function supaFetch(table, method='GET', body=null, params=''){
 async function supaLoadAll(){
   const result = {};
   await Promise.all(SUPA_TABLES.map(async t => {
-    const rows = await supaFetch(t,'GET',null,'select=*&limit=5000');
-    result[t] = rows || [];
+    const rows = await supaFetch(t,'GET',null,'select=uid,data&limit=5000');
+    result[t] = (rows||[]).map(r=>r.data||r).filter(Boolean);
   }));
   return result;
 }
 async function supaSaveTable(table, rows){
   if(!rows) return;
-  // Delete all existing rows then re-insert
+  // Delete all rows, then re-insert as {uid, data} JSONB
   await fetch(SUPA_URL+'/rest/v1/'+table+'?uid=neq.NOMATCH', {
-    method:'DELETE',
-    headers:{'apikey':SUPA_KEY,'Authorization':'Bearer '+SUPA_KEY}
-  });
-  await fetch(SUPA_URL+'/rest/v1/'+table+'?id=gte.0', {
-    method:'DELETE',
-    headers:{'apikey':SUPA_KEY,'Authorization':'Bearer '+SUPA_KEY}
+    method:'DELETE', headers:{'apikey':SUPA_KEY,'Authorization':'Bearer '+SUPA_KEY}
   });
   if(!rows.length) return;
   const clean=rows.map(r=>{
-    const o={};
-    Object.keys(r).forEach(k=>{ if(r[k]!==undefined && typeof r[k]!=='function') o[k]=r[k]; });
-    if(!o.uid) o.uid=o.id||('u'+Math.random().toString(36).slice(2));
-    return o;
+    const uid=r.uid||r.id||('u'+Math.random().toString(36).slice(2));
+    return {uid, data:r};
   });
   for(let i=0;i<clean.length;i+=100){
     await supaFetch(table,'POST',clean.slice(i,i+100));
