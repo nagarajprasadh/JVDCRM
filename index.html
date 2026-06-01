@@ -673,6 +673,50 @@ th[data-tip]{cursor:pointer}
 // ══════════════════════════════════════════════
 const DB_KEY = 'diamondCRM_v2';
 const AUTH_KEY = 'diamondCRM_auth';
+// ── Supabase backend ──
+const SUPA_URL = 'https://vpiulxwkxyhnvuchqafc.supabase.co';
+const SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZwaXVseHdreHlobnZ1Y2hxYWZjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODAyNTM4MDUsImV4cCI6MjA5NTgyOTgwNX0.-d4kFj3JC267gK5iwcc23jhwRn2ymYs8IB6VEurFfgg';
+const SUPA_TABLES = ['customers','salespeople','leads','invoices','payments','stock','deals','tasks','campaigns','suppliers'];
+async function supaFetch(table, method='GET', body=null, params=''){
+  const res = await fetch(SUPA_URL+'/rest/v1/'+table+(params?'?'+params:''), {
+    method, headers: {
+      'apikey': SUPA_KEY,
+      'Authorization': 'Bearer '+SUPA_KEY,
+      'Content-Type': 'application/json',
+      'Prefer': method==='POST' ? 'return=minimal' : ''
+    },
+    body: body ? JSON.stringify(body) : null
+  });
+  if(!res.ok){ console.warn('[SUPA]',method,table,res.status,await res.text()); return null; }
+  if(method==='GET') return res.json();
+  return true;
+}
+async function supaLoadAll(){
+  const result = {};
+  await Promise.all(SUPA_TABLES.map(async t => {
+    const rows = await supaFetch(t,'GET',null,'select=*&limit=5000');
+    result[t] = rows || [];
+  }));
+  return result;
+}
+async function supaSaveTable(table, rows){
+  if(!rows || !rows.length) return;
+  // upsert all rows — Supabase merges on uid
+  await supaFetch(table,'POST', rows.map(r=>({...r})), 'on_conflict=uid');
+}
+async function supaDeleteMissing(table, currentRows){
+  // Get all uids in Supabase, delete ones not in currentRows
+  const existing = await supaFetch(table,'GET',null,'select=uid');
+  if(!existing) return;
+  const currentUids = new Set((currentRows||[]).map(r=>r.uid||r.id).filter(Boolean));
+  const toDelete = existing.filter(r=>r.uid && !currentUids.has(r.uid));
+  for(const r of toDelete){
+    await fetch(SUPA_URL+'/rest/v1/'+table+'?uid=eq.'+r.uid, {
+      method:'DELETE',
+      headers:{'apikey':SUPA_KEY,'Authorization':'Bearer '+SUPA_KEY}
+    });
+  }
+}
 let currentUser = null; // set after login
 let importState = null; // excel import state
 // ══════════════════════════════════════════════
@@ -725,13 +769,12 @@ function loadDB(){
     const s = localStorage.getItem(DB_KEY);
     if(s){
       const parsed = JSON.parse(s);
-      // Only use stored data if it has customers (not an empty/corrupt save)
-      if(parsed && Array.isArray(parsed.customers) && parsed.customers.length > 0){
+      if(parsed && Array.isArray(parsed.customers)){
         db = parsed;
       }
     }
   }catch(e){ console.log('[CRM] localStorage unavailable, using built-in demo data'); }
-  // Ensure all required fields exist (handles partial saves from older versions)
+  // Ensure all required fields exist
   if(!db.customers)     db.customers     = JSON.parse(JSON.stringify(DEMO_DB.customers));
   if(!db.salespeople)   db.salespeople   = JSON.parse(JSON.stringify(DEMO_DB.salespeople));
   if(!db.campaigns)     db.campaigns     = JSON.parse(JSON.stringify(DEMO_DB.campaigns));
@@ -743,12 +786,9 @@ function loadDB(){
   if(!db.stock)         db.stock         = [];
   if(!db.deals)         db.deals         = [];
   if(!db.tasks)         db.tasks         = [];
-  // Assign VID to any supplier missing one
   (db.suppliers||[]).forEach(s=>{ if(!s.vid) s.vid=generateVID(); });
-  // Assign CIF to any customer missing one
   (db.customers||[]).forEach(c=>{ if(!c.cif) c.cif=generateCIF(); });
   if(!db.users || !db.users.length) db.users = JSON.parse(JSON.stringify(DEMO_DB.users||[]));
-  // Seed RBAC permissions for any user that doesn't have them yet
   (db.users||[]).forEach(u=>{
     if(!u.permissions){
       u.permissions = u.role==='admin'
@@ -757,9 +797,46 @@ function loadDB(){
     }
   });
 }
+// Called after login — loads fresh data from Supabase and merges into db
+async function loadDBFromSupabase(){
+  try{
+    showToast('Syncing from cloud…','info');
+    const remote = await supaLoadAll();
+    let changed = false;
+    SUPA_TABLES.forEach(t=>{
+      if(remote[t] && remote[t].length > 0){
+        db[t] = remote[t];
+        changed = true;
+      }
+    });
+    if(changed){
+      try{ localStorage.setItem(DB_KEY, JSON.stringify(db)); }catch(e){}
+      recalcAllVip();
+      updateBadges();
+      nav(currentNav);
+      showToast('Cloud sync complete ✓','success');
+      console.log('[SUPA] Loaded from Supabase');
+    } else {
+      showToast('No cloud data yet — using local data','info');
+    }
+  }catch(e){
+    console.warn('[SUPA] Load error:',e);
+    showToast('Cloud sync failed — using local data','warning');
+  }
+}
 function saveDB(){
-  try{ localStorage.setItem(DB_KEY, JSON.stringify(db)); }catch(e){ console.log('[CRM] Could not persist data: '+e.message); }
+  // Ensure every record has a uid for Supabase upsert
+  const ensureUid = arr => (arr||[]).forEach(r=>{ if(!r.uid) r.uid = r.id || uid(); });
+  SUPA_TABLES.forEach(t=>ensureUid(db[t]));
+  try{ localStorage.setItem(DB_KEY, JSON.stringify(db)); }catch(e){ console.log('[CRM] localStorage error: '+e.message); }
   updateBadges();
+  // Push to Supabase async (non-blocking)
+  (async()=>{
+    try{
+      await Promise.all(SUPA_TABLES.map(t=> db[t] && db[t].length ? supaSaveTable(t, db[t]) : Promise.resolve()));
+      console.log('[SUPA] Saved to Supabase');
+    }catch(e){ console.warn('[SUPA] Save error:',e); }
+  })();
 }
 const VIP_DEFAULTS={bronze:500000,silver:1500000,gold:4000000,platinum:8000000};
 function getVipThresholds(){ return Object.assign({},VIP_DEFAULTS,db.settings&&db.settings.vipThresholds||{}); }
@@ -5340,9 +5417,10 @@ setInterval(loadTickerData,5*60*1000);
 
 loadDB();
 loadCustColOrder();
-// Recalculate VIP from invoice data; if db is empty just update badges
 if(db.customers && db.customers.length > 0){ recalcAllVip(); } else { updateBadges(); }
 nav('dashboard');
+// Pull fresh data from Supabase in background
+loadDBFromSupabase();
 
 // ══════════════════════════════════════════════
 // HELP & FAQ
