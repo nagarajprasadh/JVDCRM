@@ -225,6 +225,7 @@ body{font-family:'Inter',-apple-system,BlinkMacSystemFont,sans-serif;background:
 .perm-btn.active-view{background:rgba(59,130,246,.15);border-color:var(--blue);color:var(--blue)}
 .perm-btn.active-edit{background:rgba(201,169,110,.15);border-color:var(--gold);color:var(--gold)}
 .perm-btn.active-full{background:rgba(34,197,94,.15);border-color:var(--green);color:var(--green)}
+.perm-btn.active-none{background:rgba(232,71,42,.12);border-color:var(--red);color:var(--red)}
 .mod-icon{font-size:14px;margin-right:6px}
 .mod-name{font-size:12px;font-weight:600;color:var(--text)}
 .perm-chip{display:inline-block;font-size:9px;font-weight:700;padding:1px 5px;border-radius:4px;margin:1px}
@@ -1121,6 +1122,14 @@ function cancelTotpSetup(){
   switchLoginTab('signin');
 }
 
+function navFirstAccessible(){
+  if(!currentUser||currentUser.role==='admin'){ nav('dashboard'); return; }
+  const order=['dashboard','customers','pipeline','deals','tasks','stockinv','kyc','suppliers',
+    'accounting','commission','inventory','salespeople','reports','campaigns','bizcard','settings'];
+  for(const mod of order){ if(canAccessModule(mod)){ nav(mod); return; } }
+  nav('dashboard');
+}
+
 function completeLogin(user){
   currentUser=user;
   const isFirstApprovedLogin = user.approvedAt && !user.lastLoginAt;
@@ -1131,7 +1140,7 @@ function completeLogin(user){
   document.getElementById('login-overlay').style.display='none';
   updateUserBadge();
   applyNavPermissions();
-  nav('dashboard');
+  navFirstAccessible();
   if(isFirstApprovedLogin){ setTimeout(()=>showWelcomeBanner(user.name),400); }
   _pendingLoginUser=null;
 }
@@ -1194,7 +1203,7 @@ function doChangePassword(userId){
   _restoreLoginOverlay();
   updateUserBadge();
   applyNavPermissions();
-  nav('dashboard');
+  navFirstAccessible();
 }
 
 function _restoreLoginOverlay(){
@@ -5879,7 +5888,8 @@ setInterval(loadTickerData,5*60*1000);
 loadDB();
 loadCustColOrder();
 if(db.customers && db.customers.length > 0){ recalcAllVip(); } else { updateBadges(); }
-nav('dashboard');
+// nav on load: admin→dashboard, user→first accessible module
+if(tryAutoLogin()){ updateUserBadge(); applyNavPermissions(); navFirstAccessible(); } else { nav('dashboard'); }
 // Pull fresh data from Supabase in background
 loadDBFromSupabase();
 
