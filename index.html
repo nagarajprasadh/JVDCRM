@@ -789,13 +789,13 @@ function loadDB(){
         db = parsed;
       }
     }
-  }catch(e){ console.log('[CRM] localStorage unavailable, using built-in demo data'); }
-  // Ensure all required fields exist
-  if(!db.customers)     db.customers     = JSON.parse(JSON.stringify(DEMO_DB.customers));
-  if(!db.salespeople)   db.salespeople   = JSON.parse(JSON.stringify(DEMO_DB.salespeople));
-  if(!db.campaigns)     db.campaigns     = JSON.parse(JSON.stringify(DEMO_DB.campaigns));
-  if(!db.businessCards) db.businessCards = JSON.parse(JSON.stringify(DEMO_DB.businessCards));
-  if(!db.invoices)      db.invoices      = JSON.parse(JSON.stringify(DEMO_DB.invoices));
+  }catch(e){ console.log('[CRM] localStorage read error'); }
+  // Ensure arrays exist but DO NOT fill with demo data
+  if(!db.customers)     db.customers     = [];
+  if(!db.salespeople)   db.salespeople   = [];
+  if(!db.campaigns)     db.campaigns     = [];
+  if(!db.businessCards) db.businessCards = [];
+  if(!db.invoices)      db.invoices      = [];
   if(!db.savedReports)  db.savedReports  = [];
   if(!db.settings)      db.settings      = {};
   if(!db.suppliers)     db.suppliers     = [];
@@ -831,9 +831,8 @@ async function loadDBFromSupabase(){
       updateBadges();
       nav(currentNav);
       showToast('Cloud sync complete ✓','success');
-      console.log('[SUPA] Loaded from Supabase');
     } else {
-      showToast('No cloud data yet — using local data','info');
+      showToast('No cloud data yet','info');
     }
   }catch(e){
     console.warn('[SUPA] Load error:',e);
@@ -7501,15 +7500,30 @@ function resetDemoData(){
   location.reload();
 }
 function clearAllData(){
-  if(!confirm('This will permanently delete ALL your data. This cannot be undone. Are you sure?')) return;
-  db={customers:[],salespeople:[],businessCards:[],campaigns:[],invoices:[],settings:{}};
-  saveDB();
+  if(!confirm('This will permanently delete ALL data from both this browser AND the cloud database. This cannot be undone. Are you sure?')) return;
+  db={customers:[],salespeople:[],businessCards:[],campaigns:[],invoices:[],suppliers:[],stock:[],deals:[],tasks:[],savedReports:[],settings:{}};
+  // Wipe localStorage
+  try{ localStorage.removeItem(DB_KEY); }catch(e){}
+  updateBadges();
+  // Wipe Supabase
+  (async()=>{
+    try{
+      showToast('Clearing cloud data…','info');
+      await Promise.all(SUPA_TABLES.map(t=>
+        fetch(SUPA_URL+'/rest/v1/'+t+'?uid=neq.NOMATCH',{
+          method:'DELETE',
+          headers:{'apikey':SUPA_KEY,'Authorization':'Bearer '+SUPA_KEY}
+        })
+      ));
+      showToast('All data cleared ✓','success');
+    }catch(e){ console.warn('Supabase clear error:',e); }
+  })();
   renderSettings();
   const t=document.createElement('div');
-  t.textContent='🗑️ All data cleared';
+  t.textContent='🗑️ All data cleared — browser + cloud';
   t.style.cssText='position:fixed;bottom:24px;right:24px;background:#c0392b;color:#fff;padding:12px 20px;border-radius:10px;font-size:13px;font-weight:600;z-index:9999';
   document.body.appendChild(t);
-  setTimeout(()=>t.remove(),2500);
+  setTimeout(()=>t.remove(),3000);
 }
 
 function saveVipSettings(){
