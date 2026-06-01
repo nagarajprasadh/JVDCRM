@@ -1198,43 +1198,26 @@ function doChangePassword(userId){
   nav('dashboard');
 }
 
+// Saved on first load — used to restore after TOTP screens replace innerHTML
+var _loginOverlayHTML = null;
+
 function _restoreLoginOverlay(){
-  const overlay=document.getElementById('login-overlay');
-  overlay.innerHTML=`
-  <div class="login-box">
-    <div style="display:flex;gap:0;margin-bottom:28px;border-radius:10px;overflow:hidden;border:1px solid var(--border2)">
-      <button id="tab-signin" onclick="switchLoginTab('signin')" style="flex:1;padding:11px;font-size:13px;font-weight:700;cursor:pointer;border:none;font-family:'Inter',sans-serif;background:var(--gold);color:#fff">Sign In</button>
-      <button id="tab-signup" onclick="switchLoginTab('signup')" style="flex:1;padding:11px;font-size:13px;font-weight:700;cursor:pointer;border:none;font-family:'Inter',sans-serif;background:var(--bg2);color:var(--text2)">Sign Up</button>
-    </div>
-    <div id="panel-signin">
-      <div style="display:flex;flex-direction:column;gap:12px">
-        <input id="login-user" type="text" placeholder="Username"
-          style="padding:10px 14px;border:1.5px solid var(--border);border-radius:9px;font-size:14px;background:var(--bg2);color:var(--text);outline:none;width:100%;box-sizing:border-box"
-          onkeydown="if(event.key==='Enter')document.getElementById('login-pass').focus()">
-        <input id="login-pass" type="password" placeholder="Password"
-          style="padding:10px 14px;border:1.5px solid var(--border);border-radius:9px;font-size:14px;background:var(--bg2);color:var(--text);outline:none;width:100%;box-sizing:border-box"
-          onkeydown="if(event.key==='Enter')doLogin()">
-        <div id="login-error" style="display:none;color:var(--red);font-size:13px;text-align:center"></div>
-        <button onclick="doLogin()" style="padding:11px;background:var(--green);color:#fff;border:none;border-radius:9px;font-size:15px;font-weight:700;cursor:pointer;font-family:'Inter',sans-serif">Sign In</button>
-      </div>
-    </div>
-    <div id="panel-signup" style="display:none">
-      <div style="text-align:center;margin-bottom:16px">
-        <div style="font-family:'EB Garamond',Georgia,serif;font-size:20px;font-weight:600;color:var(--text)">Request Access</div>
-        <div style="font-size:12px;color:var(--text3);margin-top:4px">Submit details. Admin will review and approve.</div>
-      </div>
-      <div style="display:flex;flex-direction:column;gap:10px">
-        <input id="su-name" type="text" placeholder="Full Name" style="padding:10px 14px;border:1.5px solid var(--border);border-radius:9px;font-size:14px;background:var(--bg2);color:var(--text);outline:none;width:100%;box-sizing:border-box">
-        <input id="su-user" type="text" placeholder="Username (lowercase)" style="padding:10px 14px;border:1.5px solid var(--border);border-radius:9px;font-size:14px;background:var(--bg2);color:var(--text);outline:none;width:100%;box-sizing:border-box" oninput="this.value=this.value.toLowerCase()">
-        <input id="su-pass" type="password" placeholder="Password (min 6)" style="padding:10px 14px;border:1.5px solid var(--border);border-radius:9px;font-size:14px;background:var(--bg2);color:var(--text);outline:none;width:100%;box-sizing:border-box">
-        <input id="su-pass2" type="password" placeholder="Confirm password" style="padding:10px 14px;border:1.5px solid var(--border);border-radius:9px;font-size:14px;background:var(--bg2);color:var(--text);outline:none;width:100%;box-sizing:border-box">
-        <div id="su-error" style="display:none;background:#FEF0EE;border:1px solid #E8A090;border-radius:8px;padding:8px 12px;font-size:12px;color:#B03020"></div>
-        <div id="su-success" style="display:none;background:#EBF7EE;border:1px solid #7DC997;border-radius:8px;padding:10px 12px;font-size:12px;color:#1C6B3A;text-align:center;line-height:1.6">✅ <strong>Request submitted!</strong><br>Please wait for admin approval.</div>
-        <button id="su-btn" onclick="doSignUp()" style="padding:11px;background:var(--green);color:#fff;border:none;border-radius:9px;font-size:15px;font-weight:700;cursor:pointer;font-family:'Inter',sans-serif">Request Access</button>
-        <div style="text-align:center;font-size:12px;color:var(--text3)">Already have an account? <a href="#" onclick="switchLoginTab('signin');return false" style="color:var(--gold);text-decoration:none;font-weight:600">Sign In</a></div>
-      </div>
-    </div>
-  </div>`;
+  const overlay = document.getElementById('login-overlay');
+  // If TOTP screens replaced innerHTML, restore from saved snapshot
+  if(!document.getElementById('panel-signin')){
+    if(_loginOverlayHTML){
+      overlay.innerHTML = _loginOverlayHTML;
+    }
+  }
+  // Reset all fields safely
+  ['login-user','login-pass','su-name','su-user','su-pass','su-pass2'].forEach(function(id){
+    var el=document.getElementById(id); if(el) el.value='';
+  });
+  var err=document.getElementById('login-error'); if(err){err.textContent='';err.style.display='none';}
+  var suErr=document.getElementById('su-error'); if(suErr) suErr.style.display='none';
+  var suSucc=document.getElementById('su-success'); if(suSucc) suSucc.style.display='none';
+  var suBtn=document.getElementById('su-btn'); if(suBtn) suBtn.style.display='';
+  switchLoginTab('signin');
 }
 
 function showLoginError(msg){
@@ -5879,8 +5862,12 @@ setInterval(loadTickerData,5*60*1000);
 
 // Show login overlay only after page fully loaded — avoids flash of unstyled logo
 window.addEventListener('load', function(){
+  // Snapshot the original login box HTML (with logo) before any TOTP screens can replace it
+  var overlay = document.getElementById('login-overlay');
+  var box = overlay ? overlay.querySelector('.login-box') : null;
+  if(box) _loginOverlayHTML = box.outerHTML;
   if(!currentUser){
-    document.getElementById('login-overlay').style.display='flex';
+    overlay.style.display='flex';
   }
 });
 
