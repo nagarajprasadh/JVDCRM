@@ -700,14 +700,9 @@ async function supaLoadAll(){
   return result;
 }
 async function supaSaveTable(table, rows){
-  if(!rows) return;
-  // Delete all rows, then re-insert as {uid, data} JSONB
-  await fetch(SUPA_URL+'/rest/v1/'+table+'?uid=neq.NOMATCH', {
-    method:'DELETE', headers:{'apikey':SUPA_KEY,'Authorization':'Bearer '+SUPA_KEY}
-  });
-  if(!rows.length) return;
-  // Strip large base64 blobs before cloud sync — photos stay in localStorage only
-  const STRIP_KEYS = ['photo','bcImg','kycDocs','activityLog'];
+  if(!rows||!rows.length) return;
+  // Strip large base64 blobs — photos/docs stay in localStorage only
+  const STRIP_KEYS=['photo','bcImg','kycDocs','activityLog'];
   const clean=rows.map(r=>{
     const uid=r.uid||r.id||('u'+Math.random().toString(36).slice(2));
     const slim={};
@@ -715,10 +710,28 @@ async function supaSaveTable(table, rows){
     slim.uid=uid;
     return {uid, data:slim};
   });
+  // Per-record UPSERT — safe for concurrent users, never wipes another user's data
   for(let i=0;i<clean.length;i+=100){
-    const res = await supaFetch(table,'POST',clean.slice(i,i+100));
-    if(res===null) console.warn('[SUPA] Insert failed for',table,'chunk',i);
+    const chunk=clean.slice(i,i+100);
+    const res=await fetch(SUPA_URL+'/rest/v1/'+table+'?on_conflict=uid',{
+      method:'POST',
+      headers:{
+        'apikey':SUPA_KEY,'Authorization':'Bearer '+SUPA_KEY,
+        'Content-Type':'application/json',
+        'Prefer':'resolution=merge-duplicates,return=minimal'
+      },
+      body:JSON.stringify(chunk)
+    });
+    if(!res.ok) console.warn('[SUPA] Upsert failed:',table,'chunk',i,res.status,await res.text());
   }
+}
+
+async function supaDeleteRecord(table, uid){
+  // Delete a single record by uid — called when user deletes a customer/deal/etc
+  await fetch(SUPA_URL+'/rest/v1/'+table+'?uid=eq.'+encodeURIComponent(uid),{
+    method:'DELETE',
+    headers:{'apikey':SUPA_KEY,'Authorization':'Bearer '+SUPA_KEY}
+  });
 }
 async function supaDeleteMissing(table, currentRows){
   // Get all uids in Supabase, delete ones not in currentRows
@@ -850,8 +863,16 @@ async function loadDBFromSupabase(){
     showToast('Cloud sync failed — using local data','warning');
   }
 }
+// Track records deleted this session so we can purge from Supabase
+const _supaDeletes = {}; // {table: Set of uids}
+SUPA_TABLES.forEach(t=>{ _supaDeletes[t]=new Set(); });
+
+function markSupaDelete(table, uid){
+  if(_supaDeletes[table]) _supaDeletes[table].add(uid);
+}
+
 function saveDB(){
-  // Ensure every record has a uid for Supabase upsert
+  // Ensure every record has a uid
   const ensureUid = arr => (arr||[]).forEach(r=>{ if(!r.uid) r.uid = r.id || uid(); });
   SUPA_TABLES.forEach(t=>ensureUid(db[t]));
   try{ localStorage.setItem(DB_KEY, JSON.stringify(db)); }catch(e){ console.log('[CRM] localStorage error: '+e.message); }
@@ -859,8 +880,16 @@ function saveDB(){
   // Push to Supabase async (non-blocking)
   (async()=>{
     try{
-      await Promise.all(SUPA_TABLES.map(t=> db[t] && db[t].length ? supaSaveTable(t, db[t]) : Promise.resolve()));
-      console.log('[SUPA] Saved to Supabase');
+      // 1. Delete removed records from Supabase
+      for(const t of SUPA_TABLES){
+        for(const uid of _supaDeletes[t]){
+          await supaDeleteRecord(t, uid);
+        }
+        _supaDeletes[t].clear();
+      }
+      // 2. Upsert changed/new records
+      await Promise.all(SUPA_TABLES.map(t=> db[t]&&db[t].length ? supaSaveTable(t,db[t]) : Promise.resolve()));
+      console.log('[SUPA] Sync complete');
     }catch(e){ console.warn('[SUPA] Save error:',e); }
   })();
 }
@@ -2109,6 +2138,7 @@ function toggleAllCusts(checked,ids){
 function bulkDeleteCusts(){
   if(!selectedCusts.size) return;
   if(!confirm(`Delete ${selectedCusts.size} selected contact${selectedCusts.size>1?'s':''}? This cannot be undone.`)) return;
+  db.customers.filter(c=>selectedCusts.has(c.id)).forEach(c=>{ if(c.uid) markSupaDelete('customers',c.uid); });
   db.customers=db.customers.filter(c=>!selectedCusts.has(c.id));
   selectedCusts.clear(); saveDB(); renderCustomers();
 }
@@ -2240,7 +2270,7 @@ function fmtDatetime(iso){
   return d.toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'})+' '+d.toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'});
 }
 
-function deleteCust(id){ if(confirm('Delete this customer?')){ db.customers=db.customers.filter(c=>c.id!==id); if(selectedCustId===id) selectedCustId=null; saveDB(); renderCustomers(); } }
+function deleteCust(id){ if(confirm('Delete this customer?')){ const r=db.customers.find(c=>c.id===id); if(r&&r.uid) markSupaDelete('customers',r.uid); db.customers=db.customers.filter(c=>c.id!==id); if(selectedCustId===id) selectedCustId=null; saveDB(); renderCustomers(); } }
 
 // ── Customer Form ──
 function openCustModal(id){
@@ -3014,7 +3044,7 @@ function saveSP(){
   else db.salespeople.push(obj);
   saveDB(); closeModal('modal-sp'); renderSalespeople();
 }
-function deleteSP(id){ if(confirm('Remove salesperson?')){ db.salespeople=db.salespeople.filter(s=>s.id!==id); saveDB(); renderSalespeople(); } }
+function deleteSP(id){ if(confirm('Remove salesperson?')){ const r=db.salespeople.find(s=>s.id===id); if(r&&r.uid) markSupaDelete('salespeople',r.uid); db.salespeople=db.salespeople.filter(s=>s.id!==id); saveDB(); renderSalespeople(); } }
 
 // ══════════════════════════════════════════════
 // REPORTS
@@ -3826,7 +3856,7 @@ function saveCamp(){
   else db.campaigns.push(obj);
   saveDB(); closeModal('modal-camp'); renderCampaigns();
 }
-function deleteCamp(id){ if(confirm('Delete campaign?')){ db.campaigns=db.campaigns.filter(c=>c.id!==id); saveDB(); renderCampaigns(); } }
+function deleteCamp(id){ if(confirm('Delete campaign?')){ const r=db.campaigns.find(c=>c.id===id); if(r&&r.uid) markSupaDelete('campaigns',r.uid); db.campaigns=db.campaigns.filter(c=>c.id!==id); saveDB(); renderCampaigns(); } }
 
 // ══════════════════════════════════════════════
 // BUSINESS CARDS -- AUTO OCR
@@ -4831,7 +4861,7 @@ ${inv.notes?`<div style="margin-top:16px;padding:12px;background:#FAF7F2;border-
 
 function deleteInv(id){
   if(confirm('Delete this invoice? This cannot be undone.'))
-    { db.invoices=db.invoices.filter(i=>i.id!==id); saveDB(); renderAccounting(); }
+    { const r=db.invoices.find(i=>i.id===id); if(r&&r.uid) markSupaDelete('invoices',r.uid); db.invoices=db.invoices.filter(i=>i.id!==id); saveDB(); renderAccounting(); }
 }
 
 function exportInvCSV(){
@@ -6730,6 +6760,7 @@ function saveStockItem(id){
 
 function deleteStockItem(id){
   if(!confirm('Delete this stock item? This cannot be undone.')) return;
+  const r=(db.stock||[]).find(x=>x.id===id); if(r&&r.uid) markSupaDelete('stock',r.uid);
   db.stock=(db.stock||[]).filter(x=>x.id!==id);
   saveDB();
   document.getElementById('modal-stock').style.display='none';
@@ -7057,6 +7088,7 @@ function saveDeal(id){
 function deleteDeal(id){
   if(!confirm('Delete this deal record?')) return;
   const d=(db.deals||[]).find(x=>x.id===id);
+  if(d&&d.uid) markSupaDelete('deals',d.uid);
   // If we're deleting a completed deal that set stock to Sold, revert it
   if(d&&d.status==='Completed'&&d.stockId){
     const stk=(db.stock||[]).find(x=>x.id===d.stockId);
@@ -7207,6 +7239,7 @@ function saveTask(id){
 
 function deleteTask(id){
   if(!confirm('Delete task?'))return;
+  const r=(db.tasks||[]).find(x=>x.id===id); if(r&&r.uid) markSupaDelete('tasks',r.uid);
   db.tasks=(db.tasks||[]).filter(x=>x.id!==id);saveDB();document.getElementById('modal-task').style.display='none';renderTasks();updateBadges();showToast('Task deleted','error');
 }
 
