@@ -1030,8 +1030,8 @@ async function _doLoginWithSupaSync(uname, pass){
     // Try to get latest user record from Supabase (non-blocking fallback to local)
     const remote = await supaFetch('users','GET',null,'select=uid,data&limit=200');
     if(remote && remote.length){
-      const remoteUsers = remote.map(r=>({...r.data, uid:r.uid}));
-      // Merge remote users into db.users (Supabase wins)
+      // Only use remote records that have a real password — skip empty/corrupt records
+      const remoteUsers = remote.map(r=>({...r.data, uid:r.uid})).filter(ru=>ru.pwd&&ru.pwd.length>0);
       remoteUsers.forEach(ru=>{
         const idx=(db.users||[]).findIndex(u=>u.id===ru.id||u.username===ru.username);
         if(idx>=0){ db.users[idx]={...db.users[idx],...ru}; }
@@ -3220,7 +3220,7 @@ function renderPipeline(){
 
   document.getElementById('content').innerHTML = `
     <div style="padding:24px 28px 0">
-      
+      <div class="page-title" style="margin-bottom:16px">Sales Pipeline</div>
       <!-- Summary strip -->
       <div style="display:flex;gap:16px;flex-wrap:wrap;margin-bottom:22px">
         <div style="background:var(--card);border:1px solid var(--border);border-radius:12px;padding:14px 20px;min-width:140px">
@@ -3286,7 +3286,7 @@ function renderInventory(){
   const typeColor={'Natural':'var(--gold)','Lab-Grown':'var(--blue)','Both':'var(--green)'};
 
   document.getElementById('content').innerHTML=`
-
+<div class="page-title" style="margin-bottom:14px">Inventory Interest</div>
 
 <!-- KPI row -->
 <div style="display:grid;grid-template-columns:repeat(6,1fr);gap:10px;margin-bottom:18px">
