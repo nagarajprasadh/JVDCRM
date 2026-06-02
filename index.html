@@ -1041,10 +1041,16 @@ async function _doLoginWithSupaSync(uname, pass){
       // Only use remote records that have a real password — skip empty/corrupt records
       const remoteUsers = remote.map(r=>({...r.data, uid:r.uid})).filter(ru=>ru.pwd&&ru.pwd.length>0);
       remoteUsers.forEach(ru=>{
-        const idx=(db.users||[]).findIndex(u=>u.id===ru.id||u.username===ru.username);
-        if(idx>=0){ db.users[idx]={...db.users[idx],...ru}; }
+        const idx=(db.users||[]).findIndex(u=>u.username===ru.username);
+        if(idx>=0){ db.users[idx]=ru; }
         else { if(!db.users) db.users=[]; db.users.push(ru); }
       });
+      const _seenU={}; db.users=(db.users||[]).reduce((acc,u)=>{
+        const k=u.username;
+        if(!_seenU[k]){ _seenU[k]=true; acc.push(u); }
+        else if(u.pwd&&u.pwd.length>0){ const ei=acc.findIndex(x=>x.username===k); if(ei>=0&&(!acc[ei].pwd||!acc[ei].pwd.length)) acc[ei]=u; }
+        return acc;
+      },[]);
       try{ localStorage.setItem(DB_KEY, JSON.stringify(db)); }catch(e){}
     }
   }catch(e){ console.warn('[SUPA] Pre-login sync failed, using local:', e); }
@@ -1061,8 +1067,22 @@ function _doLoginCheck(uname, pass){
   const user=users.find(u=>u.username.toLowerCase()===uname && u.active!==false);
   if(!user||user.pwd!==hashPwd(pass)){ showLoginError('Incorrect username or password.'); return; }
   if(user.mustChangePwd){ showChangePwdScreen(user); return; }
-  // 2FA disabled — login with password only
-  completeLogin(user);
+
+  // ── 2FA check ──
+  _pendingLoginUser = user;
+  if(!user.totpSecret){
+    // First time — generate secret and show setup QR
+    user.totpSecret = totpGenSecret();
+    user.totpEnrolled = false;
+    saveDB();
+    showTotpSetup(user);
+  } else if(!user.totpEnrolled){
+    // Secret exists but not yet confirmed
+    showTotpSetup(user);
+  } else {
+    // Enrolled — ask for code
+    showTotpVerify(user);
+  }
 }
 
 function showTotpSetup(user){
@@ -1500,13 +1520,13 @@ function renderUsers(){
             <span style="font-size:11px;color:var(--text3)">${u.name}</span>
             ${sp?`<span style="font-size:11px;color:var(--text3)">· ${sp.name}</span>`:''}
             ${u.mustChangePwd?'<span style="font-size:10px;background:#FFF3CD;color:#856404;border:1px solid #FFEEBA;border-radius:20px;padding:1px 7px">⚠ Must change password</span>':''}
-            ${u.totpEnrolled?'<span style="font-size:10px;background:#EBF7EE;color:#1C6B3A;border:1px solid #7DC997;border-radius:20px;padding:1px 7px">🔐 2FA On</span>':'<span style="font-size:10px;background:#FEF0EE;color:#B03020;border:1px solid #E8A090;border-radius:20px;padding:1px 7px">⚠ 2FA Not Set</span>'}
+            
           </div>
           <div style="margin-top:5px;display:flex;flex-wrap:wrap;gap:2px">${chips}</div>
         </div>
         <div style="display:flex;gap:6px;flex-shrink:0;flex-wrap:wrap">
           <button class="btn btn-outline btn-sm" onclick="editUserModal('${u.id}')">✏️ Edit</button>
-          ${u.totpEnrolled?`<button class="btn btn-outline btn-sm" style="color:var(--orange)" title="Reset 2FA — user will re-enrol on next login" onclick="resetUserTotp('${u.id}')">🔄 Reset 2FA</button>`:''}
+          
           ${!isSelf?`<button class="btn btn-outline btn-sm" style="color:var(--red)" onclick="deleteUser('${u.id}')">🗑</button>`:''}
         </div>
       </div>
