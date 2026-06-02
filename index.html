@@ -915,6 +915,14 @@ async function loadDBFromSupabase(){
     showToast('Cloud sync failed — using local data','warning');
   }
 }
+// Returns records visible to current user:
+// Admin sees all. Others see only their own (createdBy matches) OR records with no createdBy (legacy/shared).
+function ownedRecords(arr){
+  if(!arr||!arr.length) return [];
+  if(!currentUser||currentUser.role==='admin') return arr;
+  return arr.filter(r=>!r.createdBy||r.createdBy===currentUser.id);
+}
+
 function saveDB(){
   // Ensure every record has a uid for Supabase upsert
   const now=new Date().toISOString();
@@ -1020,6 +1028,8 @@ function doLogin(){
   const uname=(document.getElementById('login-user').value||'').trim().toLowerCase();
   const pass=document.getElementById('login-pass').value||'';
   if(!uname||!pass){ showLoginError('Please enter username and password.'); return; }
+  // Fetch latest user record from Supabase before authenticating
+  // This ensures cross-device password + 2FA secret are always current
   _doLoginWithSupaSync(uname, pass);
 }
 
@@ -1051,8 +1061,22 @@ function _doLoginCheck(uname, pass){
   const user=users.find(u=>u.username.toLowerCase()===uname && u.active!==false);
   if(!user||user.pwd!==hashPwd(pass)){ showLoginError('Incorrect username or password.'); return; }
   if(user.mustChangePwd){ showChangePwdScreen(user); return; }
-  // 2FA disabled — login with password only
-  completeLogin(user);
+
+  // ── 2FA check ──
+  _pendingLoginUser = user;
+  if(!user.totpSecret){
+    // First time — generate secret and show setup QR
+    user.totpSecret = totpGenSecret();
+    user.totpEnrolled = false;
+    saveDB();
+    showTotpSetup(user);
+  } else if(!user.totpEnrolled){
+    // Secret exists but not yet confirmed
+    showTotpSetup(user);
+  } else {
+    // Enrolled — ask for code
+    showTotpVerify(user);
+  }
 }
 
 function showTotpSetup(user){
@@ -2344,7 +2368,7 @@ function renderCustomers(){
   // Debug: immediately mark that we entered the function
   console.log('[CRM] renderCustomers called -- db.customers:', (db.customers||[]).length, 'db.salespeople:', (db.salespeople||[]).length);
 
-  let list=[...(db.customers||[])];
+  let list=[...ownedRecords(db.customers||[])];
   if(currentUser&&currentUser.role==='salesperson'){
     const mySpName=(db.salespeople||[]).find(s=>s.id===currentUser.salespersonId);
     if(mySpName)list=list.filter(c=>c.assignedTo===mySpName.name||c.assignedTo2===mySpName.name);
@@ -3124,6 +3148,7 @@ function saveCust(){
   } else {
     obj.createdAt=new Date().toISOString();
     obj.cif=obj.cif||generateCIF();
+    obj.createdBy=obj.createdBy||(currentUser?currentUser.id:null);
     db.customers.push(obj);
   }
   recalcAllVip(); closeModal('modal-cust'); renderCustomers();
@@ -4231,7 +4256,7 @@ function renderCampaigns(){
   <button class="btn btn-gold" onclick="openCampModal(null)">+ New Campaign</button>
 </div>
 <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:12px">
-${db.campaigns.length?db.campaigns.map(camp=>`
+${ownedRecords(db.campaigns||[]).length?db.campaigns.map(camp=>`
   <div class="camp-card">
     <div class="flex items-center gap-2 mb-2">
       <div style="flex:1"><div style="font-size:14px;font-weight:700">${camp.name}</div><div class="text-xs">${camp.channel||'Email'} · ${fmtDate(camp.sendDate)||'No date'}</div></div>
@@ -4304,7 +4329,7 @@ function useTemplate(name){ const t=CAMP_TEMPLATES.find(x=>x.name===name); if(!t
 function saveCamp(){
   const name=document.getElementById('c-name').value.trim(); if(!name){ alert('Name required'); return; }
   const c={targetVip:document.getElementById('c-tvip').value,targetDtype:document.getElementById('c-tdt').value,targetStatus:document.getElementById('c-tstat').value,targetSp:document.getElementById('c-tsp').value};
-  const obj={id:editCampId||uid(),name,channel:document.getElementById('c-chan').value,status:document.getElementById('c-stat').value,sendDate:document.getElementById('c-date').value,subject:document.getElementById('c-subj').value,body:document.getElementById('c-body').value,...c,recipientCount:calcRecipients(c),createdAt:editCampId?(db.campaigns.find(x=>x.id===editCampId)||{}).createdAt||new Date().toISOString():new Date().toISOString()};
+  const obj={id:editCampId||uid(),name,channel:document.getElementById('c-chan').value,status:document.getElementById('c-stat').value,sendDate:document.getElementById('c-date').value,subject:document.getElementById('c-subj').value,body:document.getElementById('c-body').value,...c,recipientCount:calcRecipients(c),createdAt:editCampId?(db.campaigns.find(x=>x.id===editCampId)||{}).createdAt||new Date().toISOString():new Date().toISOString(),createdBy:editCampId?(db.campaigns.find(x=>x.id===editCampId)||{}).createdBy||(currentUser?currentUser.id:null):(currentUser?currentUser.id:null)};
   if(editCampId){ const i=db.campaigns.findIndex(x=>x.id===editCampId); db.campaigns[i]=obj; }
   else db.campaigns.push(obj);
   saveDB(); closeModal('modal-camp'); renderCampaigns();
@@ -4956,7 +4981,7 @@ function nextInvNo(){
 
 function renderAccounting(){
   if(!db.invoices) db.invoices=[];
-  const invs=db.invoices;
+  const invs=ownedRecords(db.invoices||[]);
   const total=invs.reduce((s,i)=>s+(i.total||0),0);
   const paid=invs.filter(i=>i.status==='Paid').reduce((s,i)=>s+(i.total||0),0);
   const outstanding=invs.filter(i=>['Sent','Overdue','Partial'].includes(i.status)).reduce((s,i)=>s+(i.balanceDue||i.total||0),0);
@@ -5221,7 +5246,7 @@ function saveInv(status){
   };
   if(!db.invoices) db.invoices=[];
   if(editInvId){ const idx=db.invoices.findIndex(i=>i.id===editInvId); db.invoices[idx]=obj; }
-  else db.invoices.push(obj);
+  else { obj.createdBy=currentUser?currentUser.id:null; db.invoices.push(obj); }
   saveDB(); closeModal('modal-inv'); renderAccounting();
 }
 
@@ -6769,7 +6794,7 @@ function supKycStatus(s){
 
 // ── renderSuppliers ───────────────────────────────────────────────────────
 function renderSuppliers(){
-  const sups=db.suppliers||[];
+  const sups=ownedRecords(db.suppliers||[]);
   const total=sups.length;
   const byType={};
   SUPPLIER_TYPES.forEach(t=>byType[t]=0);
@@ -6939,6 +6964,7 @@ function saveSupplier(id){
     obj.vid=generateVID();
     obj.kycDocs=[];obj.purchases=[];
     obj.createdAt=new Date().toISOString();obj.updatedAt=new Date().toISOString();
+    obj.createdBy=currentUser?currentUser.id:null;
     db.suppliers.push(obj);
   }
   saveDB();
@@ -7111,7 +7137,7 @@ function generateSKU(){
 
 // ── renderStockInventory ──────────────────────────────────────────────────
 function renderStockInventory(){
-  const stock=db.stock||[];
+  const stock=ownedRecords(db.stock||[]);
   const avail=stock.filter(s=>s.status==='Available');
   const reserved=stock.filter(s=>s.status==='Reserved');
   const memo=stock.filter(s=>s.status==='On Memo');
@@ -7405,6 +7431,7 @@ function saveStockItem(id){
     obj.id='stk_'+Date.now();
     obj.sku=generateSKU();
     obj.createdAt=new Date().toISOString();obj.updatedAt=new Date().toISOString();
+    obj.createdBy=currentUser?currentUser.id:null;
     db.stock.push(obj);
   }
   saveDB();
@@ -7456,7 +7483,7 @@ function generateDealNo(){
 
 // ── renderDeals ───────────────────────────────────────────────────────────
 function renderDeals(){
-  const deals=db.deals||[];
+  const deals=ownedRecords(db.deals||[]);
   const open=deals.filter(d=>d.status==='Open'||d.status==='Pending Payment');
   const completed=deals.filter(d=>d.status==='Completed');
   const totalRev=completed.reduce((s,d)=>s+(d.salePrice||0),0);
@@ -7731,6 +7758,7 @@ function saveDeal(id){
     obj.id='deal_'+Date.now();
     obj.dealNo=generateDealNo();
     obj.createdAt=new Date().toISOString();obj.updatedAt=new Date().toISOString();
+    obj.createdBy=currentUser?currentUser.id:null;
     db.deals.push(obj);
   }
   saveDB();
@@ -7794,7 +7822,7 @@ function generateTaskNo(){
 function daysDue(ds){if(!ds)return null;const d=new Date(ds);d.setHours(0,0,0,0);const n=new Date();n.setHours(0,0,0,0);return Math.ceil((d-n)/86400000);}
 
 function renderTasks(){
-  const tasks=db.tasks||[];
+  const tasks=ownedRecords(db.tasks||[]);
   const open=tasks.filter(t=>t.status==='Open'||t.status==='In Progress');
   const done=tasks.filter(t=>t.status==='Done');
   const overdue=open.filter(t=>t.dueDate&&daysDue(t.dueDate)<0);
@@ -7886,6 +7914,7 @@ function saveTask(id){
     if(idx>-1){obj.id=id;obj.taskNo=db.tasks[idx].taskNo;obj.createdAt=db.tasks[idx].createdAt;if(obj.status==='Done'&&db.tasks[idx].status!=='Done')obj.completedAt=new Date().toISOString();else obj.completedAt=db.tasks[idx].completedAt;obj.updatedAt=new Date().toISOString();db.tasks[idx]=obj;}
   } else {
     obj.id='tsk_'+Date.now();obj.taskNo=generateTaskNo();obj.createdAt=new Date().toISOString();obj.updatedAt=new Date().toISOString();
+    obj.createdBy=currentUser?currentUser.id:null;
     db.tasks.push(obj);
   }
   saveDB();document.getElementById('modal-task').style.display='none';renderTasks();updateBadges();showToast(id?'Task updated':'Task created');
