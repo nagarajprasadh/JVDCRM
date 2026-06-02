@@ -736,13 +736,8 @@ async function supaLoadAll(){
   return result;
 }
 async function supaSaveTable(table, rows){
-  if(!rows) return;
-  // Delete all rows, then re-insert as {uid, data} JSONB
-  await fetch(SUPA_URL+'/rest/v1/'+table+'?uid=neq.NOMATCH', {
-    method:'DELETE', headers:{'apikey':SUPA_KEY,'Authorization':'Bearer '+SUPA_KEY}
-  });
-  if(!rows.length) return;
-  // Strip large base64 blobs before cloud sync — photos stay in localStorage only
+  if(!rows||!rows.length) return;
+  // Per-record UPSERT — never DELETE all, safe for concurrent multi-user access
   const STRIP_KEYS = ['photo','bcImg','kycDocs','activityLog'];
   const clean=rows.map(r=>{
     const uid=r.uid||r.id||('u'+Math.random().toString(36).slice(2));
@@ -752,9 +747,25 @@ async function supaSaveTable(table, rows){
     return {uid, data:slim};
   });
   for(let i=0;i<clean.length;i+=100){
-    const res = await supaFetch(table,'POST',clean.slice(i,i+100));
-    if(res===null) console.warn('[SUPA] Insert failed for',table,'chunk',i);
+    await fetch(SUPA_URL+'/rest/v1/'+table, {
+      method:'POST',
+      headers:{
+        'apikey':SUPA_KEY,'Authorization':'Bearer '+SUPA_KEY,
+        'Content-Type':'application/json',
+        'Prefer':'resolution=merge-duplicates,return=minimal'
+      },
+      body:JSON.stringify(clean.slice(i,i+100))
+    });
   }
+}
+
+// Delete a single record from Supabase by uid
+async function supaDeleteOne(table, uid){
+  if(!uid) return;
+  await fetch(SUPA_URL+'/rest/v1/'+table+'?uid=eq.'+encodeURIComponent(uid), {
+    method:'DELETE',
+    headers:{'apikey':SUPA_KEY,'Authorization':'Bearer '+SUPA_KEY}
+  });
 }
 async function supaDeleteMissing(table, currentRows){
   // Get all uids in Supabase, delete ones not in currentRows
@@ -915,16 +926,19 @@ async function loadDBFromSupabase(){
   }
 }
 function saveDB(){
-  // Ensure every record has a uid for Supabase upsert
-  const ensureUid = arr => (arr||[]).forEach(r=>{ if(!r.uid) r.uid = r.id || uid(); });
+  // Ensure every record has uid + updatedAt for conflict detection
+  const now = new Date().toISOString();
+  const ensureUid = arr => (arr||[]).forEach(r=>{
+    if(!r.uid) r.uid = r.id || uid();
+    if(!r.updatedAt) r.updatedAt = now;
+  });
   SUPA_TABLES.forEach(t=>ensureUid(db[t]));
   try{ localStorage.setItem(DB_KEY, JSON.stringify(db)); }catch(e){ console.log('[CRM] localStorage error: '+e.message); }
   updateBadges();
-  // Push to Supabase async (non-blocking)
+  // Push to Supabase async — per-record UPSERT, safe for concurrent users
   (async()=>{
     try{
-      await Promise.all(SUPA_TABLES.map(t=> db[t] && db[t].length ? supaSaveTable(t, db[t]) : Promise.resolve()));
-      console.log('[SUPA] Saved to Supabase');
+      await Promise.all(SUPA_TABLES.map(t=> db[t]&&db[t].length ? supaSaveTable(t,db[t]) : Promise.resolve()));
     }catch(e){ console.warn('[SUPA] Save error:',e); }
   })();
 }
@@ -2722,7 +2736,7 @@ function fmtDatetime(iso){
   return d.toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'})+' '+d.toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'});
 }
 
-function deleteCust(id){ if(confirm('Delete this customer?')){ db.customers=db.customers.filter(c=>c.id!==id); if(selectedCustId===id) selectedCustId=null; saveDB(); renderCustomers(); } }
+function deleteCust(id){ if(confirm('Delete this customer?')){ const r=(db.customers||[]).find(c=>c.id===id); db.customers=db.customers.filter(c=>c.id!==id); if(selectedCustId===id) selectedCustId=null; saveDB(); if(r&&(r.uid||r.id)) supaDeleteOne('customers',r.uid||r.id); renderCustomers(); } }
 
 // ── Customer Form ──
 function openCustModal(id){
@@ -3496,7 +3510,7 @@ function saveSP(){
   else db.salespeople.push(obj);
   saveDB(); closeModal('modal-sp'); renderSalespeople();
 }
-function deleteSP(id){ if(confirm('Remove salesperson?')){ db.salespeople=db.salespeople.filter(s=>s.id!==id); saveDB(); renderSalespeople(); } }
+function deleteSP(id){ if(confirm('Remove salesperson?')){ const r=(db.salespeople||[]).find(s=>s.id===id); db.salespeople=db.salespeople.filter(s=>s.id!==id); saveDB(); if(r&&(r.uid||r.id)) supaDeleteOne('salespeople',r.uid||r.id); renderSalespeople(); } }
 
 // ══════════════════════════════════════════════
 // REPORTS
@@ -4308,7 +4322,7 @@ function saveCamp(){
   else db.campaigns.push(obj);
   saveDB(); closeModal('modal-camp'); renderCampaigns();
 }
-function deleteCamp(id){ if(confirm('Delete campaign?')){ db.campaigns=db.campaigns.filter(c=>c.id!==id); saveDB(); renderCampaigns(); } }
+function deleteCamp(id){ if(confirm('Delete campaign?')){ const r=(db.campaigns||[]).find(c=>c.id===id); db.campaigns=db.campaigns.filter(c=>c.id!==id); saveDB(); if(r&&(r.uid||r.id)) supaDeleteOne('campaigns',r.uid||r.id); renderCampaigns(); } }
 
 // ══════════════════════════════════════════════
 // BUSINESS CARDS -- AUTO OCR
@@ -5312,8 +5326,9 @@ ${inv.notes?`<div style="margin-top:16px;padding:12px;background:#FAF7F2;border-
 }
 
 function deleteInv(id){
-  if(confirm('Delete this invoice? This cannot be undone.'))
-    { db.invoices=db.invoices.filter(i=>i.id!==id); saveDB(); renderAccounting(); }
+  if(confirm('Delete this invoice? This cannot be undone.')){
+    const r=(db.invoices||[]).find(i=>i.id===id); db.invoices=db.invoices.filter(i=>i.id!==id); saveDB(); if(r&&(r.uid||r.id)) supaDeleteOne('invoices',r.uid||r.id); renderAccounting();
+  }
 }
 
 function exportInvCSV(){
@@ -5921,6 +5936,39 @@ async function loadTickerData(){
 // Load ticker and refresh every 5 minutes
 loadTickerData();
 setInterval(loadTickerData,5*60*1000);
+
+// Auto-sync from Supabase every 60s — keeps multi-user data fresh
+setInterval(async()=>{
+  if(!currentUser) return; // only sync when logged in
+  try{
+    const remote = await supaLoadAll();
+    if(!remote) return;
+    let changed=false;
+    const _demoCids=new Set(['c001','c002','c003','c004','c005','c006','c007','c008','c009','c010','c011','c012','c013','c014','c015','c016','c017','c018','c019','c020','c021','c022','c023','c024','c025','c026','c027','c028','c029','c030']);
+    const _demoSpids=new Set(['sp001','sp002','sp003','sp004','sp005']);
+    const _demoCamps=new Set(['camp001','camp002','camp003','camp004','camp005']);
+    const _demoInvs=new Set(['inv001','inv002','inv003','inv004','inv005','inv006','inv007','inv008']);
+    const _demoGuard={customers:_demoCids,salespeople:_demoSpids,campaigns:_demoCamps,invoices:_demoInvs};
+    SUPA_TABLES.forEach(t=>{
+      if(t==='users') return; // users handled at login
+      const remoteRows=(remote[t]||[]).filter(r=>!(_demoGuard[t]&&_demoGuard[t].has(r.uid||r.id)));
+      if(!remoteRows.length) return;
+      const localRows=db[t]||[];
+      const remoteMap=new Map(remoteRows.map(r=>[(r.uid||r.id),r]));
+      const localIds=new Set(localRows.map(r=>r.uid||r.id).filter(Boolean));
+      const merged=localRows.map(r=>remoteMap.has(r.uid||r.id)?remoteMap.get(r.uid||r.id):r);
+      remoteRows.forEach(r=>{ const rid=r.uid||r.id; if(rid&&!localIds.has(rid)){merged.push(r);changed=true;} });
+      // detect any updates
+      localRows.forEach(r=>{ const rid=r.uid||r.id; if(rid&&remoteMap.has(rid)){ const rv=remoteMap.get(rid); if(rv.updatedAt&&r.updatedAt&&rv.updatedAt>r.updatedAt) changed=true; }});
+      db[t]=merged;
+    });
+    if(changed){
+      try{ localStorage.setItem(DB_KEY,JSON.stringify(db)); }catch(e){}
+      updateBadges();
+      if(typeof renderCustomers==='function'&&currentNav==='customers') renderCustomers();
+    }
+  }catch(e){ /* silent fail — background sync */ }
+}, 60000);
 
 
 // Show login overlay only after page fully loaded — avoids flash of unstyled logo
@@ -7387,8 +7435,9 @@ function saveStockItem(id){
 
 function deleteStockItem(id){
   if(!confirm('Delete this stock item? This cannot be undone.')) return;
+  const _sr=(db.stock||[]).find(x=>x.id===id);
   db.stock=(db.stock||[]).filter(x=>x.id!==id);
-  saveDB();
+  saveDB(); if(_sr&&(_sr.uid||_sr.id)) supaDeleteOne('stock',_sr.uid||_sr.id);
   document.getElementById('modal-stock').style.display='none';
   renderStockInventory();
   updateBadges();
@@ -7714,6 +7763,7 @@ function saveDeal(id){
 function deleteDeal(id){
   if(!confirm('Delete this deal record?')) return;
   const d=(db.deals||[]).find(x=>x.id===id);
+  supaDeleteOne('deals',d&&(d.uid||d.id));
   // If we're deleting a completed deal that set stock to Sold, revert it
   if(d&&d.status==='Completed'&&d.stockId){
     const stk=(db.stock||[]).find(x=>x.id===d.stockId);
@@ -7864,7 +7914,9 @@ function saveTask(id){
 
 function deleteTask(id){
   if(!confirm('Delete task?'))return;
-  db.tasks=(db.tasks||[]).filter(x=>x.id!==id);saveDB();document.getElementById('modal-task').style.display='none';renderTasks();updateBadges();showToast('Task deleted','error');
+  const _tr=(db.tasks||[]).find(x=>x.id===id);
+  db.tasks=(db.tasks||[]).filter(x=>x.id!==id);saveDB();if(_tr&&(_tr.uid||_tr.id))supaDeleteOne('tasks',_tr.uid||_tr.id);
+  document.getElementById('modal-task').style.display='none';renderTasks();updateBadges();showToast('Task deleted','error');
 }
 
 function exportTasksCSV(){
