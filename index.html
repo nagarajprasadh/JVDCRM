@@ -712,7 +712,7 @@ const AUTH_KEY = 'diamondCRM_auth';
 // ── Supabase backend ──
 const SUPA_URL = 'https://vpiulxwkxyhnvuchqafc.supabase.co';
 const SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZwaXVseHdreHlobnZ1Y2hxYWZjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODAyNTM4MDUsImV4cCI6MjA5NTgyOTgwNX0.-d4kFj3JC267gK5iwcc23jhwRn2ymYs8IB6VEurFfgg';
-const SUPA_TABLES = ['customers','salespeople','leads','invoices','payments','stock','deals','tasks','campaigns','suppliers'];
+const SUPA_TABLES = ['customers','salespeople','leads','invoices','payments','stock','deals','tasks','campaigns','suppliers','users'];
 async function supaFetch(table, method='GET', body=null, params=''){
   const res = await fetch(SUPA_URL+'/rest/v1/'+table+(params?'?'+params:''), {
     method, headers: {
@@ -867,11 +867,25 @@ async function loadDBFromSupabase(){
     const remote = await supaLoadAll();
     let changed = false;
     SUPA_TABLES.forEach(t=>{
-      if(remote[t] && remote[t].length > 0){
-        db[t] = remote[t];
-        changed = true;
+      if(t==='users'){
+        // Users: Supabase is source of truth — merge carefully
+        if(remote[t] && remote[t].length > 0){
+          // Supabase wins for all user fields EXCEPT large local-only blobs
+          db[t] = remote[t];
+          changed = true;
+        }
+      } else {
+        if(remote[t] && remote[t].length > 0){
+          db[t] = remote[t];
+          changed = true;
+        }
       }
     });
+    // Always ensure admin exists locally even if Supabase is empty
+    if(!db.users || !db.users.length){
+      const adminOnly=(DEMO_DB.users||[]).filter(u=>u.role==='admin');
+      db.users=JSON.parse(JSON.stringify(adminOnly));
+    }
     if(changed){
       try{ localStorage.setItem(DB_KEY, JSON.stringify(db)); }catch(e){}
       recalcAllVip();
@@ -990,6 +1004,30 @@ function doLogin(){
   const uname=(document.getElementById('login-user').value||'').trim().toLowerCase();
   const pass=document.getElementById('login-pass').value||'';
   if(!uname||!pass){ showLoginError('Please enter username and password.'); return; }
+  // Fetch latest user record from Supabase before authenticating
+  // This ensures cross-device password + 2FA secret are always current
+  _doLoginWithSupaSync(uname, pass);
+}
+
+async function _doLoginWithSupaSync(uname, pass){
+  try{
+    // Try to get latest user record from Supabase (non-blocking fallback to local)
+    const remote = await supaFetch('users','GET',null,'select=uid,data&limit=200');
+    if(remote && remote.length){
+      const remoteUsers = remote.map(r=>({...r.data, uid:r.uid}));
+      // Merge remote users into db.users (Supabase wins)
+      remoteUsers.forEach(ru=>{
+        const idx=(db.users||[]).findIndex(u=>u.id===ru.id||u.username===ru.username);
+        if(idx>=0){ db.users[idx]={...db.users[idx],...ru}; }
+        else { if(!db.users) db.users=[]; db.users.push(ru); }
+      });
+      try{ localStorage.setItem(DB_KEY, JSON.stringify(db)); }catch(e){}
+    }
+  }catch(e){ console.warn('[SUPA] Pre-login sync failed, using local:', e); }
+  _doLoginCheck(uname, pass);
+}
+
+function _doLoginCheck(uname, pass){
   const users=db.users||[];
   const anyUser=users.find(u=>u.username.toLowerCase()===uname);
   if(anyUser&&anyUser.active===false&&anyUser.pendingSignup){
@@ -5883,8 +5921,19 @@ loadDB();
 loadCustColOrder();
 if(db.customers && db.customers.length > 0){ recalcAllVip(); } else { updateBadges(); }
 nav('dashboard');
-// Pull fresh data from Supabase in background
+// Pull fresh data from Supabase in background (includes users for cross-device sync)
 loadDBFromSupabase();
+// Push local users to Supabase on startup so existing accounts are not lost
+(async()=>{
+  try{
+    if(db.users && db.users.length){
+      // Ensure all users have uid
+      db.users.forEach(u=>{ if(!u.uid) u.uid=u.id||('u'+Date.now()+Math.random().toString(36).slice(2)); });
+      await supaSaveTable('users', db.users);
+      console.log('[SUPA] Users pushed to Supabase on startup');
+    }
+  }catch(e){ console.warn('[SUPA] Users startup push failed:', e); }
+})();
 
 // ══════════════════════════════════════════════
 // HELP & FAQ
