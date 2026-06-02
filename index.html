@@ -859,11 +859,8 @@ function loadDB(){
   db.invoices    = (db.invoices||[]).filter(i=>!_purgeInvs.has(i.id));
   db.users       = (db.users||[]).filter(u=>!_purgeUsers.has(u.username)&&!_purgeUsers.has(u.id));
   if(!db.users||!db.users.length){
-    // Minimal placeholder — Supabase will replace this on login with the real record
-    // uid matches Supabase so the merge finds and replaces it correctly
-    db.users=[{id:'u1780281262884',uid:'u1780281262884',username:'admin',pwd:'',
-      role:'admin',name:'Administrator',active:true,mustChangePwd:false,
-      totpSecret:null,totpEnrolled:false,createdAt:'2026-06-02T00:00:00.000Z'}];
+    db.users=[{id:'admin',uid:'admin',username:'admin',pwd:'',role:'admin',
+      name:'Administrator',active:true,mustChangePwd:false,createdAt:new Date().toISOString()}];
   }
   (db.users||[]).forEach(u=>{
     if(!u.permissions){
@@ -923,17 +920,13 @@ function saveDB(){
   const now=new Date().toISOString();
   const ensureUid = arr => (arr||[]).forEach(r=>{ if(!r.uid) r.uid=r.id||uid(); if(!r.updatedAt) r.updatedAt=now; });
   SUPA_TABLES.forEach(t=>ensureUid(db[t]));
-  // Only push users that have a real password — never push placeholder seed records
-  const _safeUsers=(db.users||[]).filter(u=>u.pwd&&u.pwd.length>0);
   try{ localStorage.setItem(DB_KEY, JSON.stringify(db)); }catch(e){ console.log('[CRM] localStorage error: '+e.message); }
   updateBadges();
   // Push to Supabase async (non-blocking)
   (async()=>{
     try{
-      await Promise.all(SUPA_TABLES.map(t=>{
-        const rows = t==='users' ? _safeUsers : (db[t]||[]);
-        return rows.length ? supaSaveTable(t,rows) : Promise.resolve();
-      }));
+      await Promise.all(SUPA_TABLES.map(t=> db[t] && db[t].length ? supaSaveTable(t, db[t]) : Promise.resolve()));
+      console.log('[SUPA] Saved to Supabase');
     }catch(e){ console.warn('[SUPA] Save error:',e); }
   })();
 }
@@ -1040,15 +1033,9 @@ async function _doLoginWithSupaSync(uname, pass){
       // Only use remote records that have a real password — skip empty/corrupt records
       const remoteUsers = remote.map(r=>({...r.data, uid:r.uid})).filter(ru=>ru.pwd&&ru.pwd.length>0);
       remoteUsers.forEach(ru=>{
-        // Match by username (most reliable) — uid may differ between local seed and Supabase
-        const idx=(db.users||[]).findIndex(u=>u.username===ru.username);
-        if(idx>=0){
-          // Remote wins entirely — replace local seed with full Supabase record
-          db.users[idx] = ru;
-        } else {
-          if(!db.users) db.users=[];
-          db.users.push(ru);
-        }
+        const idx=(db.users||[]).findIndex(u=>u.id===ru.id||u.username===ru.username);
+        if(idx>=0){ db.users[idx]={...db.users[idx],...ru}; }
+        else { if(!db.users) db.users=[]; db.users.push(ru); }
       });
       try{ localStorage.setItem(DB_KEY, JSON.stringify(db)); }catch(e){}
     }
@@ -1137,6 +1124,11 @@ function confirmTotpSetup(){
   }
   user.totpEnrolled=true;
   saveDB();
+  // Push this user's TOTP enrolment directly to Supabase immediately
+  // so other devices get it on next login without re-scanning
+  if(user.uid && user.pwd && user.pwd.length>0){
+    supaSaveTable('users',[user]).catch(e=>console.warn('[SUPA] TOTP enrol push failed:',e));
+  }
   completeLogin(user);
 }
 
@@ -1202,6 +1194,10 @@ function completeLogin(user){
   const isFirstApprovedLogin = user.approvedAt && !user.lastLoginAt;
   user.lastLoginAt = new Date().toISOString();
   saveDB();
+  // Push this user's record to Supabase on every login — keeps all devices in sync
+  if(user.uid && user.pwd && user.pwd.length>0){
+    supaSaveTable('users',[user]).catch(e=>console.warn('[SUPA] Login sync push failed:',e));
+  }
   try{ sessionStorage.setItem(AUTH_KEY, JSON.stringify({id:user.id,username:user.username})); }catch(e){}
   _restoreLoginOverlay();
   document.getElementById('login-overlay').style.display='none';
@@ -5986,9 +5982,16 @@ if(db.customers && db.customers.length > 0){ recalcAllVip(); } else { updateBadg
 nav('dashboard');
 // Pull fresh data from Supabase in background (includes users for cross-device sync)
 loadDBFromSupabase();
-// NOTE: Do NOT push users to Supabase on startup — the local seed has no
-// password/TOTP and would overwrite the real Supabase record.
-// Users are synced to Supabase only when explicitly saved (saveDB after login/change).
+// Sync users to Supabase on startup (users only — preserves cross-device auth)
+(async()=>{
+  try{
+    if(db.users && db.users.length){
+      db.users.forEach(u=>{ if(!u.uid) u.uid=u.id||('u'+Date.now()+Math.random().toString(36).slice(2)); });
+      await supaSaveTable('users', db.users);
+      console.log('[SUPA] Users synced to Supabase on startup');
+    }
+  }catch(e){ console.warn('[SUPA] Users startup sync failed:', e); }
+})();
 
 // ══════════════════════════════════════════════
 // HELP & FAQ
