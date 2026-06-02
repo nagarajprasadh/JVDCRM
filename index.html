@@ -817,7 +817,7 @@ const ROLE_PRESETS = {
   readonly:    Object.fromEntries(RBAC_MODULES.map(m=>[m.key,'view'])),
 };
 function applyRolePreset(role){ return Object.assign({},ROLE_PRESETS[role]||RBAC_DEFAULT_USER); }
-// Demo data removed — app uses real data only
+// Demo data removed
 const DEMO_DB = {customers:[],salespeople:[],campaigns:[],invoices:[],businessCards:[],users:[]}
 // Live database -- starts EMPTY. Populated from localStorage then Supabase only.
 let db = { customers:[], salespeople:[], campaigns:[], businessCards:[], invoices:[],
@@ -1174,6 +1174,14 @@ function cancelTotpSetup(){
   _restoreLoginOverlay();
   document.getElementById('login-overlay').style.display='flex';
   switchLoginTab('signin');
+}
+
+function navFirstAccessible(){
+  if(!currentUser||currentUser.role==='admin'){ nav('dashboard'); return; }
+  const order=['dashboard','customers','pipeline','deals','tasks','stockinv','kyc','suppliers',
+    'accounting','commission','inventory','salespeople','reports','campaigns','bizcard','settings'];
+  for(const mod of order){ if(canAccessModule(mod)){ nav(mod); return; } }
+  nav('dashboard');
 }
 
 function completeLogin(user){
