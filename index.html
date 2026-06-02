@@ -1377,7 +1377,7 @@ function canEdit(customer){
 function updatePendingBadge(){
   if(!isAdmin())return;
   const pending=(db.users||[]).filter(u=>u.pendingSignup===true||u.role==='pending');
-  const navEl=document.querySelector('[data-nav="users"]');
+  const navEl=document.getElementById('nav-users');
   if(navEl){
     let dot=navEl.querySelector('.pending-dot');
     if(pending.length>0){
@@ -5962,7 +5962,10 @@ setInterval(async()=>{
         if(!rU.length) return;
         rU.forEach(ru=>{ const i=(db.users||[]).findIndex(u=>u.username===ru.username); if(i>=0){db.users[i]=ru;}else{if(!db.users)db.users=[];db.users.push(ru);} });
         const _s={}; db.users=(db.users||[]).filter(u=>{if(!_s[u.username]){_s[u.username]=true;return true;}return false;});
-        changed=true; return;
+        // Always refresh admin view when users sync — don't wait for changed flag
+        try{ localStorage.setItem(DB_KEY,JSON.stringify(db)); }catch(e){}
+        if(isAdmin()){ updatePendingBadge(); if(currentNav==='users') renderUsers(); }
+        return;
       }
       const remoteRows=(remote[t]||[]).filter(r=>!(_asDemoMap[t]&&_asDemoMap[t].has(r.uid||r.id)));
       if(!remoteRows.length) return;
