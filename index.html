@@ -859,7 +859,7 @@ function loadDB(){
   db.invoices    = (db.invoices||[]).filter(i=>!_purgeInvs.has(i.id));
   db.users       = (db.users||[]).filter(u=>!_purgeUsers.has(u.username)&&!_purgeUsers.has(u.id));
   if(!db.users||!db.users.length){
-    db.users=[{id:'admin',uid:'admin',username:'admin',pwd:'',role:'admin',
+    db.users=[{id:'u1780281262884',uid:'u1780281262884',username:'admin',pwd:'',role:'admin',
       name:'Administrator',active:true,mustChangePwd:false,createdAt:new Date().toISOString()}];
   }
   (db.users||[]).forEach(u=>{
