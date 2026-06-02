@@ -5976,7 +5976,9 @@ setInterval(async()=>{
     if(changed){
       try{localStorage.setItem(DB_KEY,JSON.stringify(db));}catch(e){}
       updateBadges();
-      if(currentNav) try{const renders={customers:renderCustomers,deals:renderDeals,tasks:renderTasks,stockinv:renderStockInventory,campaigns:renderCampaigns};if(renders[currentNav])renders[currentNav]();}catch(e){}
+      if(currentNav) try{const renders={customers:renderCustomers,deals:renderDeals,tasks:renderTasks,stockinv:renderStockInventory,campaigns:renderCampaigns,users:renderUsers};if(renders[currentNav])renders[currentNav]();}catch(e){}
+      // Refresh users page and badge if admin is on it or pending count changed
+      if(isAdmin()) try{ updatePendingBadge(); if(currentNav==='users') renderUsers(); }catch(e){}
     }
   }catch(e){}
 },60000);
