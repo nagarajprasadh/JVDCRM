@@ -866,26 +866,40 @@ async function loadDBFromSupabase(){
     showToast('Syncing from cloud…','info');
     const remote = await supaLoadAll();
     let changed = false;
+
     SUPA_TABLES.forEach(t=>{
       if(t==='users'){
-        // Users: Supabase is source of truth — merge carefully
+        // USERS: Supabase is always source of truth (cross-device auth/2FA)
         if(remote[t] && remote[t].length > 0){
-          // Supabase wins for all user fields EXCEPT large local-only blobs
           db[t] = remote[t];
           changed = true;
         }
       } else {
-        if(remote[t] && remote[t].length > 0){
-          db[t] = remote[t];
+        // ALL OTHER TABLES: merge by record — never replace local wholesale
+        // Strategy: local record wins if it exists; Supabase fills in records missing locally
+        const remoteRows = remote[t] || [];
+        if(!remoteRows.length) return; // nothing in cloud — keep local as-is
+        const localRows = db[t] || [];
+        const localIds = new Set(localRows.map(r=>r.uid||r.id).filter(Boolean));
+        // Only add records from Supabase that don't exist locally
+        const toAdd = remoteRows.filter(r=>{
+          const rid = r.uid||r.id;
+          return rid && !localIds.has(rid);
+        });
+        if(toAdd.length > 0){
+          db[t] = [...localRows, ...toAdd];
           changed = true;
         }
+        // If local has records but Supabase is empty: local stays (already handled above)
       }
     });
-    // Always ensure admin exists locally even if Supabase is empty
+
+    // Always ensure admin exists locally
     if(!db.users || !db.users.length){
       const adminOnly=(DEMO_DB.users||[]).filter(u=>u.role==='admin');
       db.users=JSON.parse(JSON.stringify(adminOnly));
     }
+
     if(changed){
       try{ localStorage.setItem(DB_KEY, JSON.stringify(db)); }catch(e){}
       recalcAllVip();
@@ -893,7 +907,7 @@ async function loadDBFromSupabase(){
       nav(currentNav);
       showToast('Cloud sync complete ✓','success');
     } else {
-      showToast('No cloud data yet','info');
+      showToast('Up to date ✓','success');
     }
   }catch(e){
     console.warn('[SUPA] Load error:',e);
@@ -1977,6 +1991,7 @@ function renderDashboard(){
 
   document.getElementById('content').innerHTML=`
 <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:8px">
+  <div style="font-family:'EB Garamond',Georgia,serif;font-size:24px;font-weight:600;letter-spacing:-.2px">Dashboard</div>
   <button class="btn btn-outline btn-sm" onclick="openDashConfig()">⚙ Customise Dashboard</button>
 </div>
 ${widgetHtml}
@@ -4211,6 +4226,7 @@ const CAMP_TEMPLATES=[
 function renderCampaigns(){
   document.getElementById('content').innerHTML=`
 <div class="section-header">
+  <div class="section-title">Campaigns</div>
   <button class="btn btn-gold" onclick="openCampModal(null)">+ New Campaign</button>
 </div>
 <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:12px">
@@ -4316,7 +4332,8 @@ function renderBizcard(){
     <div class="card" style="margin-bottom:16px">
       <div class="section-header">
         <div>
-          <div class="section-sub">Upload image or multi-page PDF — each card is extracted automatically</div>
+          <div class="section-title">📸 Scan Business Cards</div>
+          <div class="section-sub">Upload image or multi-page PDF -- each card is extracted automatically</div>
         </div>
       </div>
       <div class="ocr-zone" id="ocr-zone"
@@ -4949,7 +4966,7 @@ function renderAccounting(){
   document.getElementById('content').innerHTML=`
 <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px">
   <div>
-    
+    <div style="font-family:'EB Garamond',Georgia,serif;font-size:24px;font-weight:600;letter-spacing:-.2px">Invoices & Payments</div>
     <div style="font-size:12px;color:var(--text3);margin-top:2px">${invs.length} total · ${invs.filter(i=>i.status==='Paid').length} paid · ${overdue.length} overdue</div>
   </div>
   <div style="display:flex;gap:8px">
@@ -5920,16 +5937,15 @@ if(db.customers && db.customers.length > 0){ recalcAllVip(); } else { updateBadg
 nav('dashboard');
 // Pull fresh data from Supabase in background (includes users for cross-device sync)
 loadDBFromSupabase();
-// Push local users to Supabase on startup so existing accounts are not lost
+// Sync users to Supabase on startup (users only — preserves cross-device auth)
 (async()=>{
   try{
     if(db.users && db.users.length){
-      // Ensure all users have uid
       db.users.forEach(u=>{ if(!u.uid) u.uid=u.id||('u'+Date.now()+Math.random().toString(36).slice(2)); });
       await supaSaveTable('users', db.users);
-      console.log('[SUPA] Users pushed to Supabase on startup');
+      console.log('[SUPA] Users synced to Supabase on startup');
     }
-  }catch(e){ console.warn('[SUPA] Users startup push failed:', e); }
+  }catch(e){ console.warn('[SUPA] Users startup sync failed:', e); }
 })();
 
 // ══════════════════════════════════════════════
@@ -7872,7 +7888,7 @@ function renderSettings(){
     ${icon} ${label}</button>`;
 
   document.getElementById('content').innerHTML=`
-
+<div style="font-family:'EB Garamond',Georgia,serif;font-size:24px;font-weight:600;letter-spacing:-.2px;margin-bottom:16px">Settings</div>
 <div style="display:flex;gap:4px;flex-wrap:wrap;background:var(--bg2);padding:4px;border-radius:10px;margin-bottom:20px;width:fit-content">
   ${tabBtn('general','General','⚙️')}
   ${tabBtn('commission','Commission','💵')}
