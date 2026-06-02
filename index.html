@@ -1257,6 +1257,7 @@ function doChangePassword(userId){
   user.pwd=hashPwd(np);
   user.mustChangePwd=false;
   saveDB();
+  supaSaveTable('users',[user]).catch(e=>console.warn('[SUPA] pwd sync:',e));
   // Now log in
   currentUser=user;
   try{ sessionStorage.setItem(AUTH_KEY, JSON.stringify({id:user.id,username:user.username})); }catch(e){}
@@ -1322,8 +1323,11 @@ function doSignUp(){
   if(pass!==pass2){err.textContent='Passwords do not match.';err.style.display='block';return;}
   if((db.users||[]).find(u=>u.username.toLowerCase()===uname)){err.textContent='Username already taken.';err.style.display='block';return;}
   if(!db.users)db.users=[];
-  db.users.push({id:'u'+Date.now(),username:uname,pwd:hashPwd(pass),name:name,role:'pending',active:false,mustChangePwd:false,permissions:JSON.parse(JSON.stringify(RBAC_DEFAULT_USER)),createdAt:new Date().toISOString(),pendingSignup:true});
+  const _nu={id:'u'+Date.now(),username:uname,pwd:hashPwd(pass),name:name,role:'pending',active:false,mustChangePwd:false,permissions:JSON.parse(JSON.stringify(RBAC_DEFAULT_USER)),createdAt:new Date().toISOString(),pendingSignup:true};
+  _nu.uid=_nu.id;
+  db.users.push(_nu);
   saveDB();
+  supaSaveTable('users',[_nu]).catch(e=>console.warn('[SUPA] signup:',e));
   document.getElementById('su-success').style.display='block';
   document.getElementById('su-btn').style.display='none';
   ['su-name','su-user','su-pass','su-pass2'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
@@ -1447,7 +1451,9 @@ function doApproveUser(){
   u.role=role;u.active=true;u.pendingSignup=false;u.salespersonId=spId||null;
   u.permissions=JSON.parse(JSON.stringify(role==='admin'?RBAC_DEFAULT_ADMIN:RBAC_DEFAULT_USER));
   u.approvedAt=new Date().toISOString();
-  saveDB();closeModal('modal-approve');renderUsers();updatePendingBadge();
+  saveDB();
+  supaSaveTable('users',[u]).catch(e=>console.warn('[SUPA] approve:',e));
+  closeModal('modal-approve');renderUsers();updatePendingBadge();
 }
 
 function rejectUser(id){
@@ -1699,6 +1705,7 @@ function saveUser(id){
     if(idx>-1){
       Object.assign(db.users[idx],{username,name,role,salespersonId:spId,active,permissions});
       if(pwdRaw) db.users[idx].pwd=hashPwd(pwdRaw);
+      supaSaveTable('users',[db.users[idx]]).catch(e=>console.warn('[SUPA] user edit:',e));
       // Update currentUser session if editing self
       if(currentUser&&currentUser.id===id){
         currentUser.permissions=permissions;
@@ -5949,7 +5956,14 @@ setInterval(async()=>{
     const _asDemoMap={customers:_asDemoCids,salespeople:new Set(['sp001','sp002','sp003','sp004','sp005']),campaigns:new Set(['camp001','camp002','camp003','camp004','camp005']),invoices:new Set(['inv001','inv002','inv003','inv004','inv005','inv006','inv007','inv008'])};
     let changed=false;
     SUPA_TABLES.forEach(t=>{
-      if(t==='users') return;
+      if(t==='users'){
+        // Sync users — admin sees new sign-up requests; users get approvals
+        const rU=(remote[t]||[]).filter(ru=>ru.pwd&&ru.pwd.length>0);
+        if(!rU.length) return;
+        rU.forEach(ru=>{ const i=(db.users||[]).findIndex(u=>u.username===ru.username); if(i>=0){db.users[i]=ru;}else{if(!db.users)db.users=[];db.users.push(ru);} });
+        const _s={}; db.users=(db.users||[]).filter(u=>{if(!_s[u.username]){_s[u.username]=true;return true;}return false;});
+        changed=true; return;
+      }
       const remoteRows=(remote[t]||[]).filter(r=>!(_asDemoMap[t]&&_asDemoMap[t].has(r.uid||r.id)));
       if(!remoteRows.length) return;
       const localRows=db[t]||[];
