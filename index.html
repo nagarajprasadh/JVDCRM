@@ -1458,8 +1458,14 @@ function doApproveUser(){
 
 function rejectUser(id){
   if(!confirm('Reject and delete this sign-up request?'))return;
+  const _ru=(db.users||[]).find(u=>u.id===id);
   db.users=(db.users||[]).filter(u=>u.id!==id);
-  saveDB();renderUsers();updatePendingBadge();
+  saveDB();
+  // Delete from Supabase immediately so it doesn't come back on other devices
+  if(_ru&&(_ru.uid||_ru.id)){
+    supaDeleteOne('users',_ru.uid||_ru.id);
+  }
+  renderUsers();updatePendingBadge();
 }
 
 function renderUsers(){
