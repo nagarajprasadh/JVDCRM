@@ -6143,6 +6143,16 @@ function renderHelp(){
           "If a user gets a new phone or loses access to their authenticator app, go to Settings → Users &amp; Access, find their row, and click 🔄 Reset 2FA. They will be prompted to re-enrol with a new QR code on next login.",
           "The user list shows 🔐 2FA On (green) or ⚠ 2FA Not Set (red) for each account so you can see at a glance who is protected.",
           "New users who sign up via the login page cannot access the system until an admin approves their account from the Pending Approval queue in Settings → Users &amp; Access."
+        ]},
+        {title:"Announcements &amp; News Ticker",steps:[
+          "Click the 📰 News &amp; Announcements icon (top-right toolbar) to open the News panel.",
+          "The panel has two tabs: Announcements (your internal posts) and Market News (live jewellery industry news).",
+          "To post a new announcement: open the News panel → Announcements tab → click + New Announcement (or go to Settings → Announcements tab).",
+          "Fill in Title (required), Message body, and an optional Link URL with a label (e.g. 'Read more').",
+          "Tick 'Show in ticker' to have this announcement scroll across the green banner at the very top of every page — visible to all logged-in users.",
+          "The ticker scrolls continuously. To control speed: go to Settings → Announcements tab → drag the Ticker Speed slider (Fast = 10s, Slow = 60s) → click Apply.",
+          "To edit or delete an announcement: use the ✏️ / 🗑 buttons on each card in the News panel or in Settings → Announcements.",
+          "Only admin users can post, edit, or delete announcements. All users (including salespersons) can read them."
         ]}]},
     salesperson:{icon:"🤝",title:"Salesperson",color:"var(--blue)",
       intro:"Your workspace: Customers, Tasks, and Deals. You see your own assigned leads. Dashboard shows your personal task list.",
@@ -6241,6 +6251,15 @@ function renderHelp(){
           "Reports - PDF Reports tab: click Follow-Up Overdue to see all leads not contacted in 14+ days sorted by urgency. Click KYC Status Report for a full compliance snapshot. Click Invoice and Payments for outstanding balances.",
           "All reports support date range filtering: All Time, By Month, or Custom exact dates.",
           "CSV exports open directly in Excel. UTF-8 BOM encoding ensures Thai characters display correctly."
+        ]},
+        {title:"Announcements &amp; News Ticker",steps:[
+          "Go to Settings → Announcements tab to manage all internal announcements.",
+          "Click + New Announcement. Enter a Title (required), body message, and optional link with a label.",
+          "Tick 'Show in ticker' to display this announcement in the scrolling green banner at the top of every page for all users.",
+          "To control how fast the ticker scrolls: drag the Ticker Speed slider at the top of the Announcements settings (10s = fastest, 60s = slowest) and click Apply.",
+          "All posted announcements also appear in the 📰 News panel (top-right toolbar). Salespersons can read them there.",
+          "Use the Market News tab in the News panel for live jewellery industry headlines — no setup required.",
+          "Edit or delete any announcement at any time using the ✏️ / 🗑 buttons. Changes to the ticker update instantly for all users."
         ]}]},
     inventory:{icon:"💎",title:"Inventory",color:"var(--gold2)",
       intro:"Your workspace: Stock Inventory and Suppliers. Track every stone from purchase to sale.",
@@ -6450,12 +6469,23 @@ function renderHelp(){
           "Store this backup securely — use it to restore the CRM if needed.",
           "Import Data: restore from a previously exported JSON file.",
           "Export at least once a week as a safety precaution."
+        ]},
+        {title:"Announcements Tab",steps:[
+          "Go to Settings → Announcements to create and manage all internal announcements.",
+          "The Ticker Speed slider at the top controls scroll speed for the green banner: drag left for faster (10s), drag right for slower (60s), then click Apply.",
+          "Click + New Announcement. Title is required. Body, link URL, and link label are optional.",
+          "Tick 'Show in ticker' to include this announcement in the scrolling banner visible on every page.",
+          "Announcements that are not in the ticker still appear in the News panel (📰 top-right) for all users.",
+          "Edit (✏️) or delete (🗑) any announcement at any time. Deletions remove it from the ticker immediately."
         ]}
       ]}
   };
 
   const g=guides[tab];
   const qref=[
+    ["Post Announcement","Settings → Announcements → + New Announcement"],
+    ["Set Ticker Speed","Settings → Announcements → Ticker Speed slider → Apply"],
+    ["View News & Announcements","📰 icon (top-right toolbar) → Announcements or Market News tab"],
     ["Add Customer","Customers → + Add Customer"],
     ["Add Task","Tasks → + New Task"],
     ["Record a Deal","Deals → + New Deal"],
