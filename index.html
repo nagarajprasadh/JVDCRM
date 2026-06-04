@@ -8284,9 +8284,25 @@ function renderSettingsVip(){
 // ── Data tab ──────────────────────────────────────────────────────────────
 function renderSettingsAnn(){
   const anns=db.announcements||[];
+  const speed=(db.settings&&db.settings.tickerSpeed)||25;
   document.getElementById('settings-tab-body').innerHTML=`
     <div style="max-width:680px">
       <div style="font-size:13px;color:var(--text3);margin-bottom:16px">Post announcements visible to all users. Tick "Show in ticker" to scroll them in the banner at the top.</div>
+
+      <div class="card" style="margin-bottom:20px;padding:16px 18px">
+        <div style="font-weight:700;color:var(--text);margin-bottom:10px;font-size:14px">📢 Ticker Speed</div>
+        <div style="display:flex;align-items:center;gap:14px">
+          <span style="font-size:12px;color:var(--text3);width:42px">Fast</span>
+          <input type="range" id="ticker-speed-slider" min="10" max="60" step="5" value="${speed}"
+            style="flex:1;accent-color:var(--green)"
+            oninput="document.getElementById('ticker-speed-val').textContent=this.value+'s'">
+          <span style="font-size:12px;color:var(--text3);width:42px">Slow</span>
+          <span id="ticker-speed-val" style="font-size:13px;font-weight:700;color:var(--text);min-width:34px">${speed}s</span>
+          <button class="btn btn-gold btn-sm" onclick="setTickerSpeed(document.getElementById('ticker-speed-slider').value)">Apply</button>
+        </div>
+        <div style="font-size:11px;color:var(--text3);margin-top:8px">Drag to adjust scroll speed. Lower = faster, higher = slower.</div>
+      </div>
+
       <button class="btn btn-gold" onclick="openAnnModal()" style="margin-bottom:18px">+ New Announcement</button>
       <div id="ann-settings-list">${renderAnnList(anns)}</div>
     </div>`;
@@ -8294,8 +8310,7 @@ function renderSettingsAnn(){
 
 function renderAnnList(anns){
   if(!anns||!anns.length) return '<div style="color:var(--text3);font-size:13px">No announcements yet.</div>';
-  return [...anns].reverse().map((a,ri)=>{
-    const i=anns.length-1-ri;
+  return [...anns].reverse().map((a)=>{
     return '<div class="card" style="margin-bottom:12px;padding:16px 18px">'
       +'<div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px">'
       +'<div style="flex:1">'
@@ -8306,15 +8321,15 @@ function renderAnnList(anns){
       +(a.ticker?' <span style="background:#EBF7EE;color:#1C6B3A;border-radius:20px;padding:1px 8px;font-size:10px;font-weight:700;margin-left:4px">📢 In ticker</span>':'')
       +'</div></div>'
       +'<div style="display:flex;gap:6px;flex-shrink:0">'
-      +'<button class="btn btn-outline btn-sm" onclick="editAnn('+i+')">✏️ Edit</button>'
-      +'<button class="btn btn-outline btn-sm" style="color:var(--red)" onclick="deleteAnnFromSettings('+i+')">🗑</button>'
+      +'<button class="btn btn-outline btn-sm" onclick="editAnnById(\''+a.id+'\')">✏️ Edit</button>'
+      +'<button class="btn btn-outline btn-sm" style="color:var(--red)" onclick="deleteAnnFromSettings(\''+a.id+'\')">🗑</button>'
       +'</div></div></div>';
   }).join('');
 }
 
-function deleteAnnFromSettings(idx){
+function deleteAnnFromSettings(id){
   if(!confirm('Delete this announcement?')) return;
-  db.announcements=(db.announcements||[]).filter((_,i)=>i!==idx);
+  db.announcements=(db.announcements||[]).filter(a=>a.id!==id);
   saveDB(); updateTicker();
   document.getElementById('ann-settings-list').innerHTML=renderAnnList(db.announcements);
 }
@@ -8524,15 +8539,15 @@ function renderAnnouncements(){
     body.innerHTML = addBtn + '<div style="text-align:center;padding:30px;color:var(--text3);font-size:13px">No announcements yet.</div>';
     return;
   }
-  body.innerHTML = addBtn + anns.map((a,i)=>`
+  body.innerHTML = addBtn + anns.map((a)=>`
     <div class="ann-card">
       <div class="ann-card-t">${a.title}</div>
       <div class="ann-card-b">${a.body||''}</div>
       ${a.link?`<a class="ann-card-l" href="${a.link}" target="_blank">🔗 ${a.linkLabel||a.link}</a>`:''}
       <div style="font-size:10px;color:var(--text3);margin-top:6px">${a.date||''}</div>
       ${isAdminUser?`<div style="display:flex;gap:6px;margin-top:6px">
-        <button class="btn btn-outline btn-sm" onclick="editAnn(${anns.length-1-i})">✏️</button>
-        <button class="btn btn-outline btn-sm" style="color:var(--red)" onclick="deleteAnn(${anns.length-1-i})">🗑</button>
+        <button class="btn btn-outline btn-sm" onclick="editAnnById('${a.id}')">✏️</button>
+        <button class="btn btn-outline btn-sm" style="color:var(--red)" onclick="deleteAnnById('${a.id}')">🗑</button>
       </div>`:''}
     </div>`).join('');
 }
@@ -8561,6 +8576,16 @@ function openAnnModal(idx){
 }
 
 function editAnn(idx){ openAnnModal(idx); }
+function editAnnById(id){
+  const idx=(db.announcements||[]).findIndex(a=>a.id===id);
+  if(idx>=0) openAnnModal(idx);
+}
+function deleteAnnById(id){
+  if(!confirm('Delete this announcement?')) return;
+  db.announcements=(db.announcements||[]).filter(a=>a.id!==id);
+  saveDB(); renderAnnouncements(); updateTicker();
+  _newsCache['ann']=null;
+}
 
 function saveAnn(idx){
   const title = document.getElementById('ann-title').value.trim();
@@ -8592,14 +8617,26 @@ function deleteAnn(idx){
   _newsCache['ann']=null;
 }
 
+function setTickerSpeed(val){
+  const s=parseInt(val)||25;
+  if(!db.settings) db.settings={};
+  db.settings.tickerSpeed=s;
+  saveDB();
+  const track=document.getElementById('ann-ticker-track');
+  if(track) track.style.animationDuration=s+'s';
+  showToast('Ticker speed updated','success');
+}
+
 function updateTicker(){
   const items=(db.announcements||[]).filter(a=>a.ticker);
   const el=document.getElementById('ann-ticker');
   const track=document.getElementById('ann-ticker-track');
   if(!el||!track) return;
   if(!items.length){ el.classList.remove('show'); return; }
+  const speed=(db.settings&&db.settings.tickerSpeed)||25;
   const content = items.map(a=>`<span class="titem">${a.link?`<a href="${a.link}" target="_blank">${a.title}</a>`:a.title}</span>`).join('');
   track.innerHTML = content + content; // duplicate for seamless loop
+  track.style.animationDuration=speed+'s';
   el.classList.add('show');
 }
 
