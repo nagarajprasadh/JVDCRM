@@ -531,6 +531,49 @@ th[data-tip]{cursor:pointer}
   .card{padding:14px}
   .nav-item{padding:11px 14px}
 }
+
+/* Agent Bot */
+#agent-bot-bubble{position:fixed;bottom:24px;right:24px;z-index:9990;width:52px;height:52px;border-radius:50%;background:var(--green);color:#fff;font-size:22px;display:flex;align-items:center;justify-content:center;cursor:pointer;box-shadow:0 4px 20px rgba(0,0,0,.3);transition:transform .2s;user-select:none}
+#agent-bot-bubble:hover{transform:scale(1.08)}
+#agent-bot-panel{position:fixed;bottom:88px;right:24px;z-index:9990;width:360px;height:500px;background:var(--card);border-radius:16px;box-shadow:0 8px 40px rgba(0,0,0,.3);display:none;flex-direction:column;overflow:hidden;border:1px solid var(--border2)}
+#agent-bot-panel.open{display:flex}
+#agent-bot-hdr{background:var(--green);color:#fff;padding:14px 16px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
+#agent-bot-msgs{flex:1;overflow-y:auto;padding:12px;display:flex;flex-direction:column;gap:10px}
+.bmsg{max-width:85%;padding:9px 13px;border-radius:12px;font-size:13px;line-height:1.5;white-space:pre-wrap;word-break:break-word}
+.bmsg.b{background:var(--bg2);color:var(--text);align-self:flex-start;border-bottom-left-radius:3px}
+.bmsg.u{background:var(--green);color:#fff;align-self:flex-end;border-bottom-right-radius:3px}
+#agent-bot-row{padding:10px;border-top:1px solid var(--border);display:flex;gap:8px;flex-shrink:0}
+#agent-bot-inp{flex:1;padding:9px 12px;border:1.5px solid var(--border);border-radius:9px;font-size:13px;background:var(--bg2);color:var(--text);outline:none;font-family:'Inter',sans-serif}
+#agent-bot-go{background:var(--green);color:#fff;border:none;border-radius:9px;padding:9px 14px;cursor:pointer;font-size:14px;font-weight:700}
+.bchip{display:inline-block;background:var(--bg2);border:1px solid var(--border2);border-radius:20px;padding:4px 10px;font-size:11px;cursor:pointer;color:var(--text2);margin:3px 3px 0 0}
+.bchip:hover{background:var(--green);color:#fff;border-color:var(--green)}
+/* News Panel */
+#news-panel{position:fixed;top:0;right:0;width:380px;height:100vh;background:var(--card);z-index:9980;box-shadow:-4px 0 30px rgba(0,0,0,.2);display:flex;flex-direction:column;transform:translateX(100%);transition:transform .3s ease;border-left:1px solid var(--border2)}
+#news-panel.open{transform:translateX(0)}
+#news-ovl{position:fixed;inset:0;background:rgba(0,0,0,.2);z-index:9970;display:none}
+#news-ovl.open{display:block}
+#news-hdr{padding:14px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-shrink:0;background:var(--green);color:#fff}
+.ntab{flex:1;padding:10px 4px;font-size:11px;font-weight:700;cursor:pointer;text-align:center;color:var(--text2);background:var(--card);border:none;border-bottom:2px solid transparent;font-family:'Inter',sans-serif;transition:all .15s}
+.ntab.active{color:var(--green);border-bottom:2px solid var(--green)}
+#news-tabs{display:flex;border-bottom:1px solid var(--border);flex-shrink:0}
+#news-body{flex:1;overflow-y:auto;padding:14px}
+.nitem{padding:11px 0;border-bottom:1px solid var(--border);cursor:pointer}
+.nitem:last-child{border-bottom:none}
+.nitem-t{font-size:13px;font-weight:600;color:var(--text);line-height:1.4;margin-bottom:3px}
+.nitem-m{font-size:11px;color:var(--text3)}
+.nitem:hover .nitem-t{color:var(--green)}
+.ann-card{background:var(--bg2);border-radius:10px;padding:12px 14px;margin-bottom:10px;border-left:3px solid var(--gold)}
+.ann-card-t{font-size:13px;font-weight:700;color:var(--text);margin-bottom:4px}
+.ann-card-b{font-size:12px;color:var(--text2);line-height:1.5;white-space:pre-wrap}
+.ann-card-l{font-size:11px;color:var(--blue);text-decoration:none;margin-top:6px;display:inline-block}
+/* Ticker */
+#ann-ticker{background:linear-gradient(90deg,#1B4D3E,#2A6B57);color:#fff;padding:5px 0;overflow:hidden;display:none;border-bottom:1px solid rgba(255,255,255,.1)}
+#ann-ticker.show{display:block}
+#ann-ticker-track{display:inline-flex;animation:tickScroll 25s linear infinite;white-space:nowrap}
+#ann-ticker-track:hover{animation-play-state:paused}
+.titem{font-size:12px;padding:0 48px;opacity:.95}
+.titem a{color:#FFD700;text-decoration:none}
+@keyframes tickScroll{from{transform:translateX(0)}to{transform:translateX(-50%)}}
 </style>
 
 </head>
@@ -641,10 +684,12 @@ th[data-tip]{cursor:pointer}
       <div class="ub-avatar" id="ub-initials">?</div>
       <div><div id="ub-name" style="font-weight:600">User</div><div class="ub-role" id="ub-role">—</div></div>
     </div>
-    <button class="btn btn-outline btn-sm" id="btn-logout" onclick="doLogout()" style="display:none;font-size:11px">Sign Out</button>
+    <button id="news-btn" onclick="toggleNews()" title="News & Announcements" style="background:none;border:none;cursor:pointer;color:var(--text2);font-size:18px;padding:4px 8px;border-radius:8px;margin-right:4px" title="News">📰</button>
+      <button class="btn btn-outline btn-sm" id="btn-logout" onclick="doLogout()" style="display:none;font-size:11px">Sign Out</button>
     <button class="btn btn-gold" onclick="showModal('modal-cust')">+ Add Customer</button>
   </div>
-  <div class="content" id="content"></div>
+  <div id="ann-ticker"><div id="ann-ticker-track"></div></div>
+<div class="content" id="content"></div>
 </div>
 
 <!-- ══════════════════ MODALS ══════════════════ -->
@@ -821,7 +866,7 @@ function applyRolePreset(role){ return Object.assign({},ROLE_PRESETS[role]||RBAC
 const DEMO_DB = {customers:[],salespeople:[],campaigns:[],invoices:[],businessCards:[],users:[]}
 // Live database -- starts EMPTY. Populated from localStorage then Supabase only.
 let db = { customers:[], salespeople:[], campaigns:[], businessCards:[], invoices:[],
-           savedReports:[], settings:{}, suppliers:[], stock:[], deals:[], tasks:[], users:[] };
+           savedReports:[], settings:{}, suppliers:[], stock:[], deals:[], tasks:[], users:[], announcements:[] };
 
 function loadDB(){
   try{
@@ -7970,6 +8015,7 @@ function renderSettings(){
   ${tabBtn('thresholds','Thresholds','🎯')}
   ${tabBtn('vip','VIP Tiers','👑')}
   ${tabBtn('data','Data','🗂')}
+  ${tabBtn('ann','Announcements','📣')}
 </div>
 <div id="settings-tab-body"></div>`;
 
@@ -7978,6 +8024,7 @@ function renderSettings(){
   else if(tab==='thresholds') renderSettingsThresholds();
   else if(tab==='vip')   renderSettingsVip();
   else if(tab==='data')  renderSettingsData();
+  else if(tab==='ann')   renderSettingsAnn();
 }
 
 // ── General tab ───────────────────────────────────────────────────────────
@@ -8219,6 +8266,43 @@ function renderSettingsVip(){
 }
 
 // ── Data tab ──────────────────────────────────────────────────────────────
+function renderSettingsAnn(){
+  const anns=db.announcements||[];
+  document.getElementById('settings-tab-body').innerHTML=`
+    <div style="max-width:680px">
+      <div style="font-size:13px;color:var(--text3);margin-bottom:16px">Post announcements visible to all users. Tick "Show in ticker" to scroll them in the banner at the top.</div>
+      <button class="btn btn-gold" onclick="openAnnModal()" style="margin-bottom:18px">+ New Announcement</button>
+      <div id="ann-settings-list">${renderAnnList(anns)}</div>
+    </div>`;
+}
+
+function renderAnnList(anns){
+  if(!anns||!anns.length) return '<div style="color:var(--text3);font-size:13px">No announcements yet.</div>';
+  return [...anns].reverse().map((a,ri)=>{
+    const i=anns.length-1-ri;
+    return '<div class="card" style="margin-bottom:12px;padding:16px 18px">'
+      +'<div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px">'
+      +'<div style="flex:1">'
+      +'<div style="font-weight:700;color:var(--text);margin-bottom:4px">'+a.title+'</div>'
+      +(a.body?'<div style="font-size:13px;color:var(--text2);margin-bottom:6px;white-space:pre-wrap">'+a.body+'</div>':'')
+      +(a.link?'<a href="'+a.link+'" target="_blank" style="font-size:12px;color:var(--blue)">🔗 '+(a.linkLabel||a.link)+'</a>':'')
+      +'<div style="font-size:11px;color:var(--text3);margin-top:6px">'+(a.date||'')
+      +(a.ticker?' <span style="background:#EBF7EE;color:#1C6B3A;border-radius:20px;padding:1px 8px;font-size:10px;font-weight:700;margin-left:4px">📢 In ticker</span>':'')
+      +'</div></div>'
+      +'<div style="display:flex;gap:6px;flex-shrink:0">'
+      +'<button class="btn btn-outline btn-sm" onclick="editAnn('+i+')">✏️ Edit</button>'
+      +'<button class="btn btn-outline btn-sm" style="color:var(--red)" onclick="deleteAnnFromSettings('+i+')">🗑</button>'
+      +'</div></div></div>';
+  }).join('');
+}
+
+function deleteAnnFromSettings(idx){
+  if(!confirm('Delete this announcement?')) return;
+  db.announcements=(db.announcements||[]).filter((_,i)=>i!==idx);
+  saveDB(); updateTicker();
+  document.getElementById('ann-settings-list').innerHTML=renderAnnList(db.announcements);
+}
+
 function renderSettingsData(){
   document.getElementById('settings-tab-body').innerHTML=`
 <div style="max-width:600px">
@@ -8313,7 +8397,419 @@ function resetZoom(){
 }
 // Apply saved zoom on load
 window.addEventListener('DOMContentLoaded',function(){ applyZoom(); });
+
+// ══════════════════════════════════════════════════════════════
+// NEWS PANEL
+// ══════════════════════════════════════════════════════════════
+let _newsTab = 'industry';
+let _newsCache = {};
+
+const NEWS_FEEDS = {
+  industry: [
+    'https://api.allorigins.win/get?url=' + encodeURIComponent('https://www.idexonline.com/rss'),
+    'https://api.allorigins.win/get?url=' + encodeURIComponent('https://www.nationaljeweler.com/rss.xml'),
+    'https://api.allorigins.win/get?url=' + encodeURIComponent('https://feeds.reuters.com/reuters/companyNews'),
+  ],
+  business: [
+    'https://api.allorigins.win/get?url=' + encodeURIComponent('https://feeds.bbci.co.uk/news/business/rss.xml'),
+    'https://api.allorigins.win/get?url=' + encodeURIComponent('https://www.channelnewsasia.com/api/v1/rss-outbound-feed?_format=xml&category=6511'),
+    'https://api.allorigins.win/get?url=' + encodeURIComponent('https://feeds.reuters.com/reuters/businessNews'),
+  ]
+};
+
+function toggleNews(){
+  const p=document.getElementById('news-panel');
+  const o=document.getElementById('news-ovl');
+  const isOpen=p.classList.contains('open');
+  if(isOpen){ p.classList.remove('open'); o.classList.remove('open'); }
+  else { p.classList.add('open'); o.classList.add('open'); loadNews(_newsTab); }
+}
+
+function switchNewsTab(tab, btn){
+  _newsTab=tab;
+  document.querySelectorAll('.ntab').forEach(b=>b.classList.remove('active'));
+  if(btn) btn.classList.add('active');
+  loadNews(tab);
+}
+
+async function loadNews(tab){
+  const body=document.getElementById('news-body');
+  if(!body) return;
+  if(_newsCache[tab]){ renderNews(tab,_newsCache[tab]); return; }
+  body.innerHTML='<div style="text-align:center;padding:40px;color:var(--text3);font-size:13px">⏳ Loading…</div>';
+
+  if(tab==='ann'){
+    renderAnnouncements();
+    return;
+  }
+
+  const feeds = NEWS_FEEDS[tab] || [];
+  const items = [];
+
+  for(const url of feeds){
+    try{
+      const res = await fetch(url, {signal: AbortSignal.timeout(5000)});
+      const json = await res.json();
+      const parser = new DOMParser();
+      const doc = parser.parseFromString(json.contents, 'text/xml');
+      const nodes = doc.querySelectorAll('item');
+      nodes.forEach(n=>{
+        const title = n.querySelector('title')?.textContent?.trim();
+        const link  = n.querySelector('link')?.textContent?.trim() || n.querySelector('guid')?.textContent?.trim();
+        const pub   = n.querySelector('pubDate')?.textContent?.trim();
+        if(title && link) items.push({title, link, pub: pub ? new Date(pub).toLocaleDateString('en-GB') : ''});
+      });
+    }catch(e){}
+    if(items.length >= 20) break;
+  }
+
+  if(!items.length){
+    // Fallback: scrape BBC via allorigins
+    try{
+      const r = await fetch('https://api.allorigins.win/get?url=' + encodeURIComponent('https://feeds.bbci.co.uk/news/business/rss.xml'));
+      const j = await r.json();
+      const doc = new DOMParser().parseFromString(j.contents,'text/xml');
+      doc.querySelectorAll('item').forEach(n=>{
+        const title = n.querySelector('title')?.textContent?.trim();
+        const link = n.querySelector('link')?.textContent?.trim();
+        const pub = n.querySelector('pubDate')?.textContent?.trim();
+        if(title && link) items.push({title,link,pub:pub?new Date(pub).toLocaleDateString('en-GB'):''});
+      });
+    }catch(e){}
+  }
+
+  _newsCache[tab] = items;
+  renderNews(tab, items);
+}
+
+function renderNews(tab, items){
+  const body=document.getElementById('news-body');
+  if(!body) return;
+  if(!items.length){
+    body.innerHTML='<div style="text-align:center;padding:40px;color:var(--text3);font-size:13px">No news available right now.<br>Check back later.</div>';
+    return;
+  }
+  body.innerHTML = items.slice(0,25).map(i=>`
+    <div class="nitem" onclick="window.open('${i.link}','_blank')">
+      <div class="nitem-t">${i.title}</div>
+      <div class="nitem-m">${i.pub}</div>
+    </div>`).join('');
+}
+
+function renderAnnouncements(){
+  const body=document.getElementById('news-body');
+  if(!body) return;
+  const anns=(db.announcements||[]).slice().reverse();
+  const isAdminUser = isAdmin();
+  const addBtn = isAdminUser ? `
+    <button class="btn btn-gold btn-sm" onclick="openAnnModal()" style="width:100%;margin-bottom:14px">+ New Announcement</button>` : '';
+
+  if(!anns.length){
+    body.innerHTML = addBtn + '<div style="text-align:center;padding:30px;color:var(--text3);font-size:13px">No announcements yet.</div>';
+    return;
+  }
+  body.innerHTML = addBtn + anns.map((a,i)=>`
+    <div class="ann-card">
+      <div class="ann-card-t">${a.title}</div>
+      <div class="ann-card-b">${a.body||''}</div>
+      ${a.link?`<a class="ann-card-l" href="${a.link}" target="_blank">🔗 ${a.linkLabel||a.link}</a>`:''}
+      <div style="font-size:10px;color:var(--text3);margin-top:6px">${a.date||''}</div>
+      ${isAdminUser?`<div style="display:flex;gap:6px;margin-top:6px">
+        <button class="btn btn-outline btn-sm" onclick="editAnn(${anns.length-1-i})">✏️</button>
+        <button class="btn btn-outline btn-sm" style="color:var(--red)" onclick="deleteAnn(${anns.length-1-i})">🗑</button>
+      </div>`:''}
+    </div>`).join('');
+}
+
+function openAnnModal(idx){
+  if(!isAdmin()) return;
+  const ann = idx!==undefined ? (db.announcements||[])[idx] : null;
+  const html = `
+    <div style="position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:10000;display:flex;align-items:center;justify-content:center" id="ann-modal-bg">
+    <div style="background:var(--card);border-radius:16px;padding:28px;width:480px;max-width:95vw;box-shadow:0 8px 40px rgba(0,0,0,.3)">
+      <div style="font-family:'EB Garamond',serif;font-size:20px;font-weight:600;margin-bottom:20px">${ann?'Edit':'New'} Announcement</div>
+      <div class="field"><label>Title</label><input id="ann-title" class="input" value="${ann?ann.title:''}" placeholder="e.g. Office closed on 5 June"></div>
+      <div class="field"><label>Message</label><textarea id="ann-body" class="input" rows="3" style="resize:vertical">${ann?ann.body:''}</textarea></div>
+      <div class="field"><label>Link URL (optional)</label><input id="ann-link" class="input" value="${ann?ann.link||'':''}" placeholder="https://..."></div>
+      <div class="field"><label>Link Label (optional)</label><input id="ann-linklabel" class="input" value="${ann?ann.linkLabel||'':''}" placeholder="e.g. Read more"></div>
+      <div class="field" style="display:flex;align-items:center;gap:10px">
+        <label style="margin:0">Show in ticker</label>
+        <input type="checkbox" id="ann-ticker-chk" ${ann&&ann.ticker?'checked':''} style="width:16px;height:16px">
+      </div>
+      <div style="display:flex;gap:10px;margin-top:20px;justify-content:flex-end">
+        <button class="btn btn-outline" onclick="document.getElementById('ann-modal-bg').remove()">Cancel</button>
+        <button class="btn btn-gold" onclick="saveAnn(${idx!==undefined?idx:'null'})">Save</button>
+      </div>
+    </div></div>`;
+  document.body.insertAdjacentHTML('beforeend', html);
+}
+
+function editAnn(idx){ openAnnModal(idx); }
+
+function saveAnn(idx){
+  const title = document.getElementById('ann-title').value.trim();
+  if(!title){ alert('Please enter a title.'); return; }
+  const ann = {
+    id: idx!==null && idx!==undefined ? (db.announcements||[])[idx]?.id||uid() : uid(),
+    title,
+    body: document.getElementById('ann-body').value.trim(),
+    link: document.getElementById('ann-link').value.trim(),
+    linkLabel: document.getElementById('ann-linklabel').value.trim(),
+    ticker: document.getElementById('ann-ticker-chk').checked,
+    date: new Date().toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'})
+  };
+  if(!db.announcements) db.announcements=[];
+  if(idx!==null && idx!==undefined){ db.announcements[idx]=ann; }
+  else { db.announcements.push(ann); }
+  saveDB();
+  document.getElementById('ann-modal-bg').remove();
+  renderAnnouncements();
+  updateTicker();
+  _newsCache['ann']=null;
+  showToast('Announcement saved','success');
+}
+
+function deleteAnn(idx){
+  if(!confirm('Delete this announcement?')) return;
+  db.announcements=(db.announcements||[]).filter((_,i)=>i!==idx);
+  saveDB(); renderAnnouncements(); updateTicker();
+  _newsCache['ann']=null;
+}
+
+function updateTicker(){
+  const items=(db.announcements||[]).filter(a=>a.ticker);
+  const el=document.getElementById('ann-ticker');
+  const track=document.getElementById('ann-ticker-track');
+  if(!el||!track) return;
+  if(!items.length){ el.classList.remove('show'); return; }
+  const content = items.map(a=>`<span class="titem">${a.link?`<a href="${a.link}" target="_blank">${a.title}</a>`:a.title}</span>`).join('');
+  track.innerHTML = content + content; // duplicate for seamless loop
+  el.classList.add('show');
+}
+
+// Refresh news every 10 minutes
+setInterval(()=>{ _newsCache={}; if(document.getElementById('news-panel').classList.contains('open')) loadNews(_newsTab); }, 10*60*1000);
+
+// ══════════════════════════════════════════════════════════════
+// AGENT BOT
+// ══════════════════════════════════════════════════════════════
+let _botOpen = false;
+let _botGreeted = false;
+
+function toggleBot(){
+  _botOpen=!_botOpen;
+  const panel=document.getElementById('agent-bot-panel');
+  panel.classList.toggle('open',_botOpen);
+  if(_botOpen && !_botGreeted){
+    _botGreeted=true;
+    const name = currentUser?.name||currentUser?.username||'there';
+    botMsg(`Hi ${name}! 👋 I can answer questions about your CRM data.\n\nTry asking:`, 'b');
+    const chips=['Who are my customers in Thailand?','Who has a birthday this month?','How many open deals do I have?','Show me overdue tasks','What is my total pipeline value?','Who are my top customers by deal value?'];
+    botChips(chips);
+    setTimeout(()=>document.getElementById('agent-bot-inp').focus(),100);
+  }
+}
+
+function botMsg(text, type){
+  const msgs=document.getElementById('agent-bot-msgs');
+  const div=document.createElement('div');
+  div.className=`bmsg ${type}`;
+  div.textContent=text;
+  msgs.appendChild(div);
+  msgs.scrollTop=msgs.scrollHeight;
+}
+
+function botChips(chips){
+  const msgs=document.getElementById('agent-bot-msgs');
+  const div=document.createElement('div');
+  div.style.cssText='display:flex;flex-wrap:wrap;gap:6px;padding:0 4px';
+  chips.forEach(c=>{
+    const span=document.createElement('span');
+    span.className='bchip';
+    span.textContent=c;
+    span.onclick=()=>{ document.getElementById('agent-bot-inp').value=c; botSend(); };
+    div.appendChild(span);
+  });
+  msgs.appendChild(div);
+  msgs.scrollTop=msgs.scrollHeight;
+}
+
+function botSend(){
+  const inp=document.getElementById('agent-bot-inp');
+  const q=(inp.value||'').trim();
+  if(!q) return;
+  inp.value='';
+  botMsg(q,'u');
+  setTimeout(()=>botAnswer(q),300);
+}
+
+function botAnswer(q){
+  const lq=q.toLowerCase();
+  const data=ownedRecords(db.customers||[]);
+  const deals=ownedRecords(db.deals||[]);
+  const tasks=ownedRecords(db.tasks||[]);
+  const today=new Date();
+  const todayM=today.getMonth()+1;
+  const todayD=today.getDate();
+
+  let ans='';
+
+  // ── Country / location queries ───────────────────────
+  const countryMatch=lq.match(/(?:in|from)\s+([a-z\s]+?)(?:\?|$|who|how)/);
+  if(countryMatch||(lq.includes('country')||lq.includes('where')||['china','india','thailand','uae','singapore','hong kong','japan','uk','usa','france'].some(c=>lq.includes(c)))){
+    let country='';
+    for(const c of ['china','india','thailand','uae','united arab emirates','singapore','hong kong','japan','uk','united kingdom','usa','united states','france','italy','germany','australia','korea','indonesia','malaysia']){
+      if(lq.includes(c)){ country=c; break; }
+    }
+    if(countryMatch && !country) country=countryMatch[1].trim();
+    if(country){
+      const found=data.filter(c=>(c.country||c.nationality||c.city||'').toLowerCase().includes(country));
+      if(found.length){
+        ans=`Found ${found.length} customer${found.length>1?'s':''} in/from ${country.charAt(0).toUpperCase()+country.slice(1)}:\n`+found.map(c=>`• ${c.firstName||''} ${c.lastName||''} (${c.city||c.country||''}) — ${c.leadStatus||''}`.trim()).join('\n');
+      } else { ans=`No customers found in/from ${country}.`; }
+    }
+  }
+
+  // ── Birthday queries ─────────────────────────────────
+  if(!ans && (lq.includes('birthday')||lq.includes('born'))){
+    const period = lq.includes('today') ? 'today' : lq.includes('week') ? 'week' : lq.includes('month') ? 'month' : 'month';
+    const bdays=data.filter(c=>{
+      if(!c.dob) return false;
+      const d=new Date(c.dob);
+      if(period==='today') return d.getMonth()+1===todayM && d.getDate()===todayD;
+      if(period==='week'){
+        const wend=new Date(today); wend.setDate(today.getDate()+7);
+        const cd=new Date(today.getFullYear(),d.getMonth(),d.getDate());
+        return cd>=today && cd<=wend;
+      }
+      return d.getMonth()+1===todayM;
+    });
+    if(bdays.length){
+      ans=`🎂 ${bdays.length} customer${bdays.length>1?'s':''} with birthdays ${period==='today'?'today':period==='week'?'this week':'this month'}:\n`+bdays.map(c=>{
+        const d=new Date(c.dob);
+        return `• ${c.firstName||''} ${c.lastName||''} — ${d.getDate()} ${d.toLocaleString('default',{month:'short'})}`;
+      }).join('\n');
+    } else { ans=`No customers with birthdays ${period==='today'?'today':period==='week'?'this week':'this month'}.`; }
+  }
+
+  // ── Deal / pipeline queries ──────────────────────────
+  if(!ans && (lq.includes('deal')||lq.includes('pipeline')||lq.includes('revenue')||lq.includes('value'))){
+    const open=deals.filter(d=>d.status!=='Completed'&&d.status!=='Lost');
+    const closed=deals.filter(d=>d.status==='Completed');
+    const total=open.reduce((s,d)=>s+(parseFloat(d.dealValue||d.salePrice)||0),0);
+    const closedVal=closed.reduce((s,d)=>s+(parseFloat(d.dealValue||d.salePrice)||0),0);
+    if(lq.includes('open')||lq.includes('pipeline')){
+      ans=`📊 Open deals: ${open.length}\nTotal pipeline value: ฿${total.toLocaleString()}`;
+    } else if(lq.includes('closed')||lq.includes('completed')){
+      ans=`✅ Completed deals: ${closed.length}\nTotal value closed: ฿${closedVal.toLocaleString()}`;
+    } else {
+      ans=`💰 Deal summary:\n• Open: ${open.length} (฿${total.toLocaleString()})\n• Completed: ${closed.length} (฿${closedVal.toLocaleString()})\n• Total deals: ${deals.length}`;
+    }
+  }
+
+  // ── Task queries ─────────────────────────────────────
+  if(!ans && (lq.includes('task')||lq.includes('overdue')||lq.includes('due'))){
+    const now=new Date().toISOString().split('T')[0];
+    const overdue=tasks.filter(t=>t.dueDate&&t.dueDate<now&&t.status!=='Done'&&t.status!=='Completed');
+    const open=tasks.filter(t=>t.status!=='Done'&&t.status!=='Completed');
+    if(lq.includes('overdue')){
+      if(overdue.length){
+        ans=`⚠️ ${overdue.length} overdue task${overdue.length>1?'s':''}:\n`+overdue.slice(0,8).map(t=>`• ${t.title} (due ${t.dueDate})`).join('\n');
+      } else { ans='✅ No overdue tasks!'; }
+    } else {
+      ans=`📋 Tasks: ${open.length} open, ${overdue.length} overdue`;
+    }
+  }
+
+  // ── Customer count / summary ─────────────────────────
+  if(!ans && (lq.includes('how many customer')||lq.includes('total customer')||lq.includes('customer count'))){
+    const byStatus={};
+    data.forEach(c=>{ const s=c.leadStatus||'Unknown'; byStatus[s]=(byStatus[s]||0)+1; });
+    ans=`👥 Total customers: ${data.length}\n`+Object.entries(byStatus).sort((a,b)=>b[1]-a[1]).map(([s,n])=>`• ${s}: ${n}`).join('\n');
+  }
+
+  // ── Top customers ────────────────────────────────────
+  if(!ans && (lq.includes('top customer')||lq.includes('biggest')||lq.includes('highest value'))){
+    const sorted=[...data].sort((a,b)=>(parseFloat(b.dealValue||0))-(parseFloat(a.dealValue||0))).slice(0,5);
+    ans=`🏆 Top 5 customers by deal value:\n`+sorted.map((c,i)=>`${i+1}. ${c.firstName||''} ${c.lastName||''} — ฿${parseFloat(c.dealValue||0).toLocaleString()}`).join('\n');
+  }
+
+  // ── VIP queries ──────────────────────────────────────
+  if(!ans && (lq.includes('vip')||lq.includes('platinum')||lq.includes('gold')||lq.includes('silver'))){
+    let level='';
+    if(lq.includes('platinum')) level='Platinum';
+    else if(lq.includes('gold')) level='Gold';
+    else if(lq.includes('silver')) level='Silver';
+    else if(lq.includes('bronze')) level='Bronze';
+    const found=data.filter(c=>level ? (c.vipLevel||'').toLowerCase()===level.toLowerCase() : c.vipLevel&&c.vipLevel!=='None');
+    ans=`⭐ ${level||'VIP'} customers: ${found.length}\n`+(found.length?found.slice(0,8).map(c=>`• ${c.firstName||''} ${c.lastName||''} (${c.vipLevel})`).join('\n'):'');
+  }
+
+  // ── KYC queries ──────────────────────────────────────
+  if(!ans && lq.includes('kyc')){
+    const missing=data.filter(c=>!c.kycStatus||c.kycStatus==='Missing');
+    const expired=data.filter(c=>c.kycStatus==='Expired');
+    ans=`📋 KYC status:\n• Missing: ${missing.length}\n• Expired: ${expired.length}\n• Total active: ${data.length}`;
+  }
+
+  // ── Lead source ──────────────────────────────────────
+  if(!ans && (lq.includes('source')||lq.includes('referral')||lq.includes('walk-in')||lq.includes('exhibition'))){
+    const bySource={};
+    data.forEach(c=>{ const s=c.leadSource||'Unknown'; bySource[s]=(bySource[s]||0)+1; });
+    ans=`📍 Lead sources:\n`+Object.entries(bySource).sort((a,b)=>b[1]-a[1]).map(([s,n])=>`• ${s}: ${n}`).join('\n');
+  }
+
+  // ── Diamond preferences ──────────────────────────────
+  if(!ans && (lq.includes('diamond')||lq.includes('natural')||lq.includes('lab-grown')||lq.includes('lab grown'))){
+    const nat=data.filter(c=>(c.diamondType||'').toLowerCase().includes('natural'));
+    const lab=data.filter(c=>(c.diamondType||'').toLowerCase().includes('lab'));
+    ans=`💎 Diamond preferences:\n• Natural: ${nat.length}\n• Lab-Grown: ${lab.length}\n• Other/Unknown: ${data.length-nat.length-lab.length}`;
+  }
+
+  // ── Fallback ─────────────────────────────────────────
+  if(!ans){
+    ans=`I can help with:\n• Customer queries (by country, VIP, birthday, source)\n• Deal & pipeline summary\n• Task status\n• Diamond preferences\n• KYC status\n\nTry: "Who has a birthday this month?" or "How many customers in India?"`;
+  }
+
+  botMsg(ans,'b');
+}
+
+// Init ticker on load
+window.addEventListener('load', function(){
+  setTimeout(updateTicker, 1000);
+});
 </script>
 
+
+<!-- News Panel -->
+<div id="news-ovl" onclick="toggleNews()"></div>
+<div id="news-panel">
+  <div id="news-hdr">
+    <div style="font-family:'EB Garamond',serif;font-size:17px;font-weight:600">📰 News & Announcements</div>
+    <button onclick="toggleNews()" style="background:none;border:none;color:#fff;font-size:18px;cursor:pointer">✕</button>
+  </div>
+  <div id="news-tabs">
+    <button class="ntab active" onclick="switchNewsTab('industry',this)">💎 Industry</button>
+    <button class="ntab" onclick="switchNewsTab('business',this)">🌐 Business</button>
+    <button class="ntab" onclick="switchNewsTab('ann',this)">📣 Notices</button>
+  </div>
+  <div id="news-body"><div style="text-align:center;padding:40px;color:var(--text3);font-size:13px">Loading…</div></div>
+</div>
+<!-- Agent Bot -->
+<div id="agent-bot-bubble" onclick="toggleBot()" title="CRM Assistant">💬</div>
+<div id="agent-bot-panel">
+  <div id="agent-bot-hdr">
+    <div style="display:flex;align-items:center;gap:8px">
+      <span style="font-size:20px">🤖</span>
+      <div><div style="font-size:14px;font-weight:700">CRM Assistant</div><div style="font-size:11px;opacity:.8">Ask about your data</div></div>
+    </div>
+    <button onclick="toggleBot()" style="background:none;border:none;color:#fff;font-size:18px;cursor:pointer">✕</button>
+  </div>
+  <div id="agent-bot-msgs"></div>
+  <div id="agent-bot-row">
+    <input id="agent-bot-inp" type="text" placeholder="e.g. Who has a birthday this month?" onkeydown="if(event.key==='Enter')botSend()">
+    <button id="agent-bot-go" onclick="botSend()">➤</button>
+  </div>
+</div>
 </body>
 </html>
