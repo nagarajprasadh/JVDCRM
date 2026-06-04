@@ -1496,8 +1496,24 @@ function doApproveUser(){
   u.role=role;u.active=true;u.pendingSignup=false;u.salespersonId=spId||null;
   u.permissions=JSON.parse(JSON.stringify(role==='admin'?RBAC_DEFAULT_ADMIN:RBAC_DEFAULT_USER));
   u.approvedAt=new Date().toISOString();
+  if(!u.uid) u.uid=u.id;
   saveDB();
-  supaSaveTable('users',[u]).catch(e=>console.warn('[SUPA] approve:',e));
+  // PATCH existing record or POST new one
+  (async()=>{
+    try{
+      const pr=await fetch(SUPA_URL+'/rest/v1/users?uid=eq.'+encodeURIComponent(u.uid),{
+        method:'PATCH',
+        headers:{'apikey':SUPA_KEY,'Authorization':'Bearer '+SUPA_KEY,'Content-Type':'application/json','Prefer':'return=representation'},
+        body:JSON.stringify({data:u})});
+      const patched=await pr.json();
+      if(!patched||!patched.length){
+        await fetch(SUPA_URL+'/rest/v1/users',{
+          method:'POST',
+          headers:{'apikey':SUPA_KEY,'Authorization':'Bearer '+SUPA_KEY,'Content-Type':'application/json','Prefer':'resolution=merge-duplicates,return=minimal'},
+          body:JSON.stringify([{uid:u.uid,data:u}])});
+      }
+    }catch(e){console.warn('[SUPA] approve:',e);}
+  })();
   closeModal('modal-approve');renderUsers();updatePendingBadge();
 }
 
