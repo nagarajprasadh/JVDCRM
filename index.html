@@ -1106,11 +1106,16 @@ function _doLoginCheck(uname, pass){
   const users=db.users||[];
   const anyUser=users.find(u=>u.username.toLowerCase()===uname);
   if(anyUser&&anyUser.active===false&&anyUser.pendingSignup){
-    showLoginError(anyUser.pwd===hashPwd(pass)?'Your account is pending admin approval.':'Incorrect username or password.');
+    const failMsg = anyUser.pwd===hashPwd(pass)?'Your account is pending admin approval.':'Incorrect username or password.';
+    if(anyUser.pwd!==hashPwd(pass)) recordAuditLogin({username:uname,name:uname},'Failed — Wrong Password');
+    showLoginError(failMsg);
     return;
   }
   const user=users.find(u=>u.username.toLowerCase()===uname && u.active!==false);
-  if(!user||user.pwd!==hashPwd(pass)){ showLoginError('Incorrect username or password.'); return; }
+  if(!user||user.pwd!==hashPwd(pass)){
+    recordAuditLogin({username:uname,name:uname},'Failed — Wrong Password');
+    showLoginError('Incorrect username or password.'); return;
+  }
   if(user.mustChangePwd){ showChangePwdScreen(user); return; }
   completeLogin(user);
 }
@@ -1238,6 +1243,7 @@ function completeLogin(user){
   const isFirstApprovedLogin = user.approvedAt && !user.lastLoginAt;
   user.lastLoginAt = new Date().toISOString();
   saveDB();
+  recordAuditLogin(user, 'Success');
   // Push this user's record to Supabase on every login — keeps all devices in sync
   if(user.uid && user.pwd && user.pwd.length>0){
     supaSaveTable('users',[user]).catch(e=>console.warn('[SUPA] Login sync push failed:',e));
@@ -1379,6 +1385,7 @@ function doSignUp(){
 }
 
 function doLogout(){
+  recordAuditLogout();
   // Capture name and time before clearing currentUser
   const loggedOutName = currentUser ? currentUser.name : '';
   const now = new Date();
@@ -1409,6 +1416,178 @@ function doLogout(){
 }
 
 function isAdmin(){ return currentUser && currentUser.role==='admin'; }
+
+/* ══════════════════════════════════════════════
+   AUDIT LOG
+   ══════════════════════════════════════════════ */
+let _auditSessionId = null;
+
+function _getDeviceInfo(){
+  const ua = navigator.userAgent;
+  let browser = 'Unknown';
+  if(/Edg\//.test(ua)) browser='Edge';
+  else if(/Chrome\//.test(ua)&&!/Chromium/.test(ua)) browser='Chrome';
+  else if(/Firefox\//.test(ua)) browser='Firefox';
+  else if(/Safari\//.test(ua)&&!/Chrome/.test(ua)) browser='Safari';
+  else if(/OPR\/|Opera\//.test(ua)) browser='Opera';
+  let device = 'Desktop';
+  if(/Mobi|Android|iPhone|iPad|iPod/.test(ua)) device = /iPad/.test(ua)?'Tablet':'Mobile';
+  return device+' · '+browser;
+}
+
+async function recordAuditLogin(user, result){
+  // Purge entries older than 30 days
+  const cutoff = Date.now() - 30*24*60*60*1000;
+  if(!db.auditLog) db.auditLog=[];
+  db.auditLog = db.auditLog.filter(e=> new Date(e.loginTime).getTime() > cutoff);
+
+  const sessionId = 'al'+Date.now()+'_'+Math.random().toString(36).slice(2,7);
+  if(result==='Success') _auditSessionId = sessionId;
+
+  const entry = {
+    id: sessionId,
+    username: user.username,
+    displayName: user.name||user.username,
+    loginTime: new Date().toISOString(),
+    logoutTime: null,
+    device: _getDeviceInfo(),
+    ip: '…',
+    location: '…',
+    result: result
+  };
+  db.auditLog.push(entry);
+  saveDB();
+
+  // Async: fetch IP then location
+  try{
+    const ipRes = await fetch('https://api.ipify.org?format=json');
+    const ipData = await ipRes.json();
+    entry.ip = ipData.ip||'N/A';
+    // Now get location from IP
+    try{
+      const locRes = await fetch('http://ip-api.com/json/'+entry.ip+'?fields=city,country,status');
+      const locData = await locRes.json();
+      entry.location = locData.status==='success'
+        ? (locData.city?locData.city+', ':'')+locData.country
+        : 'N/A';
+    } catch(e){ entry.location='N/A'; }
+  } catch(e){ entry.ip='N/A'; entry.location='N/A'; }
+  saveDB();
+}
+
+function recordAuditLogout(){
+  if(!_auditSessionId||!db.auditLog) return;
+  const entry = db.auditLog.find(e=>e.id===_auditSessionId);
+  if(entry){
+    entry.logoutTime = new Date().toISOString();
+  }
+  _auditSessionId = null;
+  saveDB();
+}
+
+function _fmtAuditTime(iso){
+  if(!iso) return '—';
+  const d=new Date(iso);
+  return d.toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'})
+    +' '+d.toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit',second:'2-digit'});
+}
+
+function _calcDuration(loginIso, logoutIso){
+  if(!loginIso||!logoutIso) return logoutIso?'—':'Active';
+  const diff = Math.floor((new Date(logoutIso)-new Date(loginIso))/1000);
+  if(diff<60) return diff+'s';
+  if(diff<3600) return Math.floor(diff/60)+'m '+('0'+(diff%60)).slice(-2)+'s';
+  return Math.floor(diff/3600)+'h '+Math.floor((diff%3600)/60)+'m';
+}
+
+let _auditPage = 25;
+
+function renderAuditPanel(){
+  const logs = (db.auditLog||[]).slice().reverse();
+  const visible = logs.slice(0, _auditPage);
+  const hasMore = logs.length > _auditPage;
+
+  const rows = visible.map(e=>{
+    const failed = e.result!=='Success';
+    const rowBg = failed ? 'background:rgba(232,71,42,0.06);border-color:rgba(232,71,42,0.25);' : '';
+    const dur = _calcDuration(e.loginTime, e.logoutTime);
+    const isActive = !e.logoutTime;
+    return `<tr style="${rowBg}">
+      <td style="padding:9px 10px;font-size:12px;white-space:nowrap">
+        <div style="font-weight:600;color:var(--text)">${e.displayName}</div>
+        <div style="color:var(--text3);font-size:11px">@${e.username}</div>
+      </td>
+      <td style="padding:9px 10px;font-size:11px;color:var(--text2);white-space:nowrap">${_fmtAuditTime(e.loginTime)}</td>
+      <td style="padding:9px 10px;font-size:11px;color:var(--text2);white-space:nowrap">
+        ${e.logoutTime ? _fmtAuditTime(e.logoutTime) : isActive ? '<span style="color:var(--green);font-weight:600;font-size:10px">● Active</span>' : '—'}
+      </td>
+      <td style="padding:9px 10px;font-size:11px;text-align:center">
+        <span style="background:var(--bg2);border:1px solid var(--border);border-radius:6px;padding:2px 8px;white-space:nowrap;color:var(--text2)">
+          ${dur}
+        </span>
+      </td>
+      <td style="padding:9px 10px;font-size:11px;color:var(--text2)">${e.device||'—'}</td>
+      <td style="padding:9px 10px;font-size:11px;color:var(--text3);font-family:monospace">${e.ip||'—'}</td>
+      <td style="padding:9px 10px;font-size:11px;color:var(--text2)">${e.location||'—'}</td>
+      <td style="padding:9px 10px;text-align:center">
+        ${failed
+          ? '<span style="background:#FEF0EE;color:#C0392B;border:1px solid #E8B0A0;border-radius:20px;padding:2px 9px;font-size:10px;font-weight:700">✕ '+e.result+'</span>'
+          : '<span style="background:#EBF7EE;color:#1C6B3A;border:1px solid #A8DDB8;border-radius:20px;padding:2px 9px;font-size:10px;font-weight:700">✓ Success</span>'
+        }
+      </td>
+    </tr>`;
+  }).join('');
+
+  const emptyState = `<tr><td colspan="8" style="text-align:center;padding:28px;color:var(--text3);font-size:13px">No login records in the last 30 days.</td></tr>`;
+
+  document.getElementById('audit-log-body').innerHTML = `
+    <table style="width:100%;border-collapse:collapse;font-family:'Inter',sans-serif">
+      <thead>
+        <tr style="background:var(--bg2);border-bottom:2px solid var(--border)">
+          <th style="padding:9px 10px;text-align:left;font-size:11px;font-weight:700;color:var(--text2);white-space:nowrap">User</th>
+          <th style="padding:9px 10px;text-align:left;font-size:11px;font-weight:700;color:var(--text2);white-space:nowrap">Login Time</th>
+          <th style="padding:9px 10px;text-align:left;font-size:11px;font-weight:700;color:var(--text2);white-space:nowrap">Logout Time</th>
+          <th style="padding:9px 10px;text-align:center;font-size:11px;font-weight:700;color:var(--text2)">Duration</th>
+          <th style="padding:9px 10px;text-align:left;font-size:11px;font-weight:700;color:var(--text2)">Device &amp; Browser</th>
+          <th style="padding:9px 10px;text-align:left;font-size:11px;font-weight:700;color:var(--text2)">IP Address</th>
+          <th style="padding:9px 10px;text-align:left;font-size:11px;font-weight:700;color:var(--text2)">Location</th>
+          <th style="padding:9px 10px;text-align:center;font-size:11px;font-weight:700;color:var(--text2)">Result</th>
+        </tr>
+      </thead>
+      <tbody style="border:1px solid var(--border)">
+        ${rows||emptyState}
+      </tbody>
+    </table>
+    ${hasMore ? `<div style="text-align:center;margin-top:12px">
+      <button class="btn btn-outline btn-sm" onclick="_auditPage+=25;renderAuditPanel()">Load more (${logs.length-_auditPage} remaining)</button>
+    </div>` : ''}
+    ${logs.length ? `<div style="text-align:right;margin-top:10px">
+      <button class="btn btn-outline btn-sm" onclick="exportAuditCSV()">⬇ Export CSV</button>
+    </div>` : ''}
+  `;
+}
+
+function exportAuditCSV(){
+  const logs=(db.auditLog||[]).slice().reverse();
+  const bom='\uFEFF';
+  const hdr='User,Username,Login Time,Logout Time,Duration,Device & Browser,IP Address,Location,Result\n';
+  const rows=logs.map(e=>[
+    '"'+(e.displayName||'').replace(/"/g,'""')+'"',
+    '"'+(e.username||'')+'"',
+    '"'+_fmtAuditTime(e.loginTime)+'"',
+    '"'+(e.logoutTime?_fmtAuditTime(e.logoutTime):'Active')+'"',
+    '"'+_calcDuration(e.loginTime,e.logoutTime)+'"',
+    '"'+(e.device||'')+'"',
+    '"'+(e.ip||'')+'"',
+    '"'+(e.location||'')+'"',
+    '"'+(e.result||'')+'"'
+  ].join(',')).join('\n');
+  const blob=new Blob([bom+hdr+rows],{type:'text/csv;charset=utf-8'});
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(blob);
+  a.download='AuditLog_'+new Date().toISOString().slice(0,10)+'.csv';
+  a.click();
+}
 
 function canEdit(customer){
   if(!currentUser) return false;
@@ -1607,6 +1786,21 @@ function renderUsers(){
         <span class="perm-chip pc-edit">Edit</span> Can add &amp; edit records &nbsp;
         <span class="perm-chip pc-full">Full</span> Full access including delete &nbsp;&nbsp;
         Admins always have full access to all modules.
+      </div>
+
+      <div style="margin-top:24px;border:1px solid var(--border);border-radius:12px;overflow:hidden">
+        <div style="display:flex;align-items:center;justify-content:space-between;padding:14px 18px;background:var(--bg2);cursor:pointer;user-select:none"
+          onclick="(function(){var b=document.getElementById('audit-log-body');var ic=document.getElementById('audit-chevron');if(b.style.display==='none'){b.style.display='block';ic.textContent='▲';_auditPage=25;renderAuditPanel();}else{b.style.display='none';ic.textContent='▼';}})()">
+          <div style="display:flex;align-items:center;gap:10px">
+            <span style="font-size:16px">🔍</span>
+            <div>
+              <div style="font-size:13px;font-weight:700;color:var(--text)">Login Audit Log</div>
+              <div style="font-size:11px;color:var(--text3);margin-top:1px">Last 30 days · Admin only · ${(db.auditLog||[]).length} entries</div>
+            </div>
+          </div>
+          <span id="audit-chevron" style="font-size:12px;color:var(--text3)">▼</span>
+        </div>
+        <div id="audit-log-body" style="display:none;padding:16px 18px;overflow-x:auto"></div>
       </div>
     </div>`;
 }
@@ -6153,6 +6347,15 @@ function renderHelp(){
           "The ticker scrolls continuously. To control speed: go to Settings → Announcements tab → drag the Ticker Speed slider (Fast = 10s, Slow = 60s) → click Apply.",
           "To edit or delete an announcement: use the ✏️ / 🗑 buttons on each card in the News panel or in Settings → Announcements.",
           "Only admin users can post, edit, or delete announcements. All users (including salespersons) can read them."
+        ]},
+        {title:"Login Audit Log",steps:[
+          "Go to Users &amp; Access in the sidebar. Scroll to the bottom and click the 🔍 Login Audit Log panel to expand it.",
+          "The table shows every login and logout event in the last 30 days: user, login time, logout time, session duration, device &amp; browser, IP address, location, and result.",
+          "Failed login attempts are highlighted with a full red-tinted row and a red ✕ Failed badge in the Result column.",
+          "Active sessions (users currently logged in) show a green ● Active indicator instead of a logout time.",
+          "The log shows the last 25 entries by default. Click 'Load more' to see older records.",
+          "Click ⬇ Export CSV to download the full 30-day audit trail as a spreadsheet.",
+          "Logs are automatically purged after 30 days. Only admin users can see this panel."
         ]}]},
     salesperson:{icon:"🤝",title:"Salesperson",color:"var(--blue)",
       intro:"Your workspace: Customers, Tasks, and Deals. You see your own assigned leads. Dashboard shows your personal task list.",
@@ -6483,6 +6686,8 @@ function renderHelp(){
 
   const g=guides[tab];
   const qref=[
+    ["View Login Audit Log","Users & Access → scroll to bottom → 🔍 Login Audit Log panel"],
+    ["Export Audit Log CSV","Users & Access → Audit Log panel → ⬇ Export CSV"],
     ["Post Announcement","Settings → Announcements → + New Announcement"],
     ["Set Ticker Speed","Settings → Announcements → Ticker Speed slider → Apply"],
     ["View News & Announcements","📰 icon (top-right toolbar) → Announcements or Market News tab"],
@@ -8385,7 +8590,7 @@ function renderSettingsData(){
 function resetDemoData(){ /* disabled — demo data removed */ }
 function clearAllData(){
   if(!confirm('This will permanently delete ALL data from both this browser AND the cloud database. This cannot be undone. Are you sure?')) return;
-  db={customers:[],salespeople:[],businessCards:[],campaigns:[],invoices:[],suppliers:[],stock:[],deals:[],tasks:[],savedReports:[],settings:{}};
+  db={customers:[],salespeople:[],businessCards:[],campaigns:[],invoices:[],suppliers:[],stock:[],deals:[],tasks:[],savedReports:[],settings:{},auditLog:[]};
   // Wipe localStorage
   try{ localStorage.removeItem(DB_KEY); }catch(e){}
   updateBadges();
