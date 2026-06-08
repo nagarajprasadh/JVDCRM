@@ -1447,58 +1447,64 @@ const BACKUP_INTERVAL_MS = 23 * 60 * 60 * 1000; // 23 hours
 async function autoBackup(forceDownload){
   if(!currentUser) return;
   try{
-    // Check when last backup was taken
     let lastBackupTs = 0;
     try{ lastBackupTs = parseInt(localStorage.getItem('jvd_last_backup_ts')||'0'); }catch(e){}
     const now = Date.now();
     const shouldBackup = forceDownload || (now - lastBackupTs) > BACKUP_INTERVAL_MS;
     if(!shouldBackup) return;
 
-    // Pull full current state from Supabase (source of truth)
     showToast('📦 Creating daily backup…','info');
     const remote = await supaLoadAll();
-    if(!remote) return;
+    if(!remote) { showToast('⚠️ Backup failed — could not reach cloud','warning'); return; }
+
+    const STRIP = ['photo','bcImg','kycDocs','activityLog'];
+    const strip = arr => (arr||[]).map(r=>{ const o={}; Object.keys(r).forEach(k=>{ if(!STRIP.includes(k)) o[k]=r[k]; }); return o; });
 
     const ts = new Date().toISOString().replace(/[:.]/g,'-').slice(0,19);
     const uid = BACKUP_PREFIX + ts;
     const snapshot = {
-      uid, ts: new Date().toISOString(),
+      uid,
+      ts: new Date().toISOString(),
       createdBy: currentUser.username,
       counts: {},
       data: {}
     };
     SUPA_TABLES.forEach(t=>{
-      snapshot.data[t] = remote[t]||[];
+      snapshot.data[t] = strip(remote[t]||[]);
       snapshot.counts[t] = (remote[t]||[]).length;
     });
 
-    // Save to Supabase payments table (uid+data structure)
-    const payload = [{uid, data: snapshot}];
-    await fetch(SUPA_URL+'/rest/v1/payments',{
+    // Check payload size — warn if too large
+    const payloadStr = JSON.stringify([{uid, data: snapshot}]);
+    console.log('[BACKUP] Payload size:', Math.round(payloadStr.length/1024)+'KB');
+
+    // Save to Supabase payments table
+    const resp = await fetch(SUPA_URL+'/rest/v1/payments',{
       method:'POST',
       headers:{'apikey':SUPA_KEY,'Authorization':'Bearer '+SUPA_KEY,
         'Content-Type':'application/json','Prefer':'resolution=merge-duplicates,return=minimal'},
-      body: JSON.stringify(payload)
+      body: payloadStr
     });
 
-    // Purge old backups — keep only last BACKUP_MAX
-    await _purgeOldBackups();
+    if(!resp.ok){
+      const errText = await resp.text();
+      console.warn('[BACKUP] Supabase save failed:', resp.status, errText);
+      // Still download locally even if cloud save fails
+      _downloadBackupJSON(snapshot, ts);
+      showToast('⚠️ Cloud backup failed — JSON downloaded locally only','warning');
+      return;
+    }
 
-    // Record timestamp
+    await _purgeOldBackups();
     try{ localStorage.setItem('jvd_last_backup_ts', String(now)); }catch(e){}
     try{ localStorage.setItem('jvd_last_backup_uid', uid); }catch(e){}
-
-    // Auto-download JSON to browser
     _downloadBackupJSON(snapshot, ts);
-
-    showToast('✅ Backup saved to cloud + downloaded','success');
-
-    // Refresh settings data tab if open
+    showToast('✅ Backup saved to cloud + downloaded to device','success');
     if(currentNav==='settings') try{ renderSettingsData(); }catch(e){}
 
   }catch(e){
-    console.warn('[BACKUP] Auto-backup failed:',e);
-    showToast('⚠️ Auto-backup failed — please export manually from Settings','warning');
+    console.warn('[BACKUP] Auto-backup error:',e);
+    showToast('⚠️ Backup error: '+e.message,'warning');
   }
 }
 
