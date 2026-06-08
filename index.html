@@ -949,11 +949,15 @@ async function loadDBFromSupabase(){
       } else {
         if(!remoteRows.length) return;
         const localRows=db[t]||[];
+        const remoteMap=new Map(remoteRows.map(r=>[(r.uid||r.id),r]));
         const remoteIds=new Set(remoteRows.map(r=>r.uid||r.id).filter(Boolean));
-        // Keep local-only records not yet pushed to Supabase (no uid match in remote)
-        const localOnly=localRows.filter(r=>{const rid=r.uid||r.id; return rid&&!remoteIds.has(rid);});
-        // Supabase wins for all records it has — local stale/deleted records are dropped
-        db[t]=[...remoteRows,...localOnly];changed=true;
+        // Update existing from remote; keep local-only (not yet in Supabase); add new remote records
+        const merged=localRows.map(r=>remoteMap.has(r.uid||r.id)?remoteMap.get(r.uid||r.id):r);
+        remoteRows.forEach(r=>{
+          const rid=r.uid||r.id;
+          if(rid&&!new Set(localRows.map(x=>x.uid||x.id)).has(rid)) merged.push(r);
+        });
+        db[t]=merged; changed=true;
       }
     });
     if(changed){
@@ -3571,6 +3575,7 @@ function saveCust(){
     obj.createdBy=obj.createdBy||(currentUser?currentUser.id:null);
     db.customers.push(obj);
   }
+  saveDB();
   recalcAllVip(); closeModal('modal-cust'); renderCustomers();
 }
 
@@ -6398,9 +6403,10 @@ setInterval(async()=>{
       if(!remoteRows.length) return;
       const localRows=db[t]||[];
       const remoteMap=new Map(remoteRows.map(r=>[(r.uid||r.id),r]));
-      const localIds=new Set(localRows.map(r=>r.uid||r.id).filter(Boolean));
+      const remoteIds=new Set(remoteRows.map(r=>r.uid||r.id).filter(Boolean));
+      // Update existing local records from remote; keep local-only records; add new remote records
       const merged=localRows.map(r=>remoteMap.has(r.uid||r.id)?remoteMap.get(r.uid||r.id):r);
-      remoteRows.forEach(r=>{const rid=r.uid||r.id;if(rid&&!localIds.has(rid)){merged.push(r);changed=true;}});
+      remoteRows.forEach(r=>{const rid=r.uid||r.id;if(rid&&!new Set(localRows.map(x=>x.uid||x.id)).has(rid)){merged.push(r);changed=true;}});
       db[t]=merged;
     });
     if(changed){
