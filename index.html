@@ -2023,8 +2023,12 @@ const IMPORT_COL_MAP = {
   'nationality':'nationality',
   'language':'language','languages':'language',
   'dob':'dob','date of birth':'dob','birthday':'dob',
-  'city':'city',
+  'city':'city','city / town':'city','town':'city',
+  'state':'state','state / province':'state','province':'state',
+  'post code':'postcode','postcode':'postcode','postal code':'postcode','zip':'postcode','zip code':'postcode',
   'country':'country',
+  'address line 1':'addr1','address1':'addr1','addr1':'addr1','street':'addr1','street address':'addr1',
+  'address line 2':'addr2','address2':'addr2','addr2':'addr2','apartment':'addr2','suite':'addr2',
   'company':'company','organization':'company','organisation':'company',
   'designation':'designation','job title':'designation','position':'designation',
   'lead source':'leadSource','leadsource':'leadSource','source':'leadSource',
@@ -2209,7 +2213,7 @@ function confirmImport(){
 
 function downloadImportTemplate(){
   if(!window.XLSX){ alert('SheetJS not loaded.'); return; }
-  const headers=['First Name','Last Name','Salutation','Email 1','Email 2','Phone Work 1','Phone Work 2','Phone Mobile 1','Phone Mobile 2','WhatsApp','Website','Nationality','Language','DOB','City','Country','Company','Designation','Lead Source','Referred By','Lead Status','Pipeline Stage','Assigned To','Budget Min','Budget Max','Deal Value','Diamond Type','Purpose','Currency','VIP Level','Last Contacted Date','Notes','Tags'];
+  const headers=['First Name','Last Name','Salutation','Email 1','Email 2','Phone Work 1','Phone Work 2','Phone Mobile 1','Phone Mobile 2','WhatsApp','Website','Nationality','Language','DOB','Address Line 1','Address Line 2','City','State','Post Code','Country','Company','Designation','Lead Source','Referred By','Lead Status','Pipeline Stage','Assigned To','Budget Min','Budget Max','Deal Value','Diamond Type','Purpose','Currency','VIP Level','Last Contacted Date','Notes','Tags'];
   const sample=[];
   const ws=XLSX.utils.aoa_to_sheet([headers,...sample]);
   const wb=XLSX.utils.book_new();
@@ -2953,7 +2957,8 @@ function buildCustDetail(c){
     <div class="grid-2" style="gap:8px;margin-bottom:12px;font-size:12px">
       ${[['Status',`<span class="badge badge-${(c.leadStatus||'new').toLowerCase()}" data-tip="Lead status: ${c.leadStatus||'New'}">${c.leadStatus||'New'}</span>`],
          ['Stage',c.pipelineStage||'--'],['Deal',fmt(c.dealValue)],['Probability',(c.probability||0)+'%'],
-         ['Source',c.leadSource||'--'],['Assigned',c.assignedTo||'--']
+         ['Source',c.leadSource||'--'],['Assigned',c.assignedTo||'--'],
+         ['Location', [c.city, c.state, c.country].filter(Boolean).join(', ')||'--']
         ].map(([k,v])=>`<div><div class="text-xs">${k}</div><div style="font-weight:600;color:var(--text)">${v}</div></div>`).join('')}
     </div>
     ${c.diamondType?`<div class="form-section-title">💎 Diamond Prefs</div>
@@ -3124,8 +3129,23 @@ function buildCustForm(c){
     <div class="field"><label>Nationality</label><input id="f-nat" value="${v(c,'nationality')}" placeholder="e.g. Thai, Chinese"></div>
     <div class="field"><label>Language</label><input id="f-lang" value="${v(c,'language')}" placeholder="e.g. English, Mandarin"></div>
     <div class="field"><label>Date of Birth</label><input type="date" id="f-dob" value="${v(c,'dob','').slice(0,10)}"></div>
-    <div class="field"><label>City</label><input id="f-city" value="${v(c,'city')}" placeholder="City"></div>
-    <div class="field"><label>Country</label><input id="f-country" value="${v(c,'country')}" placeholder="Country"></div>
+  </div>
+</div>
+<div class="form-section">
+  <div class="form-section-title">📍 Address</div>
+  <div class="fields">
+    <div class="field full"><label>Address Line 1</label><input id="f-addr1" value="${v(c,'addr1')}" placeholder="Street address, P.O. box"></div>
+    <div class="field full"><label>Address Line 2</label><input id="f-addr2" value="${v(c,'addr2')}" placeholder="Apartment, suite, unit, building, floor"></div>
+    <div class="field"><label>City / Town</label><input id="f-city" value="${v(c,'city')}" placeholder="City or town"></div>
+    <div class="field"><label>State / Province</label><input id="f-state" value="${v(c,'state')}" placeholder="State or province"></div>
+    <div class="field"><label>Post Code</label><input id="f-postcode" value="${v(c,'postcode')}" placeholder="Postal / ZIP code"></div>
+    <div class="field"><label>Country</label>
+      <input id="f-country" value="${v(c,'country')}" placeholder="Type to search country…" list="country-list-dl" autocomplete="off"
+        style="width:100%;padding:9px 12px;border:1px solid var(--border);border-radius:8px;background:var(--card);color:var(--text);font-size:13px;outline:none;box-sizing:border-box">
+      <datalist id="country-list-dl">
+        ${['Afghanistan','Albania','Algeria','Andorra','Angola','Antigua and Barbuda','Argentina','Armenia','Australia','Austria','Azerbaijan','Bahamas','Bahrain','Bangladesh','Barbados','Belarus','Belgium','Belize','Benin','Bhutan','Bolivia','Bosnia and Herzegovina','Botswana','Brazil','Brunei','Bulgaria','Burkina Faso','Burundi','Cabo Verde','Cambodia','Cameroon','Canada','Central African Republic','Chad','Chile','China','Colombia','Comoros','Congo','Costa Rica','Croatia','Cuba','Cyprus','Czech Republic','Denmark','Djibouti','Dominica','Dominican Republic','Ecuador','Egypt','El Salvador','Equatorial Guinea','Eritrea','Estonia','Eswatini','Ethiopia','Fiji','Finland','France','Gabon','Gambia','Georgia','Germany','Ghana','Greece','Grenada','Guatemala','Guinea','Guinea-Bissau','Guyana','Haiti','Honduras','Hungary','Iceland','India','Indonesia','Iran','Iraq','Ireland','Israel','Italy','Jamaica','Japan','Jordan','Kazakhstan','Kenya','Kiribati','Kuwait','Kyrgyzstan','Laos','Latvia','Lebanon','Lesotho','Liberia','Libya','Liechtenstein','Lithuania','Luxembourg','Madagascar','Malawi','Malaysia','Maldives','Mali','Malta','Marshall Islands','Mauritania','Mauritius','Mexico','Micronesia','Moldova','Monaco','Mongolia','Montenegro','Morocco','Mozambique','Myanmar','Namibia','Nauru','Nepal','Netherlands','New Zealand','Nicaragua','Niger','Nigeria','North Korea','North Macedonia','Norway','Oman','Pakistan','Palau','Palestine','Panama','Papua New Guinea','Paraguay','Peru','Philippines','Poland','Portugal','Qatar','Romania','Russia','Rwanda','Saint Kitts and Nevis','Saint Lucia','Saint Vincent and the Grenadines','Samoa','San Marino','Sao Tome and Principe','Saudi Arabia','Senegal','Serbia','Seychelles','Sierra Leone','Singapore','Slovakia','Slovenia','Solomon Islands','Somalia','South Africa','South Korea','South Sudan','Spain','Sri Lanka','Sudan','Suriname','Sweden','Switzerland','Syria','Taiwan','Tajikistan','Tanzania','Thailand','Timor-Leste','Togo','Tonga','Trinidad and Tobago','Tunisia','Turkey','Turkmenistan','Tuvalu','Uganda','Ukraine','United Arab Emirates','United Kingdom','United States','Uruguay','Uzbekistan','Vanuatu','Vatican City','Venezuela','Vietnam','Yemen','Zambia','Zimbabwe'].map(co=>`<option value="${co}">`).join('')}
+      </datalist>
+    </div>
   </div>
 </div>
 <div class="form-section">
@@ -3409,7 +3429,9 @@ function saveCust(){
     mobile:g('f-mobile'), mobile2:g('f-mobile2'),
     whatsapp:g('f-wa'), website:g('f-website'),
     nationality:g('f-nat'), language:g('f-lang'), dob:g('f-dob'),
-    city:g('f-city'), country:g('f-country'), company:g('f-co'), designation:g('f-desig'),
+    city:g('f-city'), state:g('f-state'), postcode:g('f-postcode'), country:g('f-country'),
+    addr1:g('f-addr1'), addr2:g('f-addr2'),
+    company:g('f-co'), designation:g('f-desig'),
     leadSource:g('f-src'), referredBy:g('f-ref'), assignedTo:g('f-sp'), assignedTo2:g('f-sp2'), wechat:g('f-wc'),
     leadStatus:g('f-stat'), pipelineStage:g('f-stage'),
     dealValue:gn('f-deal'), probability:gn('f-prob'),
