@@ -2224,12 +2224,16 @@ function confirmImport(){
     db.customers.push(newC);
   });
   recalcAllVip();
+  saveDB();
   const count = importState.newRecs.length;
   closeModal('modal-import');
   importState=null;
   renderCustomers();
-  // small delay so modal closes first
-  setTimeout(()=>alert('✅ Successfully imported '+count+' record'+(count!==1?'s':'')+'.'),200);
+  // Push to Supabase immediately
+  const imported = db.customers.slice(-count);
+  supaSaveTable('customers', imported)
+    .then(()=>showToast(`✅ ${count} record${count!==1?'s':''} imported and synced to cloud`,'success'))
+    .catch(e=>{ console.warn('[SUPA] import push failed:',e); showToast(`✅ ${count} record${count!==1?'s':''} imported locally — cloud sync failed, will retry on next save`,'warning'); });
 }
 
 function downloadImportTemplate(){
