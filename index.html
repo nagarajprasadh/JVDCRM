@@ -2012,9 +2012,14 @@ const IMPORT_COL_MAP = {
   'first name':'firstName','firstname':'firstName','first':'firstName',
   'last name':'lastName','lastname':'lastName','last':'lastName','surname':'lastName',
   'salutation':'salutation','title':'salutation',
-  'email':'email','email address':'email',
-  'phone':'phone','phone number':'phone','mobile':'phone','tel':'phone',
+  'email':'email','email address':'email','email 1':'email','email1':'email',
+  'email 2':'email2','email2':'email2','alternate email':'email2',
+  'phone':'phone','phone number':'phone','phone work 1':'phone','phone work1':'phone','work phone':'phone','tel':'phone',
+  'phone work 2':'phone2','phone work2':'phone2','work phone 2':'phone2',
+  'phone mobile 1':'mobile','phone mobile1':'mobile','mobile':'mobile','mobile 1':'mobile','cell':'mobile',
+  'phone mobile 2':'mobile2','phone mobile2':'mobile2','mobile 2':'mobile2',
   'whatsapp':'whatsapp','whatsapp number':'whatsapp',
+  'website':'website','website url':'website','web':'website','url':'website',
   'nationality':'nationality',
   'language':'language','languages':'language',
   'dob':'dob','date of birth':'dob','birthday':'dob',
@@ -2204,8 +2209,8 @@ function confirmImport(){
 
 function downloadImportTemplate(){
   if(!window.XLSX){ alert('SheetJS not loaded.'); return; }
-  const headers=['First Name','Last Name','Salutation','Email','Phone','WhatsApp','Nationality','Language','DOB','City','Country','Company','Designation','Lead Source','Referred By','Lead Status','Pipeline Stage','Assigned To','Budget Min','Budget Max','Deal Value','Diamond Type','Purpose','Currency','VIP Level','Last Contacted Date','Notes','Tags'];
-  const sample=[['Priya','Nair','Ms','priya.nair@email.com','+66 81 000 0000','+66 81 000 0000','Indian','English, Hindi','1990-03-15','Bangkok','Thailand','','','Walk-in','Kanokwan Thana','New','Awareness','Arjun Mehta','500000','800000','0','Natural','Engagement Ring','THB','None','2026-05-20','Met at Silom store','Engagement,Walk-in']];
+  const headers=['First Name','Last Name','Salutation','Email 1','Email 2','Phone Work 1','Phone Work 2','Phone Mobile 1','Phone Mobile 2','WhatsApp','Website','Nationality','Language','DOB','City','Country','Company','Designation','Lead Source','Referred By','Lead Status','Pipeline Stage','Assigned To','Budget Min','Budget Max','Deal Value','Diamond Type','Purpose','Currency','VIP Level','Last Contacted Date','Notes','Tags'];
+  const sample=[];
   const ws=XLSX.utils.aoa_to_sheet([headers,...sample]);
   const wb=XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb,ws,'Customers');
@@ -2650,7 +2655,7 @@ function renderCustomers(){
     const mySpName=(db.salespeople||[]).find(s=>s.id===currentUser.salespersonId);
     if(mySpName)list=list.filter(c=>c.assignedTo===mySpName.name||c.assignedTo2===mySpName.name);
   }
-  if(custFilter.search){ const s=custFilter.search.toLowerCase(); list=list.filter(c=>((c.firstName||'')+' '+(c.lastName||'')+' '+(c.email||'')+' '+(c.phone||'')).toLowerCase().includes(s)); }
+  if(custFilter.search){ const s=custFilter.search.toLowerCase(); list=list.filter(c=>((c.firstName||'')+' '+(c.lastName||'')+' '+(c.email||'')+' '+(c.email2||'')+' '+(c.phone||'')+' '+(c.mobile||'')+' '+(c.website||'')).toLowerCase().includes(s)); }
   if(custFilter.status!=='All') list=list.filter(c=>c.leadStatus===custFilter.status);
   if(custFilter.stage!=='All') list=list.filter(c=>c.pipelineStage===custFilter.stage);
   if(custFilter.vip!=='All') list=list.filter(c=>c.vipLevel===custFilter.vip);
@@ -2875,7 +2880,7 @@ function renderCustTableHTML(list){
 function selectAllVisibleCards(){
   // select all currently filtered list -- re-filter same way renderCustomers does
   let list=[...db.customers];
-  if(custFilter.search){const s=custFilter.search.toLowerCase();list=list.filter(c=>((c.firstName||'')+' '+(c.lastName||'')+' '+(c.email||'')+' '+(c.phone||'')).toLowerCase().includes(s));}
+  if(custFilter.search){const s=custFilter.search.toLowerCase();list=list.filter(c=>((c.firstName||'')+' '+(c.lastName||'')+' '+(c.email||'')+' '+(c.email2||'')+' '+(c.phone||'')+' '+(c.mobile||'')+' '+(c.website||'')).toLowerCase().includes(s));}
   if(custFilter.status&&custFilter.status!=='All')list=list.filter(c=>(c.leadStatus||'New')===custFilter.status);
   if(custFilter.stage&&custFilter.stage!=='All')list=list.filter(c=>(c.pipelineStage||'Awareness')===custFilter.stage);
   if(custFilter.vip&&custFilter.vip!=='All')list=list.filter(c=>(c.vipLevel||'None')===custFilter.vip);
@@ -2934,12 +2939,15 @@ function buildCustDetail(c){
       ${avatarHtml(c,52,20)}
       <div style="flex:1">
         <div style="font-size:16px;font-weight:800;color:var(--text)">${c.firstName} ${c.lastName}</div>
-        <div class="text-xs">${c.email||''} ${c.phone?'· '+c.phone:''}</div>
+        <div class="text-xs">${c.email||c.email2||''} ${c.phone||c.mobile?'· '+(c.phone||c.mobile):''}</div>
       </div>
       <button class="btn btn-outline btn-sm" onclick="selectedCustId=null;renderCustomers()">✕</button>
     </div>
     <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px">
       ${waBtn(c)} ${lineBtn(c)} ${viberChatBtn(c)} ${viberCallBtn(c)} ${emailBtn(c)} ${callBtn(c)}
+      ${c.email2?`<a href="mailto:${c.email2}" onclick="event.stopPropagation()" style="display:inline-flex;align-items:center;gap:4px;padding:5px 10px;background:var(--blue);color:#fff;border-radius:7px;font-size:12px;font-weight:600;text-decoration:none">Email 2</a>`:''}
+      ${c.mobile?`<a href="tel:${c.mobile}" onclick="event.stopPropagation()" style="display:inline-flex;align-items:center;gap:4px;padding:5px 10px;background:var(--green);color:#fff;border-radius:7px;font-size:12px;font-weight:600;text-decoration:none">Mobile</a>`:''}
+      ${c.website?`<a href="${c.website.startsWith('http')?c.website:'https://'+c.website}" target="_blank" onclick="event.stopPropagation()" style="display:inline-flex;align-items:center;gap:4px;padding:5px 10px;background:#6B7B74;color:#fff;border-radius:7px;font-size:12px;font-weight:600;text-decoration:none">🌐 Web</a>`:''}
       <button class="btn btn-outline btn-sm" onclick="openCustModal('${c.id}')">Edit</button>
     </div>
     <div class="grid-2" style="gap:8px;margin-bottom:12px;font-size:12px">
@@ -3104,9 +3112,14 @@ function buildCustForm(c){
     <div class="field"><label>First Name *</label><input id="f-fn" value="${v(c,'firstName')}" placeholder="First name"></div>
     <div class="field"><label>Last Name *</label><input id="f-ln" value="${v(c,'lastName')}" placeholder="Last name"></div>
     <div class="field"><label>Nickname / Preferred Name</label><input id="f-nick" value="${v(c,'nickname')}" placeholder="e.g. Tony, Bee"></div>
-    <div class="field"><label>Email</label><input id="f-email" value="${v(c,'email')}" placeholder="email@domain.com"></div>
-    <div class="field"><label>Phone</label><input id="f-phone" value="${v(c,'phone')}" placeholder="+66 8x xxx xxxx"></div>
+    <div class="field"><label>Email 1</label><input id="f-email" value="${v(c,'email')}" placeholder="email@domain.com" type="email"></div>
+    <div class="field"><label>Email 2</label><input id="f-email2" value="${v(c,'email2')}" placeholder="alternate@domain.com" type="email"></div>
+    <div class="field"><label>Phone Work 1</label><input id="f-phone" value="${v(c,'phone')}" placeholder="+66 2x xxx xxxx"></div>
+    <div class="field"><label>Phone Work 2</label><input id="f-phone2" value="${v(c,'phone2')}" placeholder="+66 2x xxx xxxx"></div>
+    <div class="field"><label>Phone Mobile 1</label><input id="f-mobile" value="${v(c,'mobile')}" placeholder="+66 8x xxx xxxx"></div>
+    <div class="field"><label>Phone Mobile 2</label><input id="f-mobile2" value="${v(c,'mobile2')}" placeholder="+66 8x xxx xxxx"></div>
     <div class="field"><label>WhatsApp</label><input id="f-wa" value="${v(c,'whatsapp')}" placeholder="+66 8x xxx xxxx"></div>
+    <div class="field"><label>Website</label><input id="f-website" value="${v(c,'website')}" placeholder="https://www.company.com"></div>
     <div class="field"><label>LINE ID <span style="font-size:10px;color:var(--text3)">(for LINE button)</span></label><input id="f-wc" value="${v(c,'wechat')}" placeholder="e.g. @john.smith"></div>
     <div class="field"><label>Nationality</label><input id="f-nat" value="${v(c,'nationality')}" placeholder="e.g. Thai, Chinese"></div>
     <div class="field"><label>Language</label><input id="f-lang" value="${v(c,'language')}" placeholder="e.g. English, Mandarin"></div>
@@ -3391,7 +3404,10 @@ function saveCust(){
   const obj={
     id: editCustId||uid(),
     salutation:g('f-sal'), firstName:fn, lastName:g('f-ln'), nickname:g('f-nick'),
-    email:g('f-email'), phone:g('f-phone'), whatsapp:g('f-wa'),
+    email:g('f-email'), email2:g('f-email2'),
+    phone:g('f-phone'), phone2:g('f-phone2'),
+    mobile:g('f-mobile'), mobile2:g('f-mobile2'),
+    whatsapp:g('f-wa'), website:g('f-website'),
     nationality:g('f-nat'), language:g('f-lang'), dob:g('f-dob'),
     city:g('f-city'), country:g('f-country'), company:g('f-co'), designation:g('f-desig'),
     leadSource:g('f-src'), referredBy:g('f-ref'), assignedTo:g('f-sp'), assignedTo2:g('f-sp2'), wechat:g('f-wc'),
@@ -5831,7 +5847,7 @@ function toggleAdvFilters(){
 
 
 // WA helpers
-function waNumber(c){return(c.whatsapp||c.mobile||c.phone||'').replace(/[^0-9+]/g,'');}
+function waNumber(c){return(c.whatsapp||c.mobile||c.mobile2||c.phone||'').replace(/[^0-9+]/g,'');}
 function waLink(c,msg){var n=waNumber(c);if(!n)return null;msg=msg||('Dear '+(c.firstName||'there')+', greetings from Jay Vijay Diamond Co., Ltd. Following up on your enquiry. Let us know if you have questions!');return 'https://wa.me/'+n.replace('+','')+'?text='+encodeURIComponent(msg);}
 function waBtn(c,s){s=s||'';var l=waLink(c);if(!l)return '';return '<a href="'+l+'" target="_blank" rel="noopener" onclick="event.stopPropagation()" style="display:inline-flex;align-items:center;gap:4px;padding:5px 10px;background:#1DA851;color:#fff;border-radius:7px;font-size:12px;font-weight:600;text-decoration:none;'+s+'">WhatsApp</a>';}
 function emailBtn(c,s){s=s||'';if(!c.email)return '';return '<a href="mailto:'+c.email+'" onclick="event.stopPropagation()" style="display:inline-flex;align-items:center;gap:4px;padding:5px 10px;background:var(--blue);color:#fff;border-radius:7px;font-size:12px;font-weight:600;text-decoration:none;'+s+'">Email</a>';}
