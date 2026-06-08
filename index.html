@@ -801,12 +801,16 @@ async function supaSaveTable(table, rows){
     return {uid, data:slim};
   });
   for(let i=0;i<clean.length;i+=100){
-    await fetch(SUPA_URL+'/rest/v1/'+table, {
+    const resp = await fetch(SUPA_URL+'/rest/v1/'+table, {
       method:'POST',
       headers:{'apikey':SUPA_KEY,'Authorization':'Bearer '+SUPA_KEY,
         'Content-Type':'application/json','Prefer':'resolution=merge-duplicates,return=minimal'},
       body:JSON.stringify(clean.slice(i,i+100))
     });
+    if(!resp.ok){
+      const err = await resp.text().catch(()=>'unknown');
+      console.warn('[SUPA] Save failed:',table,'HTTP',resp.status,err);
+    }
   }
 }
 
@@ -3123,8 +3127,10 @@ function toggleAllCusts(checked,ids){
 function bulkDeleteCusts(){
   if(!selectedCusts.size) return;
   if(!confirm(`Delete ${selectedCusts.size} selected contact${selectedCusts.size>1?'s':''}? This cannot be undone.`)) return;
+  const toDelete=(db.customers||[]).filter(c=>selectedCusts.has(c.id));
   db.customers=db.customers.filter(c=>!selectedCusts.has(c.id));
   selectedCusts.clear(); saveDB(); renderCustomers();
+  toDelete.forEach(c=>{ if(c.uid||c.id) supaDeleteOne('customers',c.uid||c.id); });
 }
 function openColChooser(){
   const existing=document.getElementById('col-chooser-modal');
