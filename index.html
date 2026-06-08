@@ -687,7 +687,6 @@ th[data-tip]{cursor:pointer}
     </div>
     <button id="news-btn" onclick="toggleNews()" title="News & Announcements" style="background:none;border:none;cursor:pointer;color:var(--text2);font-size:18px;padding:4px 8px;border-radius:8px;margin-right:4px" title="News">📰</button>
       <button class="btn btn-outline btn-sm" id="btn-logout" onclick="doLogout()" style="display:none;font-size:11px">Sign Out</button>
-    <button class="btn btn-gold" onclick="showModal('modal-cust')">+ Add Customer</button>
   </div>
   <div id="ann-ticker"><div id="ann-ticker-track"></div></div>
 <div class="content" id="content"></div>
@@ -2209,7 +2208,18 @@ function confirmImport(){
       commPref:[],
       createdAt:today,
       updatedAt:today,
-      importedAt:today
+      importedAt:today,
+      lastContactedDate:r.lastContactedDate||'',
+      email2:r.email2||'',
+      phone2:r.phone2||'',
+      mobile:r.mobile||'',
+      mobile2:r.mobile2||'',
+      website:r.website||'',
+      addr1:r.addr1||'',
+      addr2:r.addr2||'',
+      state:r.state||'',
+      postcode:r.postcode||'',
+      recordType:r.recordType||'Lead',
     };
     db.customers.push(newC);
   });
@@ -2631,6 +2641,8 @@ function loadDashTicker(){
 }
 
 let custFilter={search:"",status:"All",stage:"All",vip:"All",sp:"All",sort:"newest",advFilters:[]};
+let leadFilter={search:"",status:"All",stage:"All",vip:"All",sp:"All",sort:"newest",advFilters:[]};
+let custActiveTab='leads'; // 'leads' or 'customers'
 let editCustId=null;
 let custPhoto=null; // base64 string or null during form editing
 let custBcImg=null;  // business card image base64
@@ -2662,21 +2674,33 @@ const ALL_TABLE_COLS=[
   {key:'updatedAt',      label:'Last Updated',   tip:'Date record was last modified'},
 ];
 function renderCustomers(){
-  // Debug: immediately mark that we entered the function
   console.log('[CRM] renderCustomers called -- db.customers:', (db.customers||[]).length, 'db.salespeople:', (db.salespeople||[]).length);
 
-  let list=[...ownedRecords(db.customers||[])];
+  const isLead = c => (c.recordType||'Lead')==='Lead';
+  const isCust = c => c.recordType==='Customer';
+
+  let allOwned=[...ownedRecords(db.customers||[])];
   if(currentUser&&currentUser.role==='salesperson'){
     const mySpName=(db.salespeople||[]).find(s=>s.id===currentUser.salespersonId);
-    if(mySpName)list=list.filter(c=>c.assignedTo===mySpName.name||c.assignedTo2===mySpName.name);
+    if(mySpName) allOwned=allOwned.filter(c=>c.assignedTo===mySpName.name||c.assignedTo2===mySpName.name);
   }
-  if(custFilter.search){ const s=custFilter.search.toLowerCase(); list=list.filter(c=>((c.firstName||'')+' '+(c.lastName||'')+' '+(c.email||'')+' '+(c.email2||'')+' '+(c.phone||'')+' '+(c.mobile||'')+' '+(c.website||'')).toLowerCase().includes(s)); }
-  if(custFilter.status!=='All') list=list.filter(c=>c.leadStatus===custFilter.status);
-  if(custFilter.stage!=='All') list=list.filter(c=>c.pipelineStage===custFilter.stage);
-  if(custFilter.vip!=='All') list=list.filter(c=>c.vipLevel===custFilter.vip);
-  if(custFilter.sp!=='All') list=list.filter(c=>c.assignedTo===custFilter.sp||c.assignedTo2===custFilter.sp);
+
+  const leadCount = allOwned.filter(isLead).length;
+  const custCount = allOwned.filter(isCust).length;
+
+  // Active tab filter state
+  const F = custActiveTab==='leads' ? leadFilter : custFilter;
+
+  let list = allOwned.filter(custActiveTab==='leads' ? isLead : isCust);
+
+  const srch = id => { const el=document.getElementById(id); return el?el.value.trim():''; };
+  if(F.search){ const s=F.search.toLowerCase(); list=list.filter(c=>((c.firstName||'')+' '+(c.lastName||'')+' '+(c.email||'')+' '+(c.email2||'')+' '+(c.phone||'')+' '+(c.mobile||'')+' '+(c.website||'')+' '+(c.company||'')).toLowerCase().includes(s)); }
+  if(F.status!=='All') list=list.filter(c=>c.leadStatus===F.status);
+  if(F.stage!=='All') list=list.filter(c=>c.pipelineStage===F.stage);
+  if(F.vip!=='All') list=list.filter(c=>c.vipLevel===F.vip);
+  if(F.sp!=='All') list=list.filter(c=>c.assignedTo===F.sp||c.assignedTo2===F.sp);
   // Advanced boolean filters
-  (custFilter.advFilters||[]).forEach(f=>{
+  (F.advFilters||[]).forEach(f=>{
     if(!f.field||!f.op) return;
     list=list.filter(c=>{
       let val=String(c[f.field]||'').toLowerCase().trim();
@@ -2735,27 +2759,42 @@ function renderCustomers(){
   document.getElementById('content').innerHTML=`
 <div class="${selectedCustId?'layout-split':''}">
 <div>
+
+<!-- Tab strip -->
+<div style="display:flex;align-items:center;gap:0;margin-bottom:14px;border-bottom:2px solid var(--border)">
+  <button onclick="custActiveTab='leads';leadFilter.search='';renderCustomers()"
+    style="padding:10px 22px;font-size:13px;font-weight:700;border:none;background:none;cursor:pointer;border-bottom:${custActiveTab==='leads'?'3px solid var(--green)':'3px solid transparent'};color:${custActiveTab==='leads'?'var(--green)':'var(--text3)'};margin-bottom:-2px">
+    🔵 Leads <span style="background:${custActiveTab==='leads'?'var(--green)':'var(--border)'};color:${custActiveTab==='leads'?'#fff':'var(--text2)'};border-radius:20px;padding:1px 8px;font-size:11px;margin-left:4px">${leadCount}</span>
+  </button>
+  <button onclick="custActiveTab='customers';custFilter.search='';renderCustomers()"
+    style="padding:10px 22px;font-size:13px;font-weight:700;border:none;background:none;cursor:pointer;border-bottom:${custActiveTab==='customers'?'3px solid var(--gold)':'3px solid transparent'};color:${custActiveTab==='customers'?'var(--gold)':'var(--text3)'};margin-bottom:-2px">
+    ⭐ Customers <span style="background:${custActiveTab==='customers'?'var(--gold)':'var(--border)'};color:${custActiveTab==='customers'?'#fff':'var(--text2)'};border-radius:20px;padding:1px 8px;font-size:11px;margin-left:4px">${custCount}</span>
+  </button>
+  <div style="flex:1"></div>
+  <button class="btn btn-gold btn-sm" onclick="openCustModal(null)" style="margin-bottom:6px">+ Add ${custActiveTab==='customers'?'Customer':'Lead'}</button>
+</div>
+
 <div class="search-row" style="align-items:center">
-  <input class="search-box" id="cust-search-input" placeholder="🔍 Search name, email, phone…" value="${custFilter.search}" oninput="custFilter.search=this.value;debouncedSearch()">
-  <select class="filter-select" onchange="custFilter.status=this.value;renderCustomers()">
-    <option value="All">All Statuses</option>${STATUSES.map(s=>`<option value="${s}" ${custFilter.status===s?'selected':''}>${s}</option>`).join('')}
+  <input class="search-box" id="cust-search-input" placeholder="🔍 Search name, email, phone, company…" value="${F.search}" oninput="(custActiveTab==='leads'?leadFilter:custFilter).search=this.value;debouncedSearch()">
+  <select class="filter-select" onchange="(custActiveTab==='leads'?leadFilter:custFilter).status=this.value;renderCustomers()">
+    <option value="All">All Statuses</option>${STATUSES.map(s=>`<option value="${s}" ${F.status===s?'selected':''}>${s}</option>`).join('')}
   </select>
-  <select class="filter-select" onchange="custFilter.stage=this.value;renderCustomers()">
-    <option value="All">All Stages</option>${STAGES.map(s=>`<option value="${s}" ${custFilter.stage===s?'selected':''}>${s}</option>`).join('')}
+  <select class="filter-select" onchange="(custActiveTab==='leads'?leadFilter:custFilter).stage=this.value;renderCustomers()">
+    <option value="All">All Stages</option>${STAGES.map(s=>`<option value="${s}" ${F.stage===s?'selected':''}>${s}</option>`).join('')}
   </select>
-  <select class="filter-select" onchange="custFilter.vip=this.value;renderCustomers()">
-    <option value="All">All VIP</option>${['Platinum','Gold','Silver','Bronze','None'].map(v=>`<option value="${v}" ${custFilter.vip===v?'selected':''}>${v}</option>`).join('')}
+  <select class="filter-select" onchange="(custActiveTab==='leads'?leadFilter:custFilter).vip=this.value;renderCustomers()">
+    <option value="All">All VIP</option>${['Platinum','Gold','Silver','Bronze','None'].map(v=>`<option value="${v}" ${F.vip===v?'selected':''}>${v}</option>`).join('')}
   </select>
-  <select class="filter-select" onchange="custFilter.sp=this.value;renderCustomers()">
+  <select class="filter-select" onchange="(custActiveTab==='leads'?leadFilter:custFilter).sp=this.value;renderCustomers()">
     <option value="All">All Salespeople</option>${spOptions}
   </select>
-  <select class="filter-select" onchange="custFilter.overdue=this.value;renderCustomers()">
+  <select class="filter-select" onchange="(custActiveTab==='leads'?leadFilter:custFilter).overdue=this.value;renderCustomers()">
     <option value="">📞 All (last contact)</option>
-    <option value="7" ${custFilter.overdue==='7'?'selected':''}>Overdue &gt;7 days</option>
-    <option value="14" ${custFilter.overdue==='14'?'selected':''}>Overdue &gt;14 days</option>
-    <option value="30" ${custFilter.overdue==='30'?'selected':''}>Overdue &gt;30 days</option>
-    <option value="60" ${custFilter.overdue==='60'?'selected':''}>Overdue &gt;60 days</option>
-    <option value="never" ${custFilter.overdue==='never'?'selected':''}>Never Contacted</option>
+    <option value="7" ${F.overdue==='7'?'selected':''}>Overdue &gt;7 days</option>
+    <option value="14" ${F.overdue==='14'?'selected':''}>Overdue &gt;14 days</option>
+    <option value="30" ${F.overdue==='30'?'selected':''}>Overdue &gt;30 days</option>
+    <option value="60" ${F.overdue==='60'?'selected':''}>Overdue &gt;60 days</option>
+    <option value="never" ${F.overdue==='never'?'selected':''}>Never Contacted</option>
   </select>
   ${selectAllCardBtn}
   ${sortCardSelect}
@@ -2764,14 +2803,13 @@ function renderCustomers(){
     <button class="view-btn ${custViewMode==='card'?'active':''}" onclick="custViewMode='card';renderCustomers()" title="Card view">${cardSvg}</button>
     <button class="view-btn ${custViewMode==='table'?'active':''}" onclick="custViewMode='table';renderCustomers()" title="Table view">${tableSvg}</button>
   </div>
-  ${custViewMode==='table'?`<button class="btn btn-outline btn-sm" onclick="openColChooser()" data-tip="Choose which columns to show in table view" style="white-space:nowrap">⚙ Columns</button>`:''}
-  <button class="btn btn-outline btn-sm" onclick="toggleAdvFilters()">🔍 Filters${(custFilter.advFilters||[]).length?` <span style="background:var(--gold);color:#1a1a1a;border-radius:10px;padding:0 5px;font-size:10px">${custFilter.advFilters.length}</span>`:''}</button>
+  ${custViewMode==='table'?`<button class="btn btn-outline btn-sm" onclick="openColChooser()" style="white-space:nowrap">⚙ Columns</button>`:''}
+  <button class="btn btn-outline btn-sm" onclick="toggleAdvFilters()">🔍 Filters${(F.advFilters||[]).length?` <span style="background:var(--gold);color:#1a1a1a;border-radius:10px;padding:0 5px;font-size:10px">${F.advFilters.length}</span>`:''}</button>
   <button class="btn btn-outline btn-sm" onclick="showImportModal()">📥 Import Excel</button>
-  <button class="btn btn-gold" onclick="openCustModal(null)">+ Add Customer</button>
 </div>
 
 <!-- Advanced filter builder -->
-<div id="adv-filter-panel" style="display:${(custFilter.advFilters||[]).length?'block':'none'};background:var(--card);border:1px solid var(--border);border-radius:10px;padding:14px;margin-bottom:10px">
+<div id="adv-filter-panel" style="display:${(F.advFilters||[]).length?'block':'none'};background:var(--card);border:1px solid var(--border);border-radius:10px;padding:14px;margin-bottom:10px">
   <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
     <div style="font-size:12px;font-weight:700;color:var(--text)">🔍 Advanced Filters</div>
     <div style="display:flex;gap:6px">
@@ -3057,7 +3095,7 @@ function openCustModal(id){
   const c=id?db.customers.find(x=>x.id===id):{};
   custPhoto=(c&&c.photo)||null;
   custBcImg=(c&&c.bcImg)||null;
-  initFormData(c||{});
+  initFormData(c||{}); _recordType=(c&&c.recordType)||'Lead';
   document.getElementById('modal-cust-title').textContent=id?'Edit Customer':'Add Customer';
   document.getElementById('modal-cust-body').innerHTML=buildCustForm(c||{});
   const _sw=document.getElementById("modal-cust-warn-sticky");if(_sw){_sw.style.display="none";delete _sw.dataset.acknowledged;} showModal('modal-cust');
@@ -3169,6 +3207,20 @@ function buildCustForm(c){
 <div class="form-section">
   <div class="form-section-title">📋 Lead Information</div>
   <div class="fields">
+    <div class="field full">
+      <label>Record Type</label>
+      <div style="display:flex;gap:0;border:1px solid var(--border);border-radius:8px;overflow:hidden;width:fit-content">
+        <button type="button" id="rt-lead" onclick="setRecordType('Lead')"
+          style="padding:8px 20px;font-size:13px;font-weight:600;border:none;cursor:pointer;transition:all .15s;${(v(c,'recordType','Lead')==='Lead')?'background:var(--green);color:#fff':'background:var(--bg2);color:var(--text2)'}">
+          🔵 Lead
+        </button>
+        <button type="button" id="rt-customer" onclick="setRecordType('Customer')"
+          style="padding:8px 20px;font-size:13px;font-weight:600;border:none;cursor:pointer;transition:all .15s;border-left:1px solid var(--border);${(v(c,'recordType','Lead')==='Customer')?'background:var(--gold);color:#fff':'background:var(--bg2);color:var(--text2)'}">
+          ⭐ Customer
+        </button>
+      </div>
+      <div style="font-size:11px;color:var(--text3);margin-top:5px">Tag as Customer once they have made a purchase.</div>
+    </div>
     <div class="field"><label>Lead Source</label><select id="f-src">${SOURCES.map(s=>`<option ${v(c,'leadSource')===s?'selected':''}>${s}</option>`).join('')}</select></div>
     <div class="field"><label>Referred By</label><input id="f-ref" value="${v(c,'referredBy')}" placeholder="Name / Exhibition"></div>
     <div class="field"><label>Primary Salesperson</label><select id="f-sp"><option value="">-- Unassigned --</option>${db.salespeople.map(s=>`<option value="${s.name}" ${v(c,'assignedTo')===s.name?'selected':''}>${s.name}</option>`).join('')}</select></div>
@@ -3180,7 +3232,7 @@ function buildCustForm(c){
     <div class="field"><label>Close Probability (%)</label><input type="number" id="f-prob" min="0" max="100" value="${v(c,'probability')}" placeholder="0-100"></div>
     <div class="field"><label>Expected Close Date</label><input type="date" id="f-ecd" value="${v(c,'expectedCloseDate','').slice(0,10)}"></div>
     <div class="field"><label>Date of First Contact</label><input type="date" id="f-fcd" value="${v(c,'firstContactDate','').slice(0,10)}"></div>
-    <div class="field"><label>Last Contacted Date</label><input type="date" id="f-lcd" value="${v(c,'lastContactedDate','').slice(0,10)}"><div style="font-size:10px;color:var(--text3);margin-top:3px">Auto-updates to today on every save</div></div>
+    <div class="field"><label>Last Contacted Date</label><input type="date" id="f-lcd" value="${v(c,'lastContactedDate','').slice(0,10)}"></div>
     <div class="field"><label>Tags (comma separated)</label><input id="f-tags" value="${(v(c,'tags',[])||[]).join(', ')}" placeholder="VIP, Collector, Urgent…"></div>
   </div>
 </div>
@@ -3407,6 +3459,15 @@ function selectR(key,val,el){
   el.classList.add('sel');
 }
 
+let _recordType='Lead';
+function setRecordType(type){
+  _recordType=type;
+  const lead=document.getElementById('rt-lead');
+  const cust=document.getElementById('rt-customer');
+  if(lead){ lead.style.background=type==='Lead'?'var(--green)':'var(--bg2)'; lead.style.color=type==='Lead'?'#fff':'var(--text2)'; }
+  if(cust){ cust.style.background=type==='Customer'?'var(--gold)':'var(--bg2)'; cust.style.color=type==='Customer'?'#fff':'var(--text2)'; }
+}
+
 function togglePaymentFields(val){
   const bank=document.getElementById('bank-details-wrap');
   const crypto=document.getElementById('crypto-wrap');
@@ -3471,9 +3532,10 @@ function saveCust(){
     company:g('f-co'), designation:g('f-desig'),
     leadSource:g('f-src'), referredBy:g('f-ref'), assignedTo:g('f-sp'), assignedTo2:g('f-sp2'), wechat:g('f-wc'),
     leadStatus:g('f-stat'), pipelineStage:g('f-stage'),
+    recordType:_recordType||'Lead',
     dealValue:gn('f-deal'), probability:gn('f-prob'),
     expectedCloseDate:g('f-ecd'), firstContactDate:g('f-fcd'),
-    lastContactedDate:new Date().toISOString().slice(0,10),
+    lastContactedDate: g('f-lcd') || (editCustId ? (db.customers.find(x=>x.id===editCustId)||{}).lastContactedDate||'' : new Date().toISOString().slice(0,10)),
     bestTime:g('f-btc'),
     diamondType:formData.diamondType||'', jewelleryInterest:formData.jewelleryInterest||'',
     purpose:formData.purpose||'',
@@ -5876,32 +5938,37 @@ function buildAdvFilterRow(f,i){
   </div>`;
 }
 
+function _activeFilter(){ return custActiveTab==='leads' ? leadFilter : custFilter; }
+
 function addAdvFilter(){
-  if(!custFilter.advFilters) custFilter.advFilters=[];
-  custFilter.advFilters.push({field:'nationality',op:'equals',value:''});
+  const F=_activeFilter();
+  if(!F.advFilters) F.advFilters=[];
+  F.advFilters.push({field:'nationality',op:'equals',value:''});
   renderCustomers();
   document.getElementById('adv-filter-panel').style.display='block';
 }
 
 function removeAdvFilter(i){
-  custFilter.advFilters.splice(i,1);
+  _activeFilter().advFilters.splice(i,1);
   renderCustomers();
 }
 
 function clearAdvFilters(){
-  custFilter.advFilters=[];
+  _activeFilter().advFilters=[];
   renderCustomers();
 }
 
 function updateAdvFilter(i,key,val){
-  if(custFilter.advFilters&&custFilter.advFilters[i]) custFilter.advFilters[i][key]=val;
+  const F=_activeFilter();
+  if(F.advFilters&&F.advFilters[i]) F.advFilters[i][key]=val;
 }
 
 function toggleAdvFilters(){
   const p=document.getElementById('adv-filter-panel');
   if(!p){ renderCustomers(); return; }
   p.style.display=p.style.display==='none'?'block':'none';
-  if(p.style.display==='block'&&(!custFilter.advFilters||!custFilter.advFilters.length)) addAdvFilter();
+  const F=_activeFilter();
+  if(p.style.display==='block'&&(!F.advFilters||!F.advFilters.length)) addAdvFilter();
 }
 
 
