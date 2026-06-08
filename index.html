@@ -1269,6 +1269,8 @@ function completeLogin(user){
   applyNavPermissions();
   nav('dashboard');
   if(isFirstApprovedLogin){ setTimeout(()=>showWelcomeBanner(user.name),400); }
+  // Run auto-backup in background after login sync completes (admin only)
+  if(user.role==='admin') setTimeout(()=>autoBackup(false), 8000);
   _pendingLoginUser=null;
 }
 
@@ -1430,6 +1432,159 @@ function doLogout(){
 }
 
 function isAdmin(){ return currentUser && currentUser.role==='admin'; }
+
+/* ══════════════════════════════════════════════
+   AUTO-BACKUP SYSTEM
+   - Daily snapshot stored in Supabase (payments table, uid prefixed backup_)
+   - Keeps last 7 snapshots, purges older
+   - Auto-download JSON on login if >23h since last backup
+   - Admin can view, download and restore from Settings → Data
+   ══════════════════════════════════════════════ */
+const BACKUP_PREFIX = 'backup_';
+const BACKUP_MAX = 7;
+const BACKUP_INTERVAL_MS = 23 * 60 * 60 * 1000; // 23 hours
+
+async function autoBackup(forceDownload){
+  if(!currentUser) return;
+  try{
+    // Check when last backup was taken
+    let lastBackupTs = 0;
+    try{ lastBackupTs = parseInt(localStorage.getItem('jvd_last_backup_ts')||'0'); }catch(e){}
+    const now = Date.now();
+    const shouldBackup = forceDownload || (now - lastBackupTs) > BACKUP_INTERVAL_MS;
+    if(!shouldBackup) return;
+
+    // Pull full current state from Supabase (source of truth)
+    showToast('📦 Creating daily backup…','info');
+    const remote = await supaLoadAll();
+    if(!remote) return;
+
+    const ts = new Date().toISOString().replace(/[:.]/g,'-').slice(0,19);
+    const uid = BACKUP_PREFIX + ts;
+    const snapshot = {
+      uid, ts: new Date().toISOString(),
+      createdBy: currentUser.username,
+      counts: {},
+      data: {}
+    };
+    SUPA_TABLES.forEach(t=>{
+      snapshot.data[t] = remote[t]||[];
+      snapshot.counts[t] = (remote[t]||[]).length;
+    });
+
+    // Save to Supabase payments table (uid+data structure)
+    const payload = [{uid, data: snapshot}];
+    await fetch(SUPA_URL+'/rest/v1/payments',{
+      method:'POST',
+      headers:{'apikey':SUPA_KEY,'Authorization':'Bearer '+SUPA_KEY,
+        'Content-Type':'application/json','Prefer':'resolution=merge-duplicates,return=minimal'},
+      body: JSON.stringify(payload)
+    });
+
+    // Purge old backups — keep only last BACKUP_MAX
+    await _purgeOldBackups();
+
+    // Record timestamp
+    try{ localStorage.setItem('jvd_last_backup_ts', String(now)); }catch(e){}
+    try{ localStorage.setItem('jvd_last_backup_uid', uid); }catch(e){}
+
+    // Auto-download JSON to browser
+    _downloadBackupJSON(snapshot, ts);
+
+    showToast('✅ Backup saved to cloud + downloaded','success');
+
+    // Refresh settings data tab if open
+    if(currentNav==='settings') try{ renderSettingsData(); }catch(e){}
+
+  }catch(e){
+    console.warn('[BACKUP] Auto-backup failed:',e);
+    showToast('⚠️ Auto-backup failed — please export manually from Settings','warning');
+  }
+}
+
+async function _purgeOldBackups(){
+  try{
+    const rows = await supaFetch('payments','GET',null,'select=uid&limit=100');
+    const backupRows = (rows||[])
+      .filter(r=>(r.uid||'').startsWith(BACKUP_PREFIX))
+      .sort((a,b)=>b.uid.localeCompare(a.uid)); // newest first
+    const toDelete = backupRows.slice(BACKUP_MAX);
+    for(const r of toDelete){
+      await fetch(SUPA_URL+'/rest/v1/payments?uid=eq.'+encodeURIComponent(r.uid),{
+        method:'DELETE',
+        headers:{'apikey':SUPA_KEY,'Authorization':'Bearer '+SUPA_KEY}
+      });
+    }
+  }catch(e){ console.warn('[BACKUP] Purge failed:',e); }
+}
+
+function _downloadBackupJSON(snapshot, ts){
+  try{
+    const json = JSON.stringify(snapshot.data, null, 2);
+    const blob = new Blob([json],{type:'application/json'});
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = `JVDCRM_Backup_${ts.replace(/-/g,'').slice(0,15)}.json`;
+    document.body.appendChild(a);
+    a.click();
+    setTimeout(()=>{ URL.revokeObjectURL(a.href); a.remove(); },1000);
+  }catch(e){ console.warn('[BACKUP] Download failed:',e); }
+}
+
+async function loadBackupList(){
+  try{
+    const rows = await supaFetch('payments','GET',null,'select=uid,data&limit=100');
+    return (rows||[])
+      .filter(r=>(r.uid||'').startsWith(BACKUP_PREFIX))
+      .map(r=>r.data||{})
+      .sort((a,b)=>(b.uid||'').localeCompare(a.uid||''));
+  }catch(e){ return []; }
+}
+
+async function downloadBackup(uid){
+  try{
+    showToast('Fetching backup…','info');
+    const rows = await supaFetch('payments','GET',null,`select=uid,data&uid=eq.${encodeURIComponent(uid)}&limit=1`);
+    if(!rows||!rows.length){ showToast('Backup not found','warning'); return; }
+    const snap = rows[0].data||{};
+    const ts = (snap.ts||uid).replace(/[:.]/g,'-').slice(0,19);
+    _downloadBackupJSON(snap, ts);
+    showToast('✅ Backup downloaded','success');
+  }catch(e){ showToast('Download failed','warning'); }
+}
+
+async function restoreFromBackup(uid){
+  if(!isAdmin()){ showToast('Admin only','warning'); return; }
+  if(!confirm('⚠️ RESTORE from this backup?\n\nThis will replace ALL current data with the snapshot.\n\nA new backup of current data will be taken first as insurance.\n\nAre you sure?')) return;
+  try{
+    // First take a backup of current state
+    showToast('Taking safety backup before restore…','info');
+    await autoBackup(true);
+    // Now fetch the snapshot
+    showToast('Restoring from snapshot…','info');
+    const rows = await supaFetch('payments','GET',null,`select=uid,data&uid=eq.${encodeURIComponent(uid)}&limit=1`);
+    if(!rows||!rows.length){ showToast('Snapshot not found in cloud','warning'); return; }
+    const snap = rows[0].data||{};
+    if(!snap.data){ showToast('Invalid snapshot format','warning'); return; }
+    // Replace db with snapshot data
+    SUPA_TABLES.forEach(t=>{ if(snap.data[t]) db[t]=snap.data[t]; });
+    saveDB();
+    // Push restored data back to Supabase
+    await Promise.all(SUPA_TABLES.map(t=>
+      db[t]&&db[t].length ? supaSaveTable(t,db[t]) : Promise.resolve()
+    ));
+    showToast('✅ Data restored successfully from snapshot','success');
+    nav(currentNav);
+    renderSettingsData();
+  }catch(e){
+    console.warn('[BACKUP] Restore failed:',e);
+    showToast('❌ Restore failed — '+e.message,'warning');
+  }
+}
+
+// Run auto-backup every 24h while app is open
+setInterval(()=>{ if(currentUser&&isAdmin()) autoBackup(false); }, BACKUP_INTERVAL_MS);
+
 
 /* ══════════════════════════════════════════════
    AUDIT LOG
@@ -8743,20 +8898,96 @@ function deleteAnnFromSettings(id){
 }
 
 function renderSettingsData(){
-  document.getElementById('settings-tab-body').innerHTML=`
-<div style="max-width:600px">
-  <div class="card">
-    <div style="font-size:13px;font-weight:600;color:var(--text);margin-bottom:6px">Data Management</div>
-    <div style="font-size:12px;color:var(--text3);margin-bottom:16px">Reload sample data or clear everything for a fresh start.</div>
-    <div style="display:flex;gap:10px;flex-wrap:wrap">
-      
-      <button class="btn" onclick="clearAllData()" style="background:#fff0f0;border:1px solid #f5c6c6;color:var(--red)">🗑️ Clear All Data</button>
+  const el = document.getElementById('settings-tab-body');
+  el.innerHTML=`
+<div style="max-width:700px">
+
+  <div class="card" style="margin-bottom:20px">
+    <div style="font-size:14px;font-weight:700;color:var(--text);margin-bottom:4px">📦 Auto-Backup Status</div>
+    <div style="font-size:12px;color:var(--text3);margin-bottom:14px">
+      A full cloud snapshot is taken automatically every 24 hours when admin logs in. The last 7 snapshots are kept.
+      Each backup is also downloaded to your device as a JSON file.
     </div>
-    <div style="font-size:11px;color:var(--text3);margin-top:12px;padding:8px 12px;background:var(--bg2);border-radius:6px">
-      <strong>Reload Demo Data</strong> replaces current data with the 30-client sample. <strong>Clear All Data</strong> wipes everything — use with caution.
+    <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:12px">
+      <button class="btn btn-gold" onclick="autoBackup(true)">📦 Backup Now + Download</button>
+      <button class="btn btn-outline" onclick="exportData()">⬇ Export JSON (local only)</button>
+    </div>
+    <div id="backup-last-ts" style="font-size:11px;color:var(--text3)">Checking last backup time…</div>
+  </div>
+
+  <div class="card" style="margin-bottom:20px">
+    <div style="font-size:14px;font-weight:700;color:var(--text);margin-bottom:4px">🕐 Backup History <span style="font-size:11px;font-weight:400;color:var(--text3)">(last 7 snapshots from cloud)</span></div>
+    <div id="backup-history-body" style="margin-top:12px">
+      <div style="color:var(--text3);font-size:13px">Loading…</div>
     </div>
   </div>
+
+  <div class="card" style="border:1px solid #f5c6c6;background:#fff8f8">
+    <div style="font-size:14px;font-weight:700;color:var(--red);margin-bottom:4px">⚠️ Danger Zone</div>
+    <div style="font-size:12px;color:var(--text3);margin-bottom:14px">These actions are irreversible. A backup is strongly recommended before proceeding.</div>
+    <button class="btn" onclick="clearAllData()" style="background:#fff0f0;border:1px solid #f5c6c6;color:var(--red)">🗑️ Clear ALL Data (browser + cloud)</button>
+  </div>
+
 </div>`;
+
+  // Load last backup timestamp
+  try{
+    const lastTs = parseInt(localStorage.getItem('jvd_last_backup_ts')||'0');
+    const tsEl = document.getElementById('backup-last-ts');
+    if(lastTs && tsEl){
+      const d = new Date(lastTs);
+      const ago = Math.round((Date.now()-lastTs)/60000);
+      tsEl.textContent = `Last backup: ${d.toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'})} ${d.toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'})} (${ago < 60 ? ago+'m ago' : ago < 1440 ? Math.round(ago/60)+'h ago' : Math.round(ago/1440)+'d ago'})`;
+    } else if(tsEl){ tsEl.textContent = 'No backup taken yet this session.'; }
+  }catch(e){}
+
+  // Load backup history async
+  loadBackupList().then(backups=>{
+    const body = document.getElementById('backup-history-body');
+    if(!body) return;
+    if(!backups.length){
+      body.innerHTML='<div style="color:var(--text3);font-size:13px">No cloud backups found yet. Click "Backup Now" to create the first one.</div>';
+      return;
+    }
+    body.innerHTML=`
+      <table style="width:100%;border-collapse:collapse;font-size:12px">
+        <thead>
+          <tr style="background:var(--bg2);border-bottom:2px solid var(--border)">
+            <th style="padding:8px 10px;text-align:left;font-weight:700;color:var(--text2)">#</th>
+            <th style="padding:8px 10px;text-align:left;font-weight:700;color:var(--text2)">Date & Time</th>
+            <th style="padding:8px 10px;text-align:left;font-weight:700;color:var(--text2)">By</th>
+            <th style="padding:8px 10px;text-align:center;font-weight:700;color:var(--text2)">Customers</th>
+            <th style="padding:8px 10px;text-align:center;font-weight:700;color:var(--text2)">Deals</th>
+            <th style="padding:8px 10px;text-align:center;font-weight:700;color:var(--text2)">Invoices</th>
+            <th style="padding:8px 10px;text-align:center;font-weight:700;color:var(--text2)">Tasks</th>
+            <th style="padding:8px 10px;text-align:center;font-weight:700;color:var(--text2)">Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${backups.map((b,i)=>{
+            const d = b.ts ? new Date(b.ts) : null;
+            const dtStr = d ? d.toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'})+' '+d.toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'}) : b.uid||'—';
+            const counts = b.counts||{};
+            const isLatest = i===0;
+            return `<tr style="border-bottom:1px solid var(--border);${isLatest?'background:#F0FDF4':''}">
+              <td style="padding:8px 10px;color:var(--text3)">${backups.length-i}</td>
+              <td style="padding:8px 10px;font-weight:${isLatest?'700':'400'};color:var(--text)">${dtStr}${isLatest?' <span style="background:#1C7A3E;color:#fff;border-radius:10px;padding:1px 7px;font-size:10px;margin-left:4px">Latest</span>':''}</td>
+              <td style="padding:8px 10px;color:var(--text2)">${b.createdBy||'—'}</td>
+              <td style="padding:8px 10px;text-align:center;color:var(--text)">${counts.customers||0}</td>
+              <td style="padding:8px 10px;text-align:center;color:var(--text)">${counts.deals||0}</td>
+              <td style="padding:8px 10px;text-align:center;color:var(--text)">${counts.invoices||0}</td>
+              <td style="padding:8px 10px;text-align:center;color:var(--text)">${counts.tasks||0}</td>
+              <td style="padding:8px 10px;text-align:center">
+                <div style="display:flex;gap:6px;justify-content:center">
+                  <button class="btn btn-outline btn-sm" onclick="downloadBackup('${b.uid}')">⬇ Download</button>
+                  <button class="btn btn-sm" style="background:#FEF0EE;color:#C0392B;border:1px solid #E8B0A0" onclick="restoreFromBackup('${b.uid}')">↩ Restore</button>
+                </div>
+              </td>
+            </tr>`;
+          }).join('')}
+        </tbody>
+      </table>`;
+  });
 }
 
 
