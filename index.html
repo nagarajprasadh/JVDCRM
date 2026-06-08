@@ -4658,11 +4658,12 @@ function exportData(){
   a.download=`DiamondCRM_Backup_${new Date().toISOString().slice(0,10)}.json`; a.click();
 }
 function importData(input){
-  if(!confirm('This will overwrite all current data. Are you sure?')) return;
+  if(!isAdmin()){ showToast('Only admin can restore data','warning'); return; }
+  if(!confirm('⚠️ This will overwrite ALL current data with the backup file.\n\nMake sure you have exported a current backup first.\n\nAre you sure?')) return;
   const f=input.files[0]; if(!f) return;
-  const r=new FileReader(); r.onload=e=>{ try{ db=JSON.parse(e.target.result); saveDB(); nav(currentNav); }catch(err){ alert('Invalid JSON file'); } }; r.readAsText(f);
+  const r=new FileReader(); r.onload=e=>{ try{ db=JSON.parse(e.target.result); saveDB(); nav(currentNav); showToast('Data restored from backup','success'); }catch(err){ alert('Invalid JSON file'); } }; r.readAsText(f);
 }
-function clearData(){ if(confirm('Delete ALL data? This cannot be undone!')){ db={customers:[],salespeople:[],campaigns:[],businessCards:[],version:'2.0'}; saveDB(); nav(currentNav); } }
+function clearData(){ if(!isAdmin()) return; if(confirm('Delete ALL local data? This cannot be undone!')){ db={customers:[],salespeople:[],campaigns:[],businessCards:[],version:'2.0'}; saveDB(); nav(currentNav); } }
 
 // ══════════════════════════════════════════════
 // CAMPAIGNS
@@ -8761,7 +8762,9 @@ function renderSettingsData(){
 
 function resetDemoData(){ /* disabled — demo data removed */ }
 function clearAllData(){
-  if(!confirm('This will permanently delete ALL data from both this browser AND the cloud database. This cannot be undone. Are you sure?')) return;
+  if(!isAdmin()){ showToast('Only admin can clear all data','warning'); return; }
+  if(!confirm('⚠️ WARNING: This will permanently delete ALL data from both this browser AND the cloud database.\n\nThis cannot be undone.\n\nAre you absolutely sure?')) return;
+  if(!confirm('Final confirmation — type OK in your mind and click OK to permanently wipe everything.')) return;
   db={customers:[],salespeople:[],businessCards:[],campaigns:[],invoices:[],suppliers:[],stock:[],deals:[],tasks:[],savedReports:[],settings:{},auditLog:[]};
   // Wipe localStorage
   try{ localStorage.removeItem(DB_KEY); }catch(e){}
