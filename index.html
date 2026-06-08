@@ -1944,7 +1944,7 @@ function rbacResetPerms(){
   wrap.innerHTML=_buildPermMatrix(defaults, role==='admin');
 }
 
-function saveUser(id){
+async function saveUser(id){
   const username=(document.getElementById('mu-username').value||'').trim().toLowerCase();
   const name=(document.getElementById('mu-name').value||'').trim();
   const pwdRaw=(document.getElementById('mu-pwd').value||'').trim();
@@ -1966,18 +1966,36 @@ function saveUser(id){
     if(idx>-1){
       Object.assign(db.users[idx],{username,name,role,salespersonId:spId,active,permissions});
       if(pwdRaw) db.users[idx].pwd=hashPwd(pwdRaw);
-      supaSaveTable('users',[db.users[idx]]).catch(e=>console.warn('[SUPA] user edit:',e));
+      saveDB();
       // Update currentUser session if editing self
       if(currentUser&&currentUser.id===id){
         currentUser.permissions=permissions;
+        if(pwdRaw) currentUser.pwd=hashPwd(pwdRaw);
         applyNavPermissions();
+      }
+      // Await Supabase push so it's committed before modal closes
+      try{
+        await supaSaveTable('users',[db.users[idx]]);
+        showToast('User saved and synced','success');
+      } catch(e){
+        console.warn('[SUPA] user edit:',e);
+        showToast('Saved locally — Supabase sync failed, retry later','warning');
       }
     }
   } else {
     const forceChg=document.getElementById('mu-force-pwd')&&document.getElementById('mu-force-pwd').checked;
-    db.users.push({id:'u'+Date.now(),username,pwd:hashPwd(pwdRaw),role,salespersonId:spId,name,active,permissions,mustChangePwd:!!forceChg,createdAt:new Date().toISOString()});
+    const newUser={id:'u'+Date.now(),username,pwd:hashPwd(pwdRaw),role,salespersonId:spId,name,active,permissions,mustChangePwd:!!forceChg,createdAt:new Date().toISOString()};
+    db.users.push(newUser);
+    saveDB();
+    try{
+      await supaSaveTable('users',[newUser]);
+      showToast('User created and synced','success');
+    } catch(e){
+      console.warn('[SUPA] user create:',e);
+      showToast('Saved locally — Supabase sync failed, retry later','warning');
+    }
   }
-  saveDB(); closeModal('modal-users'); renderUsers();
+  closeModal('modal-users'); renderUsers();
 }
 
 function deleteUser(id){
