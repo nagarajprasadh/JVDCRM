@@ -3255,7 +3255,8 @@ function buildCustForm(c){
   <div class="field full"><label>Internal Notes</label><textarea id="f-notes" rows="3" style="resize:vertical" placeholder="Add notes about this client…">${v(c,'notes')}</textarea></div>
   <div class="field full"><label>Tags <span style="font-size:11px;color:var(--text3);font-weight:400">(comma-separated)</span></label><input id="f-tags" value="${(c.tags||[]).join(', ')}" placeholder="e.g. VIP, HNI, Referral"></div>
 </div>
-<div class="flex gap-2" style="justify-content:flex-end;margin-top:16px;padding-top:12px;border-top:1px solid var(--border)">
+<div id="cust-save-warn" style="display:none;background:#FFFBEA;border:1px solid #F5C842;border-radius:8px;padding:10px 14px;font-size:12px;color:#7A5C00;margin-top:12px;line-height:1.7"></div>
+<div class="flex gap-2" style="justify-content:flex-end;margin-top:12px;padding-top:12px;border-top:1px solid var(--border)">
   <button class="btn btn-outline" onclick="closeModal('modal-cust')">Cancel</button>
   <button class="btn btn-gold" onclick="saveCust()">💾 Save Customer</button>
 </div>`;
@@ -3416,9 +3417,35 @@ function openCustModalFull(id){
 
 function saveCust(){
   const fn=(document.getElementById('f-fn')||{}).value?.trim()||'';
-  if(!fn){ alert('First name is required.'); return; }
+  const ln=(document.getElementById('f-ln')||{}).value?.trim()||'';
   const g=id=>{ const el=document.getElementById(id); return el?el.value:''; };
   const gn=id=>{ const el=document.getElementById(id); return el?Number(el.value)||0:0; };
+
+  // ── HARD BLOCK ──────────────────────────────────────────────────
+  const hardErrors=[];
+  if(!fn) hardErrors.push('First Name is required.');
+  if(!ln) hardErrors.push('Last Name is required.');
+  const email1=g('f-email').trim(), phone1=g('f-phone').trim(), mobile1=g('f-mobile').trim();
+  if(!email1&&!phone1&&!mobile1) hardErrors.push('At least one contact method is required — Email 1, Phone Work 1 or Phone Mobile 1.');
+  if(hardErrors.length){
+    const warnEl=document.getElementById('cust-save-warn');
+    if(warnEl){ warnEl.style.display='block'; warnEl.style.background='#FEF0EE'; warnEl.style.borderColor='#E8A090'; warnEl.style.color='#B03020'; warnEl.innerHTML='⛔ <strong>Cannot save:</strong><br>'+hardErrors.map(e=>'• '+e).join('<br>'); warnEl.scrollIntoView({behavior:'smooth',block:'nearest'}); }
+    return;
+  }
+
+  // ── SOFT WARNING ─────────────────────────────────────────────────
+  const softWarns=[];
+  if(!g('f-src')) softWarns.push('Lead Source is not set — important for tracking where business comes from.');
+  if(!g('f-sp')) softWarns.push('No Primary Salesperson assigned — this lead will not appear in any salesperson\'s pipeline.');
+  if(!g('f-stat')) softWarns.push('Lead Status is not set.');
+  const warnEl=document.getElementById('cust-save-warn');
+  if(softWarns.length&&warnEl){
+    warnEl.style.display='block'; warnEl.style.background='#FFFBEA'; warnEl.style.borderColor='#F5C842'; warnEl.style.color='#7A5C00';
+    warnEl.innerHTML='⚠️ <strong>Heads up — some fields are empty:</strong><br>'+softWarns.map(w=>'• '+w).join('<br>')+'<br><span style="font-size:11px;color:#9A7230;margin-top:4px;display:block">You can still save — tap Save again to confirm.</span>';
+    if(!warnEl.dataset.acknowledged){ warnEl.dataset.acknowledged='1'; warnEl.scrollIntoView({behavior:'smooth',block:'nearest'}); return; }
+  }
+  if(warnEl){ warnEl.style.display='none'; delete warnEl.dataset.acknowledged; }
+
   const tags=g('f-tags').split(',').map(t=>t.trim()).filter(Boolean);
   const payPref = g('f-pay');
   const obj={
