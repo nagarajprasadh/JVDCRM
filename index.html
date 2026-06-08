@@ -908,6 +908,7 @@ function loadDB(){
   const _purgeCamps = new Set(['camp001','camp002','camp003','camp004','camp005']);
   const _purgeInvs  = new Set(['inv001','inv002','inv003','inv004','inv005','inv006','inv007','inv008']);
   const _purgeUsers = new Set(['arjun','priya','kanokwan','david','nadia','u001','u002','u003','u004','u005','u006']);
+  db.customers = (db.customers||[]).filter(c=>!(c.firstName==='Priya'&&c.lastName==='Nair'));
   db.customers   = (db.customers||[]).filter(c=>!_purgeCids.has(c.id));
   db.salespeople = (db.salespeople||[]).filter(s=>!_purgeSpids.has(s.id));
   db.campaigns   = (db.campaigns||[]).filter(c=>!_purgeCamps.has(c.id));
@@ -949,11 +950,11 @@ async function loadDBFromSupabase(){
       } else {
         if(!remoteRows.length) return;
         const localRows=db[t]||[];
-        const remoteMap=new Map(remoteRows.map(r=>[(r.uid||r.id),r]));
-        const localIds=new Set(localRows.map(r=>r.uid||r.id).filter(Boolean));
-        const merged=localRows.map(r=>remoteMap.has(r.uid||r.id)?remoteMap.get(r.uid||r.id):r);
-        remoteRows.forEach(r=>{const rid=r.uid||r.id;if(rid&&!localIds.has(rid))merged.push(r);});
-        db[t]=merged;changed=true;
+        const remoteIds=new Set(remoteRows.map(r=>r.uid||r.id).filter(Boolean));
+        // Keep local-only records not yet pushed to Supabase (no uid match in remote)
+        const localOnly=localRows.filter(r=>{const rid=r.uid||r.id; return rid&&!remoteIds.has(rid);});
+        // Supabase wins for all records it has — local stale/deleted records are dropped
+        db[t]=[...remoteRows,...localOnly];changed=true;
       }
     });
     if(changed){
