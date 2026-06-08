@@ -243,9 +243,10 @@ body{font-family:'Inter',-apple-system,BlinkMacSystemFont,sans-serif;background:
 .view-btn{width:30px;height:28px;border:none;background:transparent;border-radius:5px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .15s;color:var(--text3)}
 .view-btn.active{background:var(--gold);color:#fff;box-shadow:0 1px 4px rgba(180,138,80,.3)}
 /* CUSTOMER TABLE */
-.cust-table-wrap{overflow-x:auto;border-radius:12px;border:1px solid var(--border);background:var(--card)}
+.cust-table-wrap{overflow:auto;border-radius:12px;border:1px solid var(--border);background:var(--card);max-height:calc(100vh - 220px)}
 .cust-table{width:100%;border-collapse:collapse;font-size:12.5px}
 .cust-table thead tr{background:var(--bg2);border-bottom:2px solid var(--border2)}
+.cust-table thead th{position:sticky;top:0;z-index:2;background:var(--bg2)}
 .cust-table th{padding:10px 12px;text-align:left;font-weight:700;font-size:10.5px;text-transform:uppercase;letter-spacing:.8px;color:var(--text2);white-space:nowrap;cursor:pointer;user-select:none;background:var(--bg2)}
 .cust-table th:hover,.cust-table th.sorted{color:var(--gold)}
 .sort-ic{display:inline-block;margin-left:3px;font-size:9px;opacity:.4}
@@ -695,10 +696,19 @@ th[data-tip]{cursor:pointer}
 <!-- ══════════════════ MODALS ══════════════════ -->
 <!-- Customer Modal -->
 <div class="modal-overlay" id="modal-cust">
-  <div class="modal">
-    <button class="modal-close" onclick="closeModal('modal-cust')">✕</button>
-    <div class="modal-title" id="modal-cust-title">Add Customer</div>
-    <div id="modal-cust-body"></div>
+  <div class="modal" style="display:flex;flex-direction:column;padding:0;overflow:hidden">
+    <div style="padding:24px 28px 16px 28px;border-bottom:1px solid var(--border);flex-shrink:0;position:relative">
+      <button class="modal-close" onclick="closeModal('modal-cust')" style="position:absolute;top:16px;right:16px">✕</button>
+      <div class="modal-title" id="modal-cust-title" style="margin:0">Add Customer</div>
+    </div>
+    <div id="modal-cust-body" style="overflow-y:auto;flex:1;padding:20px 28px"></div>
+    <div id="modal-cust-footer" style="flex-shrink:0;border-top:1px solid var(--border);padding:14px 28px;background:var(--card);border-radius:0 0 14px 14px">
+      <div id="modal-cust-warn-sticky" style="display:none;background:#FFFBEA;border:1px solid #F5C842;border-radius:8px;padding:10px 14px;font-size:12px;color:#7A5C00;margin-bottom:10px;line-height:1.7"></div>
+      <div class="flex gap-2" style="justify-content:flex-end">
+        <button class="btn btn-outline" onclick="closeModal('modal-cust')">Cancel</button>
+        <button class="btn btn-gold" onclick="saveCust()">💾 Save Customer</button>
+      </div>
+    </div>
   </div>
 </div>
 <!-- Salesperson Modal -->
@@ -3049,7 +3059,7 @@ function openCustModal(id){
   initFormData(c||{});
   document.getElementById('modal-cust-title').textContent=id?'Edit Customer':'Add Customer';
   document.getElementById('modal-cust-body').innerHTML=buildCustForm(c||{});
-  showModal('modal-cust');
+  const _sw=document.getElementById("modal-cust-warn-sticky");if(_sw){_sw.style.display="none";delete _sw.dataset.acknowledged;} showModal('modal-cust');
 }
 
 function avatarHtml(c, size=34, fs=13){
@@ -3255,7 +3265,6 @@ function buildCustForm(c){
   <div class="field full"><label>Internal Notes</label><textarea id="f-notes" rows="3" style="resize:vertical" placeholder="Add notes about this client…">${v(c,'notes')}</textarea></div>
   <div class="field full"><label>Tags <span style="font-size:11px;color:var(--text3);font-weight:400">(comma-separated)</span></label><input id="f-tags" value="${(c.tags||[]).join(', ')}" placeholder="e.g. VIP, HNI, Referral"></div>
 </div>
-<div id="cust-save-warn" style="display:none;background:#FFFBEA;border:1px solid #F5C842;border-radius:8px;padding:10px 14px;font-size:12px;color:#7A5C00;margin-top:12px;line-height:1.7"></div>
 <div class="flex gap-2" style="justify-content:flex-end;margin-top:12px;padding-top:12px;border-top:1px solid var(--border)">
   <button class="btn btn-outline" onclick="closeModal('modal-cust')">Cancel</button>
   <button class="btn btn-gold" onclick="saveCust()">💾 Save Customer</button>
@@ -3412,7 +3421,7 @@ function openCustModalFull(id){
   initFormData(c||{});
   document.getElementById('modal-cust-title').textContent=id?'Edit Customer':'Add Customer';
   document.getElementById('modal-cust-body').innerHTML=buildCustForm(c||{});
-  showModal('modal-cust');
+  const _sw2=document.getElementById("modal-cust-warn-sticky");if(_sw2){_sw2.style.display="none";delete _sw2.dataset.acknowledged;} showModal('modal-cust');
 }
 
 function saveCust(){
@@ -3428,8 +3437,8 @@ function saveCust(){
   const email1=g('f-email').trim(), phone1=g('f-phone').trim(), mobile1=g('f-mobile').trim();
   if(!email1&&!phone1&&!mobile1) hardErrors.push('At least one contact method is required — Email 1, Phone Work 1 or Phone Mobile 1.');
   if(hardErrors.length){
-    const warnEl=document.getElementById('cust-save-warn');
-    if(warnEl){ warnEl.style.display='block'; warnEl.style.background='#FEF0EE'; warnEl.style.borderColor='#E8A090'; warnEl.style.color='#B03020'; warnEl.innerHTML='⛔ <strong>Cannot save:</strong><br>'+hardErrors.map(e=>'• '+e).join('<br>'); warnEl.scrollIntoView({behavior:'smooth',block:'nearest'}); }
+    const warnEl=document.getElementById('modal-cust-warn-sticky');
+    if(warnEl){ warnEl.style.display='block'; warnEl.style.background='#FEF0EE'; warnEl.style.borderColor='#E8A090'; warnEl.style.color='#B03020'; warnEl.innerHTML='⛔ <strong>Cannot save:</strong><br>'+hardErrors.map(e=>'• '+e).join('<br>'); }
     return;
   }
 
@@ -3438,11 +3447,11 @@ function saveCust(){
   if(!g('f-src')) softWarns.push('Lead Source is not set — important for tracking where business comes from.');
   if(!g('f-sp')) softWarns.push('No Primary Salesperson assigned — this lead will not appear in any salesperson\'s pipeline.');
   if(!g('f-stat')) softWarns.push('Lead Status is not set.');
-  const warnEl=document.getElementById('cust-save-warn');
+  const warnEl=document.getElementById('modal-cust-warn-sticky');
   if(softWarns.length&&warnEl){
     warnEl.style.display='block'; warnEl.style.background='#FFFBEA'; warnEl.style.borderColor='#F5C842'; warnEl.style.color='#7A5C00';
-    warnEl.innerHTML='⚠️ <strong>Heads up — some fields are empty:</strong><br>'+softWarns.map(w=>'• '+w).join('<br>')+'<br><span style="font-size:11px;color:#9A7230;margin-top:4px;display:block">You can still save — tap Save again to confirm.</span>';
-    if(!warnEl.dataset.acknowledged){ warnEl.dataset.acknowledged='1'; warnEl.scrollIntoView({behavior:'smooth',block:'nearest'}); return; }
+    warnEl.innerHTML='⚠️ <strong>Heads up — some fields are empty:</strong><br>'+softWarns.map(w=>'• '+w).join('<br>')+'<br><span style="font-size:11px;color:#9A7230;margin-top:4px;display:block">Tap Save again to confirm.</span>';
+    if(!warnEl.dataset.acknowledged){ warnEl.dataset.acknowledged='1'; return; }
   }
   if(warnEl){ warnEl.style.display='none'; delete warnEl.dataset.acknowledged; }
 
