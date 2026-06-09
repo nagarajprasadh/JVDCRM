@@ -4838,7 +4838,7 @@ function importData(input){
   const f=input.files[0]; if(!f) return;
   const r=new FileReader(); r.onload=e=>{ try{ db=JSON.parse(e.target.result); saveDB(); nav(currentNav); showToast('Data restored from backup','success'); }catch(err){ alert('Invalid JSON file'); } }; r.readAsText(f);
 }
-function clearData(){ if(!isAdmin()) return; if(confirm('Delete ALL local data? This cannot be undone!')){ db={customers:[],salespeople:[],campaigns:[],businessCards:[],version:'2.0'}; saveDB(); nav(currentNav); } }
+// clearData() removed — use clearAllData() in Settings → Data which properly wipes both localStorage and Supabase
 
 // ══════════════════════════════════════════════
 // CAMPAIGNS
