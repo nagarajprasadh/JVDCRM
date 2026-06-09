@@ -1161,16 +1161,7 @@ function _doLoginCheck(uname, pass){
     showLoginError('Incorrect username or password.'); return;
   }
   if(user.mustChangePwd){ showChangePwdScreen(user); return; }
-  // ── 2FA TOTP check ──────────────────────────────────
-  _pendingLoginUser = user;
-  if(!user.totpEnrolled || !user.totpSecret){
-    // First time — generate secret and show setup
-    if(!user.totpSecret) user.totpSecret = totpGenSecret();
-    showTotpSetup(user);
-  } else {
-    // Already enrolled — verify code
-    showTotpVerify(user);
-  }
+  completeLogin(user);
 }
 
 function showTotpSetup(user){
