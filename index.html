@@ -1161,7 +1161,16 @@ function _doLoginCheck(uname, pass){
     showLoginError('Incorrect username or password.'); return;
   }
   if(user.mustChangePwd){ showChangePwdScreen(user); return; }
-  completeLogin(user);
+  // ── 2FA TOTP check ──────────────────────────────────
+  _pendingLoginUser = user;
+  if(!user.totpEnrolled || !user.totpSecret){
+    // First time — generate secret and show setup
+    if(!user.totpSecret) user.totpSecret = totpGenSecret();
+    showTotpSetup(user);
+  } else {
+    // Already enrolled — verify code
+    showTotpVerify(user);
+  }
 }
 
 function showTotpSetup(user){
@@ -1201,7 +1210,7 @@ function showTotpSetup(user){
   },100);
 }
 
-function confirmTotpSetup(){
+async function confirmTotpSetup(){
   const code=(document.getElementById('totp-setup-code').value||'').trim().replace(/\s/g,'');
   const errEl=document.getElementById('totp-setup-error');
   errEl.style.display='none';
@@ -1216,12 +1225,15 @@ function confirmTotpSetup(){
     errEl.style.display='block'; return;
   }
   user.totpEnrolled=true;
-  saveDB();
-  // Push this user's TOTP enrolment directly to Supabase immediately
-  // so other devices get it on next login without re-scanning
-  if(user.uid && user.pwd && user.pwd.length>0){
-    supaSaveTable('users',[user]).catch(e=>console.warn('[SUPA] TOTP enrol push failed:',e));
-  }
+  // Push TOTP enrolment to Supabase SYNCHRONOUSLY before completing login
+  // This prevents the re-enrol loop on other devices
+  try{
+    await supaSaveTable('users',[user]);
+    // Also update in localStorage immediately
+    const idx=(db.users||[]).findIndex(u=>u.username===user.username);
+    if(idx>=0) db.users[idx]=user;
+    try{ localStorage.setItem(DB_KEY, JSON.stringify(db)); }catch(e){}
+  }catch(e){ console.warn('[SUPA] TOTP enrol push failed:',e); }
   completeLogin(user);
 }
 
@@ -2211,6 +2223,7 @@ function _openUserModal(id){
     <div class="fields" style="grid-template-columns:1fr 1fr;margin-bottom:16px">
       <div class="field"><label>Username</label><input id="mu-username" value="${u?u.username:''}" placeholder="e.g. arjun"></div>
       <div class="field"><label>Full Name</label><input id="mu-name" value="${u?u.name:''}" placeholder="e.g. Arjun Mehta"></div>
+      <div class="field"><label>Email Address <span style="font-size:10px;color:var(--text3)">(for 2FA OTP)</span></label><input id="mu-email" type="email" value="${u?u.email||'':''}" placeholder="user@company.com"></div>
       <div class="field"><label>Password ${u?'<span style="font-weight:400;color:var(--text3)">(blank = keep)</span>':''}</label>
         <input id="mu-pwd" type="password" placeholder="${u?'Leave blank to keep current':'Min 6 characters'}"></div>
       ${!u?`<div class="field" style="align-self:center;margin-top:6px">
@@ -2310,6 +2323,7 @@ function rbacResetPerms(){
 async function saveUser(id){
   const username=(document.getElementById('mu-username').value||'').trim().toLowerCase();
   const name=(document.getElementById('mu-name').value||'').trim();
+  const email=(document.getElementById('mu-email').value||'').trim();
   const pwdRaw=(document.getElementById('mu-pwd').value||'').trim();
   const role=document.getElementById('mu-role').value;
   const spId=document.getElementById('mu-sp').value||null;
@@ -2327,7 +2341,7 @@ async function saveUser(id){
   if(id){
     const idx=db.users.findIndex(u=>u.id===id);
     if(idx>-1){
-      Object.assign(db.users[idx],{username,name,role,salespersonId:spId,active,permissions});
+      Object.assign(db.users[idx],{username,name,email,role,salespersonId:spId,active,permissions});
       if(pwdRaw) db.users[idx].pwd=hashPwd(pwdRaw);
       saveDB();
       // Update currentUser session if editing self
@@ -2347,7 +2361,7 @@ async function saveUser(id){
     }
   } else {
     const forceChg=document.getElementById('mu-force-pwd')&&document.getElementById('mu-force-pwd').checked;
-    const newUser={id:'u'+Date.now(),username,pwd:hashPwd(pwdRaw),role,salespersonId:spId,name,active,permissions,mustChangePwd:!!forceChg,createdAt:new Date().toISOString()};
+    const newUser={id:'u'+Date.now(),username,pwd:hashPwd(pwdRaw),role,salespersonId:spId,name,email,active,permissions,mustChangePwd:!!forceChg,createdAt:new Date().toISOString()};
     db.users.push(newUser);
     saveDB();
     try{
