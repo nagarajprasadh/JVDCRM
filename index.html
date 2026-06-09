@@ -973,9 +973,11 @@ async function loadDBFromSupabase(){
     } else {
       showToast('Up to date ✓','success');
     }
+    window._supaLoaded = true; // Safe to push to Supabase now
   }catch(e){
     console.warn('[SUPA] Load error:',e);
     showToast('Cloud sync failed — using local data','warning');
+    window._supaLoaded = true; // Still allow saves even if sync failed — better than blocking forever
   }
 }
 // Returns records visible to current user:
@@ -993,10 +995,16 @@ function saveDB(){
   SUPA_TABLES.forEach(t=>ensureUid(db[t]));
   try{ localStorage.setItem(DB_KEY, JSON.stringify(db)); }catch(e){ console.log('[CRM] localStorage error: '+e.message); }
   updateBadges();
-  // Push to Supabase async (non-blocking)
+  // SAFETY GUARD: never push to Supabase until initial sync from Supabase has completed
+  // This prevents empty localStorage from wiping cloud data on first load
+  if(!window._supaLoaded){ console.log('[SUPA] saveDB skipping push — initial sync not yet complete'); return; }
+  // SAFETY: never push empty tables — Supabase keeps what it has
   (async()=>{
     try{
-      await Promise.all(SUPA_TABLES.map(t=> db[t] && db[t].length ? supaSaveTable(t, db[t]) : Promise.resolve()));
+      await Promise.all(SUPA_TABLES.map(async t=>{
+        if(!db[t]||!db[t].length) return;
+        await supaSaveTable(t, db[t]);
+      }));
       console.log('[SUPA] Saved to Supabase');
     }catch(e){ console.warn('[SUPA] Save error:',e); }
   })();
@@ -1256,62 +1264,7 @@ function navFirstAccessible(){
   nav('dashboard');
 }
 
-function showEmailCaptureScreen(user){
-  const overlay=document.getElementById('login-overlay');
-  overlay.innerHTML=`
-  <div class="login-box" style="max-width:420px">
-    <div style="text-align:center;margin-bottom:20px">
-      <div style="font-size:32px;margin-bottom:8px">✉️</div>
-      <div style="font-family:'EB Garamond',Georgia,serif;font-size:22px;font-weight:600;color:var(--text)">One Quick Step</div>
-      <div style="font-size:13px;color:var(--text3);margin-top:8px;line-height:1.6">Please provide your office email address.<br>This helps us identify you securely.</div>
-    </div>
-    <div class="login-field">
-      <label>Office Email Address</label>
-      <input type="email" id="ec-email" placeholder="yourname@company.com" autocomplete="email"
-        style="text-align:center;font-size:15px"
-        onkeydown="if(event.key==='Enter')document.getElementById('ec-email2').focus()">
-    </div>
-    <div class="login-field">
-      <label>Confirm Email Address</label>
-      <input type="email" id="ec-email2" placeholder="Re-enter email"
-        style="text-align:center;font-size:15px"
-        onkeydown="if(event.key==='Enter')submitEmailCapture()">
-    </div>
-    <div id="ec-error" style="display:none;background:#FEF0EE;border:1px solid #E8A090;border-radius:8px;padding:8px 12px;font-size:12px;color:#B03020;margin-bottom:10px"></div>
-    <button class="login-btn" onclick="submitEmailCapture()">Continue →</button>
-  </div>`;
-  overlay.style.display='flex';
-  setTimeout(()=>{ const el=document.getElementById('ec-email'); if(el) el.focus(); },100);
-  window._emailCaptureUser=user;
-}
-
-function submitEmailCapture(){
-  const email=(document.getElementById('ec-email').value||'').trim().toLowerCase();
-  const email2=(document.getElementById('ec-email2').value||'').trim().toLowerCase();
-  const errEl=document.getElementById('ec-error');
-  const emailRegex=/^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-  if(!email){ errEl.textContent='Please enter your email address.'; errEl.style.display='block'; return; }
-  if(!emailRegex.test(email)){ errEl.textContent='Please enter a valid email address.'; errEl.style.display='block'; return; }
-  if(email!==email2){ errEl.textContent='Email addresses do not match. Please re-enter.'; errEl.style.display='block'; return; }
-  errEl.style.display='none';
-  const user=window._emailCaptureUser;
-  user.email=email;
-  // Save locally
-  const idx=(db.users||[]).findIndex(u=>u.username===user.username);
-  if(idx>=0) db.users[idx]=user;
-  saveDB();
-  // Push to Supabase
-  supaSaveTable('users',[user]).catch(e=>console.warn('[SUPA] email capture push failed:',e));
-  window._emailCaptureUser=null;
-  completeLogin(user);
-}
-
 function completeLogin(user){
-  // If non-admin user has no email, capture it first
-  if((!user.role||user.role!=='admin') && !user.email){
-    showEmailCaptureScreen(user);
-    return;
-  }
   currentUser=user;
   const isFirstApprovedLogin = user.approvedAt && !user.lastLoginAt;
   user.lastLoginAt = new Date().toISOString();
