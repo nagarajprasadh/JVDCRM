@@ -767,6 +767,10 @@ const AUTH_KEY = 'diamondCRM_auth';
 const SUPA_URL = 'https://vpiulxwkxyhnvuchqafc.supabase.co';
 const SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZwaXVseHdreHlobnZ1Y2hxYWZjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODAyNTM4MDUsImV4cCI6MjA5NTgyOTgwNX0.-d4kFj3JC267gK5iwcc23jhwRn2ymYs8IB6VEurFfgg';
 const SUPA_TABLES = ['customers','salespeople','leads','invoices','payments','stock','deals','tasks','campaigns','suppliers','users'];
+// Additional tables synced via dedicated functions (not generic SUPA_TABLES loop)
+// announcements → leads table with uid prefix 'ann_'
+// settings → embedded in admin user record
+// businessCards, savedReports → payments table with uid prefix 'bc_' / 'sr_'
 async function supaFetch(table, method='GET', body=null, params=''){
   const res = await fetch(SUPA_URL+'/rest/v1/'+table+(params?'?'+params:''), {
     method, headers: {
@@ -973,7 +977,12 @@ async function loadDBFromSupabase(){
     } else {
       showToast('Up to date ✓','success');
     }
-    window._supaLoaded = true; // Safe to push to Supabase now
+    // Load announcements and settings from Supabase (not in SUPA_TABLES)
+    await loadAnnouncementsFromSupabase();
+    loadSettingsFromSupabase(remote['users']||[]);
+    try{ localStorage.setItem(DB_KEY, JSON.stringify(db)); }catch(e){}
+    updateTicker();
+    window._supaLoaded = true;
   }catch(e){
     console.warn('[SUPA] Load error:',e);
     showToast('Cloud sync failed — using local data','warning');
@@ -1005,6 +1014,9 @@ function saveDB(){
         if(!db[t]||!db[t].length) return;
         await supaSaveTable(t, db[t]);
       }));
+      // Sync announcements and settings cross-device
+      await syncAnnouncementsToSupabase();
+      await syncSettingsToSupabase();
       console.log('[SUPA] Saved to Supabase');
     }catch(e){ console.warn('[SUPA] Save error:',e); }
   })();
@@ -1603,6 +1615,72 @@ async function restoreFromBackup(uid){
 // Run auto-backup every 24h while app is open
 setInterval(()=>{ if(currentUser&&isAdmin()) autoBackup(false); }, BACKUP_INTERVAL_MS);
 
+
+/* ══════════════════════════════════════════════
+   ANNOUNCEMENT + SETTINGS CROSS-DEVICE SYNC
+   announcements → leads table (uid prefix ann_)
+   settings → embedded in admin user record
+   ══════════════════════════════════════════════ */
+async function syncAnnouncementsToSupabase(){
+  try{
+    const anns = db.announcements||[];
+    // Delete all existing ann_ records then re-push current set
+    // First get existing
+    const existing = await supaFetch('leads','GET',null,'select=uid&limit=500');
+    const annRows = (existing||[]).filter(r=>(r.uid||'').startsWith('ann_'));
+    // Delete removed announcements
+    const currentIds = new Set(anns.map(a=>'ann_'+(a.id||a.uid)));
+    for(const r of annRows){
+      if(!currentIds.has(r.uid)){
+        await fetch(SUPA_URL+'/rest/v1/leads?uid=eq.'+encodeURIComponent(r.uid),{
+          method:'DELETE', headers:{'apikey':SUPA_KEY,'Authorization':'Bearer '+SUPA_KEY}
+        });
+      }
+    }
+    // Upsert current announcements
+    if(anns.length){
+      const payload = anns.map(a=>({ uid:'ann_'+(a.id||a.uid||('a'+Date.now())), data:{...a, _type:'announcement'} }));
+      await fetch(SUPA_URL+'/rest/v1/leads',{
+        method:'POST',
+        headers:{'apikey':SUPA_KEY,'Authorization':'Bearer '+SUPA_KEY,
+          'Content-Type':'application/json','Prefer':'resolution=merge-duplicates,return=minimal'},
+        body:JSON.stringify(payload)
+      });
+    }
+  }catch(e){ console.warn('[SUPA] Announcements sync failed:',e); }
+}
+
+async function loadAnnouncementsFromSupabase(){
+  try{
+    const rows = await supaFetch('leads','GET',null,'select=uid,data&limit=500');
+    const annRows = (rows||[]).filter(r=>(r.uid||'').startsWith('ann_'));
+    if(!annRows.length) return;
+    const remote = annRows.map(r=>{ const d={...r.data}; delete d._type; return d; });
+    // Merge: remote wins, keep local-only
+    const remoteIds = new Set(remote.map(a=>a.id||a.uid).filter(Boolean));
+    const localOnly = (db.announcements||[]).filter(a=>!remoteIds.has(a.id||a.uid));
+    db.announcements = [...remote, ...localOnly];
+  }catch(e){ console.warn('[SUPA] Announcements load failed:',e); }
+}
+
+async function syncSettingsToSupabase(){
+  try{
+    // Embed settings in admin user record
+    const admin = (db.users||[]).find(u=>u.role==='admin');
+    if(!admin) return;
+    admin._settings = db.settings||{};
+    await supaSaveTable('users',[admin]);
+  }catch(e){ console.warn('[SUPA] Settings sync failed:',e); }
+}
+
+function loadSettingsFromSupabase(remoteUsers){
+  try{
+    const admin = (remoteUsers||[]).find(u=>u.role==='admin');
+    if(admin&&admin._settings&&Object.keys(admin._settings).length){
+      db.settings = admin._settings;
+    }
+  }catch(e){ console.warn('[SUPA] Settings load failed:',e); }
+}
 
 /* ══════════════════════════════════════════════
    AUDIT LOG
