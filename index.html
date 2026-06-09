@@ -1161,7 +1161,7 @@ function _doLoginCheck(uname, pass){
     showLoginError('Incorrect username or password.'); return;
   }
   if(user.mustChangePwd){ showChangePwdScreen(user); return; }
-  // ── 2FA TOTP ──────────────────────────────────────────
+  // ── 2FA TOTP ──
   _pendingLoginUser = user;
   if(!user.totpEnrolled || !user.totpSecret){
     if(!user.totpSecret) user.totpSecret = totpGenSecret();
@@ -9387,7 +9387,7 @@ function renderAnnouncements(){
   const body=document.getElementById('news-body');
   if(!body) return;
   const anns=(db.announcements||[]).slice().reverse();
-  const isAdminUser = currentUser && currentUser.role==='admin';
+  const isAdminUser = isAdmin();
   const addBtn = isAdminUser ? `
     <button class="btn btn-gold btn-sm" onclick="openAnnModal()" style="width:100%;margin-bottom:14px">+ New Announcement</button>` : '';
 
@@ -9395,19 +9395,17 @@ function renderAnnouncements(){
     body.innerHTML = addBtn + '<div style="text-align:center;padding:30px;color:var(--text3);font-size:13px">No announcements yet.</div>';
     return;
   }
-  body.innerHTML = addBtn + anns.map((a)=>{
-    const safeId = (a.id||'').replace(/'/g,"\\'");
-    return `<div class="ann-card">
+  body.innerHTML = addBtn + anns.map((a)=>`
+    <div class="ann-card">
       <div class="ann-card-t">${a.title}</div>
       <div class="ann-card-b">${a.body||''}</div>
       ${a.link?`<a class="ann-card-l" href="${a.link}" target="_blank">🔗 ${a.linkLabel||a.link}</a>`:''}
       <div style="font-size:10px;color:var(--text3);margin-top:6px">${a.date||''}</div>
       ${isAdminUser?`<div style="display:flex;gap:6px;margin-top:6px">
-        <button class="btn btn-outline btn-sm" onclick="editAnnById('${safeId}')">✏️ Edit</button>
-        <button class="btn btn-outline btn-sm" style="color:var(--red)" onclick="deleteAnnById('${safeId}')">🗑 Delete</button>
+        <button class="btn btn-outline btn-sm" onclick="editAnnById('${a.id}')">✏️</button>
+        <button class="btn btn-outline btn-sm" style="color:var(--red)" onclick="deleteAnnById('${a.id}')">🗑</button>
       </div>`:''}
-    </div>`;
-  }).join('');
+    </div>`).join('');
 }
 
 function openAnnModal(idx){
