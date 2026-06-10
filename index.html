@@ -42,7 +42,7 @@ body{font-family:'Inter',-apple-system,BlinkMacSystemFont,sans-serif;background:
 .logo img{width:100%;max-width:180px;display:block;filter:brightness(1.1)}
 .logo-name{font-size:10.5px;font-weight:700;color:#B01010;letter-spacing:.2px;margin-top:7px;line-height:1.4}
 .logo-sub{font-size:9.5px;color:var(--text3);font-weight:500;letter-spacing:1.2px;text-transform:uppercase;margin-top:3px}
-.nav-section{padding:14px 12px 4px;font-size:9px;color:var(--text3);text-transform:uppercase;letter-spacing:1.5px;font-weight:700;display:flex;align-items:center;justify-content:space-between;cursor:pointer;user-select:none;border-radius:6px;transition:background .15s}.nav-section:hover{background:var(--hover)}.nav-section-chevron{font-size:10px;transition:transform .25s;opacity:.6}.nav-group{overflow:hidden;transition:max-height .28s ease,opacity .18s ease;max-height:500px;opacity:1}.nav-group.collapsed{max-height:0!important;opacity:0;pointer-events:none}
+.nav-section{padding:10px 12px 10px;font-size:10px;color:var(--text2);text-transform:uppercase;letter-spacing:1.2px;font-weight:800;display:flex;align-items:center;justify-content:space-between;cursor:pointer;user-select:none;border-radius:8px;transition:background .15s;margin:4px 4px 2px}.nav-section:hover{background:var(--hover)}.nav-section-chevron{font-size:16px;transition:transform .3s cubic-bezier(.4,0,.2,1);opacity:.85;line-height:1;margin-left:4px;color:var(--gold)}.nav-group{overflow:hidden;transition:max-height .28s ease,opacity .18s ease;max-height:500px;opacity:1}.nav-group.collapsed{max-height:0!important;opacity:0;pointer-events:none}
 .nav-item{display:flex;align-items:center;gap:9px;padding:8px 10px;margin:1px 6px;border-radius:8px;cursor:pointer;font-size:12.5px;color:var(--text2);transition:all .12s;font-weight:500;white-space:nowrap;position:relative}
 .nav-item:hover{background:var(--hover);color:var(--text)}
 .nav-icon{width:20px;text-align:center;flex-shrink:0;font-size:15px;line-height:1}
@@ -645,7 +645,7 @@ th[data-tip]{cursor:pointer}
       style="background:none;border:none;cursor:pointer;color:var(--text3);font-size:18px;padding:4px 6px;border-radius:6px;line-height:1;flex-shrink:0" id="sb-tog">‹</button>
   </div>
 
-  <div class="nav-section" onclick="toggleNavGroup('grp-crm')" id="hdr-crp">CRM<span class="nav-section-chevron" id="chv-grp-crm">▾</span></div>
+  <div class="nav-section" onclick="toggleNavGroup('grp-crm')" id="hdr-crp">CRM<span class="nav-section-chevron" id="chv-grp-crm">⌄</span></div>
   <div class="nav-group" id="grp-crm">
   <div class="nav-item" data-mod="dashboard"   data-label="Dashboard"           onclick="nav('dashboard')"><span class="nav-icon">⌂</span><span class="nav-label">Dashboard</span></div>
   <div class="nav-item" data-mod="customers"   data-label="Customers &amp; Leads"    onclick="nav('customers')"><span class="nav-icon">○</span><span class="nav-label">Customers &amp; Leads</span><span class="badge" id="nb-cust">0</span></div>
@@ -655,7 +655,7 @@ th[data-tip]{cursor:pointer}
   <div class="nav-item" data-mod="campaigns"   data-label="Campaigns"           onclick="nav('campaigns')"><span class="nav-icon">◎</span><span class="nav-label">Campaigns</span><span class="badge" id="nb-camp">0</span></div>
   </div>
 
-  <div class="nav-section" onclick="toggleNavGroup('grp-inv')">Inventory<span class="nav-section-chevron" id="chv-grp-inv">▾</span></div>
+  <div class="nav-section" onclick="toggleNavGroup('grp-inv')">Inventory<span class="nav-section-chevron" id="chv-grp-inv">⌄</span></div>
   <div class="nav-group" id="grp-inv">
   <div class="nav-item" data-mod="stockinv"    data-label="Stock Inventory"     onclick="nav('stockinv')"><span class="nav-icon">◆</span><span class="nav-label">Stock Inventory</span><span class="badge" id="nb-inv"></span></div>
   <div class="nav-item" data-mod="suppliers"   data-label="Suppliers"           onclick="nav('suppliers')"><span class="nav-icon">⬡</span><span class="nav-label">Suppliers</span><span class="badge" id="nb-sup"></span></div>
@@ -663,13 +663,13 @@ th[data-tip]{cursor:pointer}
   <div class="nav-item" data-mod="kyc"         data-label="KYC"                 onclick="nav('kyc')"><span class="nav-icon">⊕</span><span class="nav-label">KYC</span><span class="badge" id="nb-kyc">0</span></div>
   </div>
 
-  <div class="nav-section" onclick="toggleNavGroup('grp-fin')">Finance<span class="nav-section-chevron" id="chv-grp-fin">▾</span></div>
+  <div class="nav-section" onclick="toggleNavGroup('grp-fin')">Finance<span class="nav-section-chevron" id="chv-grp-fin">⌄</span></div>
   <div class="nav-group" id="grp-fin">
   <div class="nav-item" data-mod="accounting"  data-label="Invoices &amp; Payments" onclick="nav('accounting')"><span class="nav-icon">◻</span><span class="nav-label">Invoices &amp; Payments</span></div>
   <div class="nav-item" data-mod="commission"  data-label="Commission"          onclick="nav('commission')"><span class="nav-icon">%</span><span class="nav-label">Commission</span></div>
   </div>
 
-  <div class="nav-section" onclick="toggleNavGroup('grp-ppl')">People<span class="nav-section-chevron" id="chv-grp-ppl">▾</span></div>
+  <div class="nav-section" onclick="toggleNavGroup('grp-ppl')">People<span class="nav-section-chevron" id="chv-grp-ppl">⌄</span></div>
   <div class="nav-group" id="grp-ppl">
   <div class="nav-item" data-mod="salespeople" data-label="Salespeople"         onclick="nav('salespeople')"><span class="nav-icon">◉</span><span class="nav-label">Salespeople</span></div>
   <div class="nav-item" data-mod="reports"     data-label="Reports"             onclick="nav('reports')"><span class="nav-icon">↗</span><span class="nav-label">Reports</span></div>
