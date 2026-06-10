@@ -3216,7 +3216,9 @@ function renderCustomers(){
 <div style="margin-bottom:6px;font-size:12px;color:var(--text3)">${list.length} client${list.length!==1?'s':''} found</div>
 <div class="bulk-bar ${selectedCusts.size>0?'show':''}" id="bulk-bar">
   <span>${selectedCusts.size} selected</span>
-  <button class="btn btn-sm" style="background:#c0392b;color:#fff;border:none" onclick="bulkDeleteCusts()">🗑 Delete Selected</button>
+  <button class="btn btn-sm" style="background:var(--green);color:#fff;border:none" onclick="bulkConvert('Customer')" title="Convert selected to Customers">👤 → Customer</button>
+  <button class="btn btn-sm" style="background:var(--gold);color:#fff;border:none" onclick="bulkConvert('Lead')" title="Convert selected to Leads">🔍 → Lead</button>
+  <button class="btn btn-sm" style="background:#c0392b;color:#fff;border:none" onclick="bulkDeleteCusts()">🗑 Delete</button>
   <button class="btn btn-sm btn-outline" style="border-color:#1a1a1a;color:#1a1a1a" onclick="selectedCusts.clear();renderCustomers()">✕ Clear</button>
 </div>
 ${(()=>{ try{ return custViewMode==='card' ? renderCustCards(list) : renderCustTableHTML(list); } catch(e){ console.error('[CRM] card/table render error:',e); return `<div style="background:#fff0f0;border:1px solid var(--red);border-radius:10px;padding:20px;font-family:monospace;font-size:13px"><b>⚠️ Card render error:</b> ${e.message}<br><pre style="font-size:11px;margin-top:8px;white-space:pre-wrap">${e.stack}</pre></div>`; } })()}
@@ -3339,6 +3341,30 @@ function toggleAllCusts(checked,ids){
   ids.forEach(id=>checked?selectedCusts.add(id):selectedCusts.delete(id));
   renderCustomers();
 }
+async function bulkConvert(type){
+  if(!selectedCusts.size) return;
+  const label = type==='Customer' ? 'Customers' : 'Leads';
+  if(!confirm(`Convert ${selectedCusts.size} selected record${selectedCusts.size>1?'s':''} to ${label}?`)) return;
+  const toConvert=(db.customers||[]).filter(c=>selectedCusts.has(c.id));
+  toConvert.forEach(c=>{
+    c.recordType=type;
+    if(type==='Customer' && !c.cif) c.cif=generateCIF();
+  });
+  saveDB();
+  try{ await supaSaveTable('users', []); } catch(e){}
+  // PATCH each converted record to Supabase
+  for(const c of toConvert){
+    const slim={}; Object.keys(c).forEach(k=>{ if(!['photo','bcImg','kycDocs','activityLog'].includes(k)) slim[k]=c[k]; });
+    await fetch(SUPA_URL+'/rest/v1/customers?uid=eq.'+encodeURIComponent(c.id),{
+      method:'PATCH',
+      headers:{'apikey':SUPA_KEY,'Authorization':'Bearer '+SUPA_KEY,'Content-Type':'application/json','Prefer':'return=minimal'},
+      body:JSON.stringify({uid:c.id, data:slim})
+    }).catch(e=>console.warn('[SUPA] bulk convert patch:',e));
+  }
+  showToast(`${toConvert.length} record${toConvert.length>1?'s':''} converted to ${label}.`,'success');
+  selectedCusts.clear(); renderCustomers();
+}
+
 function bulkDeleteCusts(){
   if(!selectedCusts.size) return;
   if(!confirm(`Delete ${selectedCusts.size} selected contact${selectedCusts.size>1?'s':''}? This cannot be undone.`)) return;
