@@ -3216,8 +3216,7 @@ function renderCustomers(){
 <div style="margin-bottom:6px;font-size:12px;color:var(--text3)">${list.length} client${list.length!==1?'s':''} found</div>
 <div class="bulk-bar ${selectedCusts.size>0?'show':''}" id="bulk-bar">
   <span>${selectedCusts.size} selected</span>
-  <button class="btn btn-sm" style="background:var(--green);color:#fff;border:none" onclick="bulkConvert('Customer')" title="Convert selected to Customers">👤 → Customer</button>
-  <button class="btn btn-sm" style="background:var(--gold);color:#fff;border:none" onclick="bulkConvert('Lead')" title="Convert selected to Leads">🔍 → Lead</button>
+  ${custActiveTab==='leads' ? `<button class="btn btn-sm" style="background:var(--green);color:#fff;border:none" onclick="bulkConvert('Customer')" title="Convert selected Leads to Customers">👤 → Customer</button>` : ''}
   <button class="btn btn-sm" style="background:#c0392b;color:#fff;border:none" onclick="bulkDeleteCusts()">🗑 Delete</button>
   <button class="btn btn-sm btn-outline" style="border-color:#1a1a1a;color:#1a1a1a" onclick="selectedCusts.clear();renderCustomers()">✕ Clear</button>
 </div>
@@ -3342,13 +3341,13 @@ function toggleAllCusts(checked,ids){
   renderCustomers();
 }
 async function bulkConvert(type){
+  if(type!=='Customer'){ showToast('Only Lead → Customer conversion is supported.','warn'); return; }
   if(!selectedCusts.size) return;
-  const label = type==='Customer' ? 'Customers' : 'Leads';
-  if(!confirm(`Convert ${selectedCusts.size} selected record${selectedCusts.size>1?'s':''} to ${label}?`)) return;
+  if(!confirm(`Convert ${selectedCusts.size} selected Lead${selectedCusts.size>1?'s':''} to Customer${selectedCusts.size>1?'s':''}?`)) return;
   const toConvert=(db.customers||[]).filter(c=>selectedCusts.has(c.id));
   toConvert.forEach(c=>{
-    c.recordType=type;
-    if(type==='Customer' && !c.cif) c.cif=generateCIF();
+    c.recordType='Customer';
+    if(!c.cif) c.cif=generateCIF();
   });
   saveDB();
   try{ await supaSaveTable('users', []); } catch(e){}
