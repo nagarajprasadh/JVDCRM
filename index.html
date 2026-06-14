@@ -213,26 +213,24 @@ body{font-family:'Inter',-apple-system,BlinkMacSystemFont,sans-serif;background:
 .cust-card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:16px;cursor:pointer;transition:all .2s;position:relative}
 .cust-card:hover{border-color:var(--border2);box-shadow:0 4px 16px rgba(0,0,0,.08);transform:translateY(-1px)}
 .cust-card.selected{border-color:var(--gold);box-shadow:0 0 0 2px rgba(180,138,80,.2)}
-/* ── RBAC permission matrix ───────────────────── */
-.perm-matrix{width:100%;border-collapse:collapse;margin-top:8px}
-.perm-matrix th{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:var(--text3);padding:6px 8px;text-align:center;border-bottom:2px solid var(--border)}
-.perm-matrix th.mod-col{text-align:left}
-.perm-matrix td{padding:5px 8px;border-bottom:1px solid var(--border);vertical-align:middle}
-.perm-matrix tr:hover td{background:var(--hover)}
-.perm-cell{display:flex;align-items:center;justify-content:center}
-.perm-btn{width:72px;height:26px;border-radius:6px;border:1px solid var(--border);background:var(--card);color:var(--text3);font-size:10px;font-weight:600;cursor:pointer;transition:all .15s;letter-spacing:.3px}
-.perm-btn:hover{border-color:var(--gold);color:var(--gold)}
-.perm-btn.active-view{background:rgba(59,130,246,.15);border-color:var(--blue);color:var(--blue)}
-.perm-btn.active-edit{background:rgba(201,169,110,.15);border-color:var(--gold);color:var(--gold)}
-.perm-btn.active-full{background:rgba(34,197,94,.15);border-color:var(--green);color:var(--green)}
-.perm-btn.active-none{background:rgba(232,71,42,.13);border-color:#E8472A;color:#E8472A;font-weight:800}
-.mod-icon{font-size:14px;margin-right:6px}
-.mod-name{font-size:12px;font-weight:600;color:var(--text)}
-.perm-chip{display:inline-block;font-size:9px;font-weight:700;padding:1px 5px;border-radius:4px;margin:1px}
-.pc-view{background:rgba(59,130,246,.15);color:var(--blue)}
-.pc-edit{background:rgba(201,169,110,.15);color:var(--gold)}
-.pc-full{background:rgba(34,197,94,.15);color:var(--green)}
-.pc-none{background:var(--hover);color:var(--text3)}
+/* ── RBAC permission UI ────────────────────────── */
+.perm-chip{display:inline-flex;align-items:center;gap:3px;font-size:10px;font-weight:700;padding:2px 8px;border-radius:20px;margin:2px}
+.pc-view{background:rgba(59,130,246,.12);color:#2563EB;border:1px solid rgba(59,130,246,.3)}
+.pc-edit{background:rgba(201,169,110,.15);color:#b45309;border:1px solid rgba(201,169,110,.4)}
+.pc-full{background:rgba(34,197,94,.12);color:#16a34a;border:1px solid rgba(34,197,94,.3)}
+.pc-none{background:var(--hover);color:var(--text3);border:1px solid var(--border)}
+.perm-group-block{background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:10px 14px;margin-bottom:10px}
+.perm-group-hdr{font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:1.2px;color:var(--text3);padding-bottom:8px;margin-bottom:4px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:6px}
+.perm-toggle-row{display:flex;align-items:center;justify-content:space-between;padding:7px 2px;border-bottom:1px solid var(--border)}
+.perm-toggle-row:last-child{border-bottom:none}
+.perm-mod-label{display:flex;align-items:center;gap:8px;font-size:13px;font-weight:600;color:var(--text2)}
+.perm-lvl-btns{display:flex;gap:4px}
+.plb{padding:5px 12px;font-size:11px;font-weight:700;border-radius:8px;border:1.5px solid var(--border);background:var(--card);color:var(--text3);cursor:pointer;transition:all .15s;min-width:48px;text-align:center}
+.plb:hover{border-color:var(--gold);color:var(--gold)}
+.plb.active-none{background:#FEF0EE;color:#C0392B;border-color:#C0392B}
+.plb.active-view{background:rgba(59,130,246,.12);color:#2563EB;border-color:#2563EB}
+.plb.active-edit{background:rgba(201,169,110,.15);color:#b45309;border-color:#b45309}
+.plb.active-full{background:rgba(34,197,94,.12);color:#16a34a;border-color:#16a34a}
 
 .cust-name{font-size:14px;font-weight:600;color:var(--text)}
 .cust-meta{font-size:12px;color:var(--text3);margin-top:3px}
@@ -2130,32 +2128,42 @@ function renderUsers(){
     const sp=(db.salespeople||[]).find(s=>s.id===u.salespersonId);
     const isSelf=currentUser&&u.id===currentUser.id;
     const perms = u.role==='admin' ? null : (u.permissions||RBAC_DEFAULT_USER);
-    // Build permission chips for display
-    const chips = u.role==='admin'
-      ? '<span class="perm-chip pc-full">Full Access — Admin</span>'
-      : RBAC_MODULES.map(m=>{
-          const p=perms?perms[m.key]:'full';
-          if(p==='none') return '';
-          return `<span class="perm-chip pc-${p}" title="${m.label}: ${p}">${m.icon}</span>`;
+    // Group summary badges
+    const PG=[
+      {label:'CRM',      icon:'🗂',  keys:['dashboard','customers','pipeline','deals','tasks','campaigns']},
+      {label:'Inventory',icon:'💎', keys:['stockinv','suppliers','inventory','kyc']},
+      {label:'Finance',  icon:'💰', keys:['accounting','commission']},
+      {label:'People',   icon:'👥', keys:['salespeople','reports','bizcard','settings']},
+    ];
+    const LC={none:'#C0392B',view:'#2563EB',edit:'#b45309',full:'#16a34a'};
+    const LB={none:'#FEF0EE',view:'rgba(59,130,246,.1)',edit:'rgba(201,169,110,.12)',full:'rgba(34,197,94,.1)'};
+    const LL={none:'None',view:'View',edit:'Edit',full:'Full'};
+    const groupBadges = u.role==='admin'
+      ? '<span class="perm-chip pc-full" style="font-size:11px;padding:3px 12px">⭐ Full Access — Admin</span>'
+      : PG.map(g=>{
+          const lvls=g.keys.map(k=>(perms&&perms[k])||'none');
+          const dom=['full','edit','view','none'].find(l=>lvls.includes(l))||'none';
+          const nonNone=lvls.filter(l=>l!=='none').length;
+          const allSame=lvls.every(l=>l===lvls[0]);
+          const summary=allSame?LL[dom]:(nonNone+'/'+g.keys.length);
+          return `<span style="display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:700;padding:4px 10px;border-radius:20px;border:1.5px solid ${LC[dom]}44;background:${LB[dom]};color:${LC[dom]}">${g.icon} ${g.label} <b style="font-size:12px">${summary}</b></span>`;
         }).join('');
-    return `<div style="background:var(--card);border:1px solid var(--border);border-radius:10px;padding:14px 16px;margin-bottom:10px">
-      <div class="flex items-center gap-3" style="flex-wrap:wrap">
-        <div class="avatar" style="width:36px;height:36px;font-size:14px;flex-shrink:0">${(u.name||'?')[0]}</div>
+    return `<div style="background:var(--card);border:1px solid var(--border);border-radius:12px;padding:16px 18px;margin-bottom:10px">
+      <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+        <div class="avatar" style="width:42px;height:42px;font-size:17px;flex-shrink:0">${(u.name||'?')[0]}</div>
         <div style="flex:1;min-width:0">
-          <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
-            <span style="font-size:13px;font-weight:700;color:var(--text)">${u.username}</span>
+          <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:8px">
+            <span style="font-size:14px;font-weight:700;color:var(--text)">${u.username}</span>
             <span class="role-badge role-${u.role}">${u.role==='admin'?'Admin':'User'}</span>
-            ${isSelf?'<span style="font-size:10px;color:var(--gold)">(you)</span>':''}
-            <span style="font-size:11px;color:var(--text3)">${u.name}</span>
+            ${isSelf?'<span style="font-size:11px;color:var(--gold);font-weight:700">(you)</span>':''}
+            <span style="font-size:12px;color:var(--text3)">${u.name}</span>
             ${sp?`<span style="font-size:11px;color:var(--text3)">· ${sp.name}</span>`:''}
-            ${u.mustChangePwd?'<span style="font-size:10px;background:#FFF3CD;color:#856404;border:1px solid #FFEEBA;border-radius:20px;padding:1px 7px">⚠ Must change password</span>':''}
-            
+            ${u.mustChangePwd?'<span style="font-size:10px;background:#FFF3CD;color:#856404;border:1px solid #FFEEBA;border-radius:20px;padding:2px 8px">⚠ Must change password</span>':''}
           </div>
-          <div style="margin-top:5px;display:flex;flex-wrap:wrap;gap:2px">${chips}</div>
+          <div style="display:flex;flex-wrap:wrap;gap:6px">${groupBadges}</div>
         </div>
-        <div style="display:flex;gap:6px;flex-shrink:0;flex-wrap:wrap">
-          <button class="btn btn-outline btn-sm" onclick="editUserModal('${u.id}')">✏️ Edit</button>
-          
+        <div style="display:flex;gap:8px;flex-shrink:0;align-items:flex-start">
+          <button class="btn btn-gold btn-sm" onclick="editUserModal('${u.id}')">✏️ Edit Permissions</button>
           ${!isSelf?`<button class="btn btn-outline btn-sm" style="color:var(--red)" onclick="deleteUser('${u.id}')">🗑</button>`:''}
         </div>
       </div>
