@@ -3239,6 +3239,7 @@ ${list.map(c=>`
         <div class="cust-meta">${c.company||c.nationality||''} ${c.assignedTo?'· '+[c.assignedTo,c.assignedTo2].filter(Boolean).join(' & '):''}</div>
       </div>
       <span class="badge badge-${(c.leadStatus||'new').toLowerCase().replace(' ','-')}">${c.leadStatus||'New'}</span>
+      <span style="font-size:10px;font-weight:700;padding:2px 7px;border-radius:10px;${(c.bizType||'B2C')==='B2B'?'background:#0066CC22;color:#0066CC':'background:var(--gold-light,#f5e6c8);color:var(--gold)'}">${c.bizType||'B2C'}</span>
     </div>
     <div class="flex gap-2 mt-1" style="font-size:12px;color:var(--text3)">
       <span>💰 ${fmt(c.dealValue)}</span>
@@ -3277,7 +3278,7 @@ function renderCustTableHTML(list){
   const activeCols=ALL_TABLE_COLS.filter(col=>custTableCols.includes(col.key));
 
   const cellVal=(c,key)=>{
-    if(key==='firstName') return `<div class="flex items-center gap-2">${avatarHtml(c,28,11)}<div><div class="ct-name">${c.firstName} ${c.lastName}</div><div class="ct-sub">${c.email||''}</div></div></div>`;
+    if(key==='firstName') return `<div class="flex items-center gap-2">${avatarHtml(c,28,11)}<div><div class="ct-name">${c.firstName} ${c.lastName} <span style="font-size:10px;font-weight:700;padding:1px 6px;border-radius:8px;vertical-align:middle;${(c.bizType||'B2C')==='B2B'?'background:#0066CC22;color:#0066CC':'background:#f5e6c8;color:#9A7230'}">${c.bizType||'B2C'}</span></div><div class="ct-sub">${c.email||''}</div></div></div>`;
     if(key==='leadStatus') return `<span class="badge badge-${(c.leadStatus||'new').toLowerCase().replace(' ','-')}" data-tip="${c.leadStatus||'New'}">${c.leadStatus||'New'}</span>`;
     if(key==='vipLevel') return vipBadge(c.vipLevel);
     if(key==='dealValue') return `<span style="font-weight:600;color:var(--text)">${fmt(c.dealValue)}</span>`;
@@ -3512,7 +3513,7 @@ function openCustModal(id){
   const c=id?db.customers.find(x=>x.id===id):{};
   custPhoto=(c&&c.photo)||null;
   custBcImg=(c&&c.bcImg)||null;
-  initFormData(c||{}); _recordType=(c&&c.recordType)||'Lead';
+  initFormData(c||{}); _recordType=(c&&c.recordType)||'Lead'; _bizType=(c&&c.bizType)||'B2C';
   document.getElementById('modal-cust-title').textContent=id?'Edit Customer':'Add Customer';
   document.getElementById('modal-cust-body').innerHTML=buildCustForm(c||{});
   const _sw=document.getElementById("modal-cust-warn-sticky");if(_sw){_sw.style.display="none";delete _sw.dataset.acknowledged;} showModal('modal-cust');
@@ -3637,6 +3638,20 @@ function buildCustForm(c){
         </button>
       </div>
       <div style="font-size:11px;color:var(--text3);margin-top:5px">Tag as Customer once they have made a purchase.</div>
+    </div>
+    <div class="field full">
+      <label>Business Type</label>
+      <div style="display:flex;gap:0;border:1px solid var(--border);border-radius:8px;overflow:hidden;width:fit-content">
+        <button type="button" id="bt-b2b" onclick="setBizType('B2B')"
+          style="padding:8px 20px;font-size:13px;font-weight:600;border:none;cursor:pointer;transition:all .15s;${(v(c,'bizType','B2C')==='B2B')?'background:#0066CC;color:#fff':'background:var(--bg2);color:var(--text2)'}">
+          🏢 B2B
+        </button>
+        <button type="button" id="bt-b2c" onclick="setBizType('B2C')"
+          style="padding:8px 20px;font-size:13px;font-weight:600;border:none;cursor:pointer;transition:all .15s;border-left:1px solid var(--border);${(v(c,'bizType','B2C')==='B2C')?'background:var(--gold);color:#fff':'background:var(--bg2);color:var(--text2)'}">
+          👤 B2C
+        </button>
+      </div>
+      <div style="font-size:11px;color:var(--text3);margin-top:5px">B2B = Business / Trade. B2C = Individual / Retail.</div>
     </div>
     <div class="field"><label>Lead Source</label><select id="f-src">${SOURCES.map(s=>`<option ${v(c,'leadSource')===s?'selected':''}>${s}</option>`).join('')}</select></div>
     <div class="field"><label>Referred By</label><input id="f-ref" value="${v(c,'referredBy')}" placeholder="Name / Exhibition"></div>
@@ -3877,12 +3892,20 @@ function selectR(key,val,el){
 }
 
 let _recordType='Lead';
+let _bizType='B2C';
 function setRecordType(type){
   _recordType=type;
   const lead=document.getElementById('rt-lead');
   const cust=document.getElementById('rt-customer');
   if(lead){ lead.style.background=type==='Lead'?'var(--green)':'var(--bg2)'; lead.style.color=type==='Lead'?'#fff':'var(--text2)'; }
   if(cust){ cust.style.background=type==='Customer'?'var(--gold)':'var(--bg2)'; cust.style.color=type==='Customer'?'#fff':'var(--text2)'; }
+}
+function setBizType(type){
+  _bizType=type;
+  const b2b=document.getElementById('bt-b2b');
+  const b2c=document.getElementById('bt-b2c');
+  if(b2b){ b2b.style.background=type==='B2B'?'#0066CC':'var(--bg2)'; b2b.style.color=type==='B2B'?'#fff':'var(--text2)'; }
+  if(b2c){ b2c.style.background=type==='B2C'?'var(--gold)':'var(--bg2)'; b2c.style.color=type==='B2C'?'#fff':'var(--text2)'; }
 }
 
 function togglePaymentFields(val){
@@ -3950,6 +3973,7 @@ function saveCust(){
     leadSource:g('f-src'), referredBy:g('f-ref'), assignedTo:g('f-sp'), assignedTo2:g('f-sp2'), wechat:g('f-wc'),
     leadStatus:g('f-stat'), pipelineStage:g('f-stage'),
     recordType:_recordType||'Lead',
+    bizType:_bizType||'B2C',
     dealValue:gn('f-deal'), probability:gn('f-prob'),
     expectedCloseDate:g('f-ecd'), firstContactDate:g('f-fcd'),
     lastContactedDate: g('f-lcd') || (editCustId ? (db.customers.find(x=>x.id===editCustId)||{}).lastContactedDate||'' : new Date().toISOString().slice(0,10)),
