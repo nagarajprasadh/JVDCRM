@@ -2206,27 +2206,31 @@ function editUserModal(id){
 }
 
 function _buildPermMatrix(perms, disabled){
-  if(disabled) return `<div style="font-size:12px;color:var(--text2);padding:8px 0">Admin accounts always have <b>Full</b> access to all modules. Permissions cannot be restricted for Admin users.</div>`;
-  return `
-  <table class="perm-matrix">
-    <thead><tr>
-      <th class="mod-col" style="width:200px">Module</th>
-      <th>None</th><th>View</th><th>Edit</th><th>Full</th>
-    </tr></thead>
-    <tbody>
-      ${RBAC_MODULES.map(m=>{
-        const cur=perms[m.key]||'none';
-        return `<tr>
-          <td><span class="mod-icon">${m.icon}</span><span class="mod-name">${m.label}</span></td>
-          ${['none','view','edit','full'].map(lvl=>`
-          <td class="perm-cell">
-            <button class="perm-btn ${cur===lvl?'active-'+lvl:''}" id="pb-${m.key}-${lvl}"
-              onclick="rbacSetPerm('${m.key}','${lvl}',this)">${lvl==='none'?'—':lvl.charAt(0).toUpperCase()+lvl.slice(1)}</button>
-          </td>`).join('')}
-        </tr>`;
+  if(disabled) return `<div style="font-size:12px;color:var(--text2);padding:12px;background:rgba(34,197,94,.08);border:1px solid rgba(34,197,94,.2);border-radius:8px"><b>⭐ Admin Account</b> — Full access to all modules. Permissions cannot be restricted.</div>`;
+  const GRP=[
+    {label:'CRM',      icon:'🗂',  keys:['dashboard','customers','pipeline','deals','tasks','campaigns']},
+    {label:'Inventory',icon:'💎', keys:['stockinv','suppliers','inventory','kyc']},
+    {label:'Finance',  icon:'💰', keys:['accounting','commission']},
+    {label:'People',   icon:'👥', keys:['salespeople','reports','bizcard','settings']},
+  ];
+  return GRP.map(g=>`
+    <div class="perm-group-block">
+      <div class="perm-group-hdr">${g.icon} ${g.label}</div>
+      ${g.keys.map(key=>{
+        const m=RBAC_MODULES.find(x=>x.key===key); if(!m) return '';
+        const cur=perms[key]||'none';
+        return `<div class="perm-toggle-row">
+          <div class="perm-mod-label">${m.icon} <span>${m.label}</span></div>
+          <div class="perm-lvl-btns">
+            ${['none','view','edit','full'].map(lvl=>`
+              <button class="plb ${cur===lvl?'active-'+lvl:''}" id="pb-${key}-${lvl}"
+                onclick="rbacSetPerm('${key}','${lvl}',this)" title="${lvl==='none'?'Hidden from user':lvl.charAt(0).toUpperCase()+lvl.slice(1)+' access'}">
+                ${lvl==='none'?'✕':lvl.charAt(0).toUpperCase()+lvl.slice(1)}
+              </button>`).join('')}
+          </div>
+        </div>`;
       }).join('')}
-    </tbody>
-  </table>`;
+    </div>`).join('');
 }
 
 function _openUserModal(id){
