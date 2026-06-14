@@ -1930,7 +1930,7 @@ function renderAuditPanel(){
     </tr>`;
   }).join('');
 
-  const emptyState = `<tr><td colspan="8" style="text-align:center;padding:28px;color:var(--text3);font-size:13px">No login records in the last 30 days.</td></tr>`;
+  const emptyState = `<tr><td colspan="9" style="text-align:center;padding:28px;color:var(--text3);font-size:13px">No login records in the last 30 days.</td></tr>`;
 
   document.getElementById('audit-log-body').innerHTML = `
     <table style="width:100%;border-collapse:collapse;font-family:'Inter',sans-serif">
@@ -8391,6 +8391,7 @@ function saveStockItem(id){
     obj.createdBy=currentUser?currentUser.id:null;
     db.stock.push(obj);
   }
+  logActivity(id?'Edited':'Added','Stock',obj.certNo||obj.shape||'');
   saveDB();
   document.getElementById('modal-stock').style.display='none';
   renderStockInventory();
@@ -8401,7 +8402,8 @@ function saveStockItem(id){
 function deleteStockItem(id){
   if(!confirm('Delete this stock item? This cannot be undone.')) return;
   const _r=(db.stock||[]).find(x=>x.id===id); db.stock=(db.stock||[]).filter(x=>x.id!==id);
-  saveDB(); if(_r) supaDeleteOne('stock',_r.uid||_r.id);
+  if(_r){ logActivity('Deleted','Stock',_r.certNo||_r.shape||id); supaDeleteOne('stock',_r.uid||_r.id); }
+  saveDB();
   document.getElementById('modal-stock').style.display='none';
   renderStockInventory();
   updateBadges();
@@ -8718,6 +8720,7 @@ function saveDeal(id){
     obj.createdBy=currentUser?currentUser.id:null;
     db.deals.push(obj);
   }
+  logActivity(id?'Edited':'Added','Deal',obj.clientName||obj.dealNo||id||'');
   saveDB();
   document.getElementById('modal-deal').style.display='none';
   renderDeals();
@@ -8727,7 +8730,8 @@ function saveDeal(id){
 
 function deleteDeal(id){
   if(!confirm('Delete this deal record?')) return;
-  const d=(db.deals||[]).find(x=>x.id===id); if(d) supaDeleteOne('deals',d.uid||d.id);
+  const d=(db.deals||[]).find(x=>x.id===id);
+  if(d){ supaDeleteOne('deals',d.uid||d.id); logActivity('Deleted','Deal',d.clientName||d.dealNo||id); }
   // If we're deleting a completed deal that set stock to Sold, revert it
   if(d&&d.status==='Completed'&&d.stockId){
     const stk=(db.stock||[]).find(x=>x.id===d.stockId);
