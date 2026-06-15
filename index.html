@@ -1901,11 +1901,19 @@ async function autoBackup(forceDownload){
 async function _purgeOldBackups(){
   try{
     await _initFirebase();
-    const snap = await _fbDb.collection('backups').orderBy('savedAt','desc').get();
-    const toDelete = snap.docs.slice(BACKUP_MAX);
+    // Get all backups, sort by savedAt descending in JS (no Firestore index needed)
+    const snap = await _fbDb.collection('backups').get();
+    const sorted = snap.docs.sort((a,b)=>{
+      const at = (a.data().savedAt||'');
+      const bt = (b.data().savedAt||'');
+      return bt.localeCompare(at); // newest first
+    });
+    const toDelete = sorted.slice(BACKUP_MAX);
+    if(!toDelete.length) return;
     const batch = _fbDb.batch();
     toDelete.forEach(d=>batch.delete(d.ref));
-    if(toDelete.length) await batch.commit();
+    await batch.commit();
+    console.log('[BACKUP] Purged',toDelete.length,'old snapshots');
   }catch(e){ console.warn('[BACKUP] Purge failed:',e); }
 }
 
@@ -1925,8 +1933,11 @@ function _downloadBackupJSON(snapshot, ts){
 async function loadBackupList(){
   try{
     await _initFirebase();
-    const snap = await _fbDb.collection('backups').orderBy('savedAt','desc').limit(10).get();
-    return snap.docs.map(d=>({ ...d.data(), uid:d.id }));
+    const snap = await _fbDb.collection('backups').get();
+    return snap.docs
+      .map(d=>({ ...d.data(), uid:d.id }))
+      .sort((a,b)=>(b.savedAt||'').localeCompare(a.savedAt||''))
+      .slice(0,10);
   }catch(e){ return []; }
 }
 
