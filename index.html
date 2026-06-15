@@ -6854,53 +6854,104 @@ async function loadTickerData(){
 loadTickerData();
 setInterval(loadTickerData,5*60*1000);
 
-// Auto-sync from Supabase every 60s — keeps multi-user views fresh
+// Auto-sync from Supabase every 120s — keeps multi-user views fresh
+// IO optimisations (Jun 2026): doubled interval; dirty-flag row-count guard skips
+// full merge when nothing changed; secondary table syncs throttled to every 5 min.
+let _lastSecondarySync = 0;
+let _syncRowCounts = {}; // table -> last known remote row count
+
 setInterval(async()=>{
   if(!currentUser) return;
   try{
-    const remote=await supaLoadAll();
-    if(!remote) return;
-    const _asDemoCids=new Set(['c001','c002','c003','c004','c005','c006','c007','c008','c009','c010','c011','c012','c013','c014','c015','c016','c017','c018','c019','c020','c021','c022','c023','c024','c025','c026','c027','c028','c029','c030']);
-    const _asDemoMap={customers:_asDemoCids,salespeople:new Set(['sp001','sp002','sp003','sp004','sp005']),campaigns:new Set(['camp001','camp002','camp003','camp004','camp005']),invoices:new Set(['inv001','inv002','inv003','inv004','inv005','inv006','inv007','inv008'])};
-    let changed=false;
-    SUPA_TABLES.forEach(t=>{
-      if(t==='users'){
-        // Sync users — admin sees new sign-up requests; users get approvals
-        const rU=(remote[t]||[]).filter(ru=>ru.pwd&&ru.pwd.length>0);
-        if(!rU.length) return;
-        rU.forEach(ru=>{ const i=(db.users||[]).findIndex(u=>u.username===ru.username); if(i>=0){db.users[i]=ru;}else{if(!db.users)db.users=[];db.users.push(ru);} });
-        const _s={}; db.users=(db.users||[]).filter(u=>{if(!_s[u.username]){_s[u.username]=true;return true;}return false;});
-        // Always refresh admin view when users sync — don't wait for changed flag
-        try{ localStorage.setItem(DB_KEY,JSON.stringify(db)); }catch(e){}
-        if(isAdmin()){ updatePendingBadge(); if(currentNav==='users') renderUsers(); }
-        return;
-      }
-      const remoteRows=(remote[t]||[]).filter(r=>!(_asDemoMap[t]&&_asDemoMap[t].has(r.uid||r.id)));
-      if(!remoteRows.length) return;
-      const localRows=db[t]||[];
-      const remoteMap=new Map(remoteRows.map(r=>[(r.uid||r.id),r]));
-      const remoteIds=new Set(remoteRows.map(r=>r.uid||r.id).filter(Boolean));
-      // Update existing local records from remote; keep local-only records; add new remote records
-      const merged=localRows.map(r=>remoteMap.has(r.uid||r.id)?remoteMap.get(r.uid||r.id):r);
-      remoteRows.forEach(r=>{const rid=r.uid||r.id;if(rid&&!new Set(localRows.map(x=>x.uid||x.id)).has(rid)){merged.push(r);changed=true;}});
-      db[t]=merged;
-    });
-    if(changed){
-      try{localStorage.setItem(DB_KEY,JSON.stringify(db));}catch(e){}
-      updateBadges();
-      if(currentNav) try{const renders={customers:renderCustomers,deals:renderDeals,tasks:renderTasks,stockinv:renderStockInventory,campaigns:renderCampaigns,users:renderUsers};if(renders[currentNav])renders[currentNav]();}catch(e){}
-      if(isAdmin()) try{ updatePendingBadge(); if(currentNav==='users') renderUsers(); }catch(e){}
+    // ── Step 1: lightweight count probe (select=uid only, much less IO than full data) ──
+    const countProbe = {};
+    await Promise.all(SUPA_TABLES.filter(t=>t!=='users').map(async t=>{
+      try{
+        const rows = await supaFetch(t,'GET',null,'select=uid&limit=5000');
+        countProbe[t] = (rows||[]).length;
+      }catch(e){ countProbe[t] = -1; }
+    }));
+
+    // ── Step 2: check if any table count differs from last sync ──
+    const tablesDirty = SUPA_TABLES.filter(t=>t!=='users' && countProbe[t]>=0 && countProbe[t]!==_syncRowCounts[t]);
+
+    // Users always checked (approval / sign-up flow) — pull users count too
+    let usersDirty = false;
+    try{
+      const uRows = await supaFetch('users','GET',null,'select=uid&limit=1000');
+      usersDirty = (uRows||[]).length !== (_syncRowCounts['users']||0);
+      countProbe['users'] = (uRows||[]).length;
+    }catch(e){}
+
+    const nothingChanged = tablesDirty.length===0 && !usersDirty;
+
+    // ── Step 3: secondary syncs throttle — every 5 min regardless of dirty flag ──
+    const now = Date.now();
+    const secondaryDue = (now - _lastSecondarySync) >= 5*60*1000;
+
+    if(nothingChanged && !secondaryDue){
+      // Nothing changed and secondary not due — skip all Supabase reads this cycle
+      console.log('[SYNC] No remote changes detected — skipping full pull');
+      return;
     }
-    // Always sync extra tables every 60s regardless of changed flag
-    await loadAnnouncementsFromSupabase();
-    await loadAuditLogFromSupabase();
-    await loadBusinessCardsFromSupabase();
-    await loadSavedReportsFromSupabase();
-    loadSettingsFromSupabase(remote['users']||[]);
-    updateTicker();
-    try{localStorage.setItem(DB_KEY,JSON.stringify(db));}catch(e){}
-  }catch(e){}
-},60000);
+
+    // ── Step 4: full pull only for dirty tables (or users) ──
+    let remote = null;
+    if(tablesDirty.length>0 || usersDirty){
+      remote = {};
+      await Promise.all(SUPA_TABLES.map(async t=>{
+        if(t!=='users' && !tablesDirty.includes(t)){ remote[t]=db[t]||[]; return; }
+        const rows = await supaFetch(t,'GET',null,'select=uid,data&limit=5000');
+        remote[t] = (rows||[]).map(r=>r.data||r).filter(Boolean);
+      }));
+    }
+
+    if(remote){
+      const _asDemoCids=new Set(['c001','c002','c003','c004','c005','c006','c007','c008','c009','c010','c011','c012','c013','c014','c015','c016','c017','c018','c019','c020','c021','c022','c023','c024','c025','c026','c027','c028','c029','c030']);
+      const _asDemoMap={customers:_asDemoCids,salespeople:new Set(['sp001','sp002','sp003','sp004','sp005']),campaigns:new Set(['camp001','camp002','camp003','camp004','camp005']),invoices:new Set(['inv001','inv002','inv003','inv004','inv005','inv006','inv007','inv008'])};
+      let changed=false;
+      SUPA_TABLES.forEach(t=>{
+        if(t==='users'){
+          // Sync users — admin sees new sign-up requests; users get approvals
+          const rU=(remote[t]||[]).filter(ru=>ru.pwd&&ru.pwd.length>0);
+          if(!rU.length) return;
+          rU.forEach(ru=>{ const i=(db.users||[]).findIndex(u=>u.username===ru.username); if(i>=0){db.users[i]=ru;}else{if(!db.users)db.users=[];db.users.push(ru);} });
+          const _s={}; db.users=(db.users||[]).filter(u=>{if(!_s[u.username]){_s[u.username]=true;return true;}return false;});
+          try{ localStorage.setItem(DB_KEY,JSON.stringify(db)); }catch(e){}
+          if(isAdmin()){ updatePendingBadge(); if(currentNav==='users') renderUsers(); }
+          return;
+        }
+        const remoteRows=(remote[t]||[]).filter(r=>!(_asDemoMap[t]&&_asDemoMap[t].has(r.uid||r.id)));
+        if(!remoteRows.length) return;
+        const localRows=db[t]||[];
+        const remoteMap=new Map(remoteRows.map(r=>[(r.uid||r.id),r]));
+        const merged=localRows.map(r=>remoteMap.has(r.uid||r.id)?remoteMap.get(r.uid||r.id):r);
+        remoteRows.forEach(r=>{const rid=r.uid||r.id;if(rid&&!new Set(localRows.map(x=>x.uid||x.id)).has(rid)){merged.push(r);changed=true;}});
+        db[t]=merged;
+      });
+      if(changed){
+        try{localStorage.setItem(DB_KEY,JSON.stringify(db));}catch(e){}
+        updateBadges();
+        if(currentNav) try{const renders={customers:renderCustomers,deals:renderDeals,tasks:renderTasks,stockinv:renderStockInventory,campaigns:renderCampaigns,users:renderUsers};if(renders[currentNav])renders[currentNav]();}catch(e){}
+        if(isAdmin()) try{ updatePendingBadge(); if(currentNav==='users') renderUsers(); }catch(e){}
+      }
+      // Update stored counts after successful pull
+      SUPA_TABLES.forEach(t=>{ if(countProbe[t]>=0) _syncRowCounts[t]=countProbe[t]; });
+    }
+
+    // ── Step 5: secondary table syncs — throttled to every 5 min ──
+    if(secondaryDue){
+      await loadAnnouncementsFromSupabase();
+      await loadAuditLogFromSupabase();
+      await loadBusinessCardsFromSupabase();
+      await loadSavedReportsFromSupabase();
+      if(remote) loadSettingsFromSupabase(remote['users']||[]);
+      updateTicker();
+      _lastSecondarySync = Date.now();
+      try{localStorage.setItem(DB_KEY,JSON.stringify(db));}catch(e){}
+    }
+  }catch(e){ console.warn('[SYNC] Background sync error:',e); }
+},120000);
 
 
 // Show login overlay only after page fully loaded — avoids flash of unstyled logo
