@@ -597,7 +597,10 @@ th[data-tip]{cursor:pointer}
     </div>
     <div class="login-field">
       <label>Password</label>
-      <input type="password" id="login-pass" placeholder="Enter password" autocomplete="current-password" onkeydown="if(event.key==='Enter')doLogin()">
+      <div style="position:relative">
+        <input type="password" id="login-pass" placeholder="Enter password" autocomplete="current-password" onkeydown="if(event.key==='Enter')doLogin()" style="padding-right:40px;width:100%;box-sizing:border-box">
+        <button type="button" onclick="var i=document.getElementById('login-pass');i.type=i.type==='password'?'text':'password';this.textContent=i.type==='password'?'👁':'🙈'" title="Show/hide password" style="position:absolute;right:10px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;font-size:16px;padding:0;line-height:1;color:var(--text3)">👁</button>
+      </div>
     </div>
     <button class="login-btn" onclick="doLogin()">Sign In</button>
     <div class="login-error" id="login-error">Incorrect username or password. Please try again.</div>
@@ -1174,14 +1177,8 @@ function _doLoginCheck(uname, pass){
     showLoginError('Incorrect username or password.'); return;
   }
   if(user.mustChangePwd){ showChangePwdScreen(user); return; }
-  // ── 2FA TOTP ──
-  _pendingLoginUser = user;
-  if(!user.totpEnrolled || !user.totpSecret){
-    if(!user.totpSecret) user.totpSecret = totpGenSecret();
-    showTotpSetup(user);
-  } else {
-    showTotpVerify(user);
-  }
+  // 2FA disabled for UAT — direct login
+  completeLogin(user);
 }
 
 function showTotpSetup(user){
@@ -2256,7 +2253,10 @@ function _openUserModal(id){
       <div class="field"><label>Full Name</label><input id="mu-name" value="${u?u.name:''}" placeholder="e.g. Arjun Mehta"></div>
       <div class="field"><label>Email Address <span style="font-size:10px;color:var(--text3)">(for 2FA OTP)</span></label><input id="mu-email" type="email" value="${u?u.email||'':''}" placeholder="user@company.com"></div>
       <div class="field"><label>Password ${u?'<span style="font-weight:400;color:var(--text3)">(blank = keep)</span>':''}</label>
-        <input id="mu-pwd" type="password" placeholder="${u?'Leave blank to keep current':'Min 6 characters'}"></div>
+        <div style="position:relative">
+          <input id="mu-pwd" type="password" placeholder="${u?'Leave blank to keep current':'Min 6 characters'}" style="padding-right:40px;width:100%;box-sizing:border-box">
+          <button type="button" onclick="var i=document.getElementById('mu-pwd');i.type=i.type==='password'?'text':'password';this.textContent=i.type==='password'?'👁':'🙈'" title="Show/hide" style="position:absolute;right:10px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;font-size:16px;padding:0;line-height:1;color:var(--text3)">👁</button>
+        </div></div>
       ${!u?`<div class="field" style="align-self:center;margin-top:6px">
         <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px;font-weight:500;color:var(--text2)">
           <input type="checkbox" id="mu-force-pwd" checked style="accent-color:var(--green);width:16px;height:16px">
@@ -2384,11 +2384,12 @@ async function saveUser(id){
       // Await Supabase push so it's committed before modal closes
       try{
         await supaSaveTable('users',[db.users[idx]]);
-        showToast('User saved and synced','success');
+        showToast('User saved and synced ✓','success');
       } catch(e){
         console.warn('[SUPA] user edit:',e);
-        showToast('Saved locally — Supabase sync failed, retry later','warning');
+        showToast('Saved locally — sync failed, will retry','warning');
       }
+      closeModal('modal-users'); renderUsers();
     }
   } else {
     const forceChg=document.getElementById('mu-force-pwd')&&document.getElementById('mu-force-pwd').checked;
@@ -2397,13 +2398,13 @@ async function saveUser(id){
     saveDB();
     try{
       await supaSaveTable('users',[newUser]);
-      showToast('User created and synced','success');
+      showToast('User created and synced ✓','success');
     } catch(e){
       console.warn('[SUPA] user create:',e);
-      showToast('Saved locally — Supabase sync failed, retry later','warning');
+      showToast('Saved locally — sync failed, will retry','warning');
     }
+    closeModal('modal-users'); renderUsers();
   }
-  closeModal('modal-users'); renderUsers();
 }
 
 function deleteUser(id){
