@@ -5,6 +5,8 @@
 <!-- Firebase SDK -->
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+<!-- EmailJS SDK for forgot password emails -->
+<script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@3/dist/email.min.js"></script>
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Diamond CRM — Jay Vijay Diamond Co., Ltd.</title>
 
@@ -607,7 +609,11 @@ th[data-tip]{cursor:pointer}
     </div>
     <button class="login-btn" onclick="doLogin()">Sign In</button>
     <div class="login-error" id="login-error">Incorrect username or password. Please try again.</div>
-    <div class="login-footer">🔒 Access restricted to authorised personnel only</div>
+    <div class="login-footer" style="margin-top:14px">
+      <a href="#" onclick="showForgotPassword();return false" style="color:var(--gold);text-decoration:none;font-size:12px;font-weight:500">Forgot password?</a>
+      &nbsp;·&nbsp;
+      <span style="color:var(--text3);font-size:11px">🔒 Authorised personnel only</span>
+    </div>
     </div><!-- /panel-signin -->
     <div id="panel-signup" style="display:none">
       <div style="text-align:center;margin-bottom:20px">
@@ -804,15 +810,17 @@ async function _flushRetryQueue(){
   }
 }
 
+let _healthChecked = false; // true after first check completes
 async function _checkSupaHealth(){
   try{
     await _initFirebase();
     await Promise.race([
       _fbDb.collection('users').limit(1).get(),
-      new Promise((_,rej)=>setTimeout(()=>rej(new Error('timeout')),5000))
+      new Promise((_,rej)=>setTimeout(()=>rej(new Error('timeout')),6000))
     ]);
     _supaHealthy = true;
   }catch(e){ _supaHealthy = false; }
+  _healthChecked = true;
   _updateHealthDot();
   if(_supaHealthy && _retryQueue.length) _flushRetryQueue();
 }
@@ -820,7 +828,13 @@ async function _checkSupaHealth(){
 function _updateHealthDot(){
   const dot = document.getElementById('supa-health-dot');
   if(!dot) return;
-  dot.title = _supaHealthy ? 'Cloud sync: Online' : 'Cloud sync: Offline — changes saved locally';
+  if(!_healthChecked){
+    dot.title = 'Cloud sync: Connecting…';
+    dot.style.background = '#94a3b8';
+    dot.style.boxShadow = 'none';
+    return;
+  }
+  dot.title = _supaHealthy ? 'Cloud sync: Online ✓' : 'Cloud sync: Offline — changes saved locally';
   dot.style.background = _supaHealthy ? '#22c55e' : '#ef4444';
   dot.style.boxShadow = _supaHealthy ? '0 0 0 2px rgba(34,197,94,.25)' : '0 0 0 2px rgba(239,68,68,.25)';
 }
@@ -1263,6 +1277,194 @@ function doLogin(){
   });
 }
 
+// ── Forgot Password System ─────────────────────────────────────────
+// EmailJS config — set up at emailjs.com using jvdcrm@gmail.com
+const EMAILJS_SERVICE_ID  = 'service_jvdcrm';   // Set after EmailJS setup
+const EMAILJS_TEMPLATE_ID = 'template_jvdcrm';  // Set after EmailJS setup
+const EMAILJS_PUBLIC_KEY  = 'PENDING_SETUP';     // Set after EmailJS setup
+
+let _forgotOtpPending = null; // {username, otp, expiry, email}
+
+function showForgotPassword(){
+  const overlay = document.getElementById('login-overlay');
+  overlay.innerHTML = `
+  <div style="background:var(--card);border-radius:18px;padding:36px 40px;width:100%;max-width:400px;box-shadow:0 20px 60px rgba(0,0,0,.25)">
+    <div style="text-align:center;margin-bottom:24px">
+      <div style="font-size:36px;margin-bottom:8px">🔑</div>
+      <div style="font-family:'EB Garamond',Georgia,serif;font-size:22px;font-weight:600;color:var(--text)">Reset Password</div>
+      <div style="font-size:13px;color:var(--text3);margin-top:6px">Enter your username. A reset code will be sent to your registered email.</div>
+    </div>
+    <div class="login-field">
+      <label>Username</label>
+      <input type="text" id="fp-user" placeholder="Enter your username" autocomplete="username" onkeydown="if(event.key==='Enter')sendForgotOtp()">
+    </div>
+    <div class="login-error" id="fp-error" style="display:none"></div>
+    <div id="fp-success" style="display:none;background:#EBF7EE;border:1px solid #7DC997;border-radius:8px;padding:10px 14px;font-size:13px;color:#1C6B3A;margin-top:8px"></div>
+    <button class="login-btn" id="fp-send-btn" onclick="sendForgotOtp()" style="margin-top:16px">Send Reset Code</button>
+
+    <div id="fp-otp-section" style="display:none;margin-top:20px;border-top:1px solid var(--border);padding-top:20px">
+      <div style="font-size:13px;color:var(--text2);margin-bottom:12px;text-align:center">Enter the 6-digit code sent to your email</div>
+      <div class="login-field">
+        <label>Reset Code</label>
+        <input type="text" id="fp-otp" placeholder="000000" maxlength="6" style="letter-spacing:8px;font-size:20px;text-align:center" onkeydown="if(event.key==='Enter')verifyForgotOtp()">
+      </div>
+      <div class="login-field" style="margin-top:8px">
+        <label>New Password</label>
+        <div style="position:relative">
+          <input type="password" id="fp-newpwd" placeholder="Min 6 characters" style="padding-right:40px;width:100%;box-sizing:border-box">
+          <button type="button" onclick="var i=document.getElementById('fp-newpwd');i.type=i.type==='password'?'text':'password';this.textContent=i.type==='password'?'👁':'🙈'" style="position:absolute;right:10px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;font-size:16px;padding:0;color:var(--text3)">👁</button>
+        </div>
+      </div>
+      <div class="login-field">
+        <label>Confirm Password</label>
+        <input type="password" id="fp-confirmpwd" placeholder="Repeat new password" onkeydown="if(event.key==='Enter')verifyForgotOtp()">
+      </div>
+      <button class="login-btn" onclick="verifyForgotOtp()" style="margin-top:8px">Reset Password</button>
+    </div>
+
+    <div style="text-align:center;margin-top:16px">
+      <a href="#" onclick="_restoreLoginOverlay();return false" style="color:var(--text3);font-size:12px;text-decoration:none">← Back to Sign In</a>
+    </div>
+  </div>`;
+  setTimeout(()=>{ const el=document.getElementById('fp-user'); if(el) el.focus(); },100);
+}
+
+async function sendForgotOtp(){
+  const uname = (document.getElementById('fp-user').value||'').trim().toLowerCase();
+  const errEl = document.getElementById('fp-error');
+  const sucEl = document.getElementById('fp-success');
+  const btn   = document.getElementById('fp-send-btn');
+  errEl.style.display='none'; sucEl.style.display='none';
+
+  if(!uname){ errEl.textContent='Please enter your username.'; errEl.style.display='block'; return; }
+
+  // Look up user in local db first, then Firebase
+  let user = (db.users||[]).find(u=>u.username.toLowerCase()===uname && u.active!==false);
+  if(!user){
+    // Try Firebase directly
+    try{
+      await _initFirebase();
+      const snap = await _fbDb.collection('users').where('username','==',uname).limit(1).get();
+      if(!snap.empty) user = snap.docs[0].data();
+    }catch(e){}
+  }
+
+  if(!user){ errEl.textContent='Username not found.'; errEl.style.display='block'; return; }
+  if(!user.email){ 
+    errEl.innerHTML='No email address on file for this account.<br><span style="font-size:11px">Contact your admin to reset your password.</span>';
+    errEl.style.display='block'; return; 
+  }
+
+  // Generate 6-digit OTP
+  const otp = String(Math.floor(100000 + Math.random() * 900000));
+  const expiry = Date.now() + 15 * 60 * 1000; // 15 minutes
+  _forgotOtpPending = { username: uname, otp, expiry, email: user.email };
+
+  // Store OTP in Firebase for cross-device verification
+  try{
+    await _initFirebase();
+    await _fbDb.collection('_meta').doc('otp_'+uname).set({
+      otp, expiry, username: uname, createdAt: new Date().toISOString()
+    });
+  }catch(e){ console.warn('[OTP] Firebase store failed:',e); }
+
+  // Send email via EmailJS
+  if(EMAILJS_PUBLIC_KEY !== 'PENDING_SETUP'){
+    try{
+      emailjs.init(EMAILJS_PUBLIC_KEY);
+      await emailjs.send(EMAILJS_SERVICE_ID, EMAILJS_TEMPLATE_ID, {
+        to_email: user.email,
+        to_name: user.name || user.username,
+        otp_code: otp,
+        expiry_mins: '15',
+        company: 'Jay Vijay Diamond Co., Ltd.'
+      });
+      btn.style.display='none';
+      sucEl.textContent = '✅ Reset code sent to ' + user.email.replace(/(.{2}).*@/, '$1***@');
+      sucEl.style.display='block';
+      document.getElementById('fp-otp-section').style.display='block';
+      setTimeout(()=>{ const el=document.getElementById('fp-otp'); if(el) el.focus(); },100);
+    }catch(e){
+      errEl.textContent='Failed to send email. Please contact your admin.';
+      errEl.style.display='block';
+      console.warn('[OTP] EmailJS failed:',e);
+    }
+  } else {
+    // EmailJS not yet configured — show OTP in UI for admin testing
+    btn.style.display='none';
+    sucEl.innerHTML = '⚠️ Email service not configured yet.<br><span style="font-size:11px;font-family:monospace;background:#f0f0f0;padding:2px 6px;border-radius:4px">Test OTP: '+otp+'</span><br><span style="font-size:11px">Admin: set up EmailJS to enable email delivery.</span>';
+    sucEl.style.display='block';
+    document.getElementById('fp-otp-section').style.display='block';
+    setTimeout(()=>{ const el=document.getElementById('fp-otp'); if(el) el.focus(); },100);
+  }
+}
+
+async function verifyForgotOtp(){
+  const enteredOtp = (document.getElementById('fp-otp').value||'').trim();
+  const newPwd     = (document.getElementById('fp-newpwd').value||'').trim();
+  const confirmPwd = (document.getElementById('fp-confirmpwd').value||'').trim();
+  const errEl      = document.getElementById('fp-error');
+  errEl.style.display='none';
+
+  if(!enteredOtp || enteredOtp.length!==6){ errEl.textContent='Enter the 6-digit code.'; errEl.style.display='block'; return; }
+  if(newPwd.length<6){ errEl.textContent='Password must be at least 6 characters.'; errEl.style.display='block'; return; }
+  if(newPwd!==confirmPwd){ errEl.textContent='Passwords do not match.'; errEl.style.display='block'; return; }
+
+  // Verify OTP — check local then Firebase
+  let validOtp = false;
+  let otpData  = _forgotOtpPending;
+
+  if(!otpData){
+    // Try fetching from Firebase
+    try{
+      const uname = (document.getElementById('fp-user').value||'').trim().toLowerCase();
+      await _initFirebase();
+      const doc = await _fbDb.collection('_meta').doc('otp_'+uname).get();
+      if(doc.exists) otpData = doc.data();
+    }catch(e){}
+  }
+
+  if(!otpData){ errEl.textContent='Session expired. Please request a new code.'; errEl.style.display='block'; return; }
+  if(Date.now() > otpData.expiry){ errEl.textContent='Code expired. Please request a new one.'; errEl.style.display='block'; return; }
+  if(enteredOtp !== otpData.otp){ errEl.textContent='Incorrect code. Please try again.'; errEl.style.display='block'; return; }
+
+  validOtp = true;
+
+  if(validOtp){
+    // Reset password
+    const uname = otpData.username;
+    const hashed = await hashPwdAsync(newPwd);
+    const user = (db.users||[]).find(u=>u.username.toLowerCase()===uname);
+
+    if(user){
+      user.pwd = hashed;
+      user.updatedAt = new Date().toISOString();
+      saveDB();
+      // Push to Firebase
+      await supaSaveTable('users',[user]).catch(e=>console.warn('[OTP] pwd push:',e));
+    } else {
+      // Update Firebase directly if not in local db
+      try{
+        await _initFirebase();
+        const snap = await _fbDb.collection('users').where('username','==',uname).limit(1).get();
+        if(!snap.empty){
+          await snap.docs[0].ref.update({pwd: hashed, updatedAt: new Date().toISOString()});
+        }
+      }catch(e){ console.warn('[OTP] direct fb update:',e); }
+    }
+
+    // Clean up OTP
+    _forgotOtpPending = null;
+    try{ await _fbDb.collection('_meta').doc('otp_'+uname).delete(); }catch(e){}
+
+    // Restore login screen with success message
+    _restoreLoginOverlay();
+    showLoginError('✅ Password reset! You can now sign in with your new password.');
+    const errBox = document.getElementById('login-error');
+    if(errBox){ errBox.style.background='#EBF7EE'; errBox.style.borderColor='#7DC997'; errBox.style.color='#1C6B3A'; errBox.style.display='block'; }
+  }
+}
+
 async function _doLoginWithSupaSync(uname, pass){
   try{
     // Try Supabase with 4 second timeout — if down, fall back to localStorage immediately
@@ -1452,7 +1654,7 @@ function navFirstAccessible(){
 
 function completeLogin(user){
   currentUser=user;
-  setTimeout(_checkSupaHealth, 500); // check health right after login
+  setTimeout(_checkSupaHealth, 2000); // check health after Firebase SDK warms up
   const isFirstApprovedLogin = user.approvedAt && !user.lastLoginAt;
   user.lastLoginAt = new Date().toISOString();
   saveDB();
@@ -2345,7 +2547,7 @@ function _openUserModal(id){
     <div class="fields" style="grid-template-columns:1fr 1fr;margin-bottom:16px">
       <div class="field"><label>Username</label><input id="mu-username" value="${u?u.username:''}" placeholder="e.g. arjun"></div>
       <div class="field"><label>Full Name</label><input id="mu-name" value="${u?u.name:''}" placeholder="e.g. Arjun Mehta"></div>
-      <div class="field"><label>Email Address <span style="font-size:10px;color:var(--text3)">(for 2FA OTP)</span></label><input id="mu-email" type="email" value="${u?u.email||'':''}" placeholder="user@company.com"></div>
+      <div class="field"><label>Email Address <span style="font-size:10px;color:#E8472A;font-weight:700">★ required for password reset</span></label><input id="mu-email" type="email" value="${u?u.email||'':''}" placeholder="user@company.com" style="border-color:${u&&!u.email?'#E8472A':''}"></div>
       <div class="field"><label>Password ${u?'<span style="font-weight:400;color:var(--text3)">(blank = keep)</span>':''}</label>
         <div style="position:relative">
           <input id="mu-pwd" type="password" placeholder="${u?'Leave blank to keep current':'Min 6 characters'}" style="padding-right:40px;width:100%;box-sizing:border-box">
