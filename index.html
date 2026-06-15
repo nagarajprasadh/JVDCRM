@@ -1275,6 +1275,11 @@ function doLogin(){
   _doLoginWithSupaSync(uname, pass).finally(()=>{
     if(btn){ btn.textContent='Sign In'; btn.disabled=false; }
   });
+  // Show progress update after 4s (reassures mobile users it's working)
+  setTimeout(()=>{
+    const b=document.querySelector('.login-btn');
+    if(b&&b.disabled) b.textContent='Loading…';
+  },4000);
 }
 
 // ── Forgot Password System ─────────────────────────────────────────
@@ -1467,10 +1472,26 @@ async function verifyForgotOtp(){
 
 async function _doLoginWithSupaSync(uname, pass){
   try{
-    // Try Supabase with 4 second timeout — if down, fall back to localStorage immediately
-    const _supaTimeout = new Promise((_,rej)=>setTimeout(()=>rej(new Error('timeout')),4000));
-    const _supaReq = supaFetch('users','GET',null,'select=uid,data&limit=500');
-    const remote = await Promise.race([_supaReq, _supaTimeout]);
+    // Wait for Firebase SDK to be ready — critical on mobile (slower load)
+    await _initFirebase();
+    // Give Firebase SDK extra time on first cold load
+    if(!_healthChecked) await new Promise(r=>setTimeout(r,1000));
+
+    // Fetch users from Firebase with 8s timeout (mobile needs more time)
+    let remote = null;
+    for(let attempt=1; attempt<=2; attempt++){
+      try{
+        const _timeout = new Promise((_,rej)=>setTimeout(()=>rej(new Error('timeout')),8000));
+        const _req = _fbDb.collection('users').get();
+        const snap = await Promise.race([_req, _timeout]);
+        remote = snap.docs.map(d=>({ uid:d.id, data:d.data() }));
+        if(remote && remote.length) break;
+      }catch(e){
+        console.warn('[FB] Pre-login fetch attempt',attempt,'failed:',e.message);
+        if(attempt < 2) await new Promise(r=>setTimeout(r,2000)); // wait 2s before retry
+      }
+    }
+
     if(remote && remote.length){
       // Only use remote records that have a real password — skip empty/corrupt records
       const remoteUsers = remote.map(r=>({...r.data, uid:r.uid})).filter(ru=>ru.pwd&&ru.pwd.length>0);
@@ -1478,7 +1499,6 @@ async function _doLoginWithSupaSync(uname, pass){
         const idx=(db.users||[]).findIndex(u=>u.username===ru.username);
         if(idx>=0){
           const local=db.users[idx];
-          // Preserve local totpSecret/totpEnrolled if remote has nulls (UPSERT lag protection)
           if(!ru.totpSecret && local.totpSecret){ ru.totpSecret=local.totpSecret; ru.totpEnrolled=local.totpEnrolled||false; }
           db.users[idx]=ru;
         }
@@ -1491,8 +1511,11 @@ async function _doLoginWithSupaSync(uname, pass){
         return acc;
       },[]);
       try{ localStorage.setItem(DB_KEY, JSON.stringify(db)); }catch(e){}
+      console.log('[FB] Pre-login sync OK —',remoteUsers.length,'users loaded');
+    } else {
+      console.warn('[FB] Pre-login sync returned no users — proceeding with local db');
     }
-  }catch(e){ console.warn('[SUPA] Pre-login sync failed, using local:', e); }
+  }catch(e){ console.warn('[FB] Pre-login sync failed, using local:', e); }
   _doLoginCheck(uname, pass);
 }
 
