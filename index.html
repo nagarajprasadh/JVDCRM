@@ -2,6 +2,9 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
+<!-- Firebase SDK -->
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Diamond CRM — Jay Vijay Diamond Co., Ltd.</title>
 
@@ -803,11 +806,12 @@ async function _flushRetryQueue(){
 
 async function _checkSupaHealth(){
   try{
-    const r = await Promise.race([
-      supaFetch('users','GET',null,'select=uid&limit=1'),
+    await _initFirebase();
+    await Promise.race([
+      _fbDb.collection('users').limit(1).get(),
       new Promise((_,rej)=>setTimeout(()=>rej(new Error('timeout')),5000))
     ]);
-    _supaHealthy = !!(r !== null);
+    _supaHealthy = true;
   }catch(e){ _supaHealthy = false; }
   _updateHealthDot();
   if(_supaHealthy && _retryQueue.length) _flushRetryQueue();
@@ -825,81 +829,119 @@ function _updateHealthDot(){
 setInterval(_checkSupaHealth, 30000);
 const AUTH_KEY = 'diamondCRM_auth';
 // ── Supabase backend ──
-const SUPA_URL = 'https://vpiulxwkxyhnvuchqafc.supabase.co';
-const SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZwaXVseHdreHlobnZ1Y2hxYWZjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODAyNTM4MDUsImV4cCI6MjA5NTgyOTgwNX0.-d4kFj3JC267gK5iwcc23jhwRn2ymYs8IB6VEurFfgg';
+// ── Firebase Configuration ─────────────────────────────────────────
+const FIREBASE_CONFIG = {
+  apiKey: "AIzaSyC3YD5aIl5IY-m-PknJgzfLFOD710MOofc",
+  authDomain: "jvdcrm-451af.firebaseapp.com",
+  projectId: "jvdcrm-451af",
+  storageBucket: "jvdcrm-451af.firebasestorage.app",
+  messagingSenderId: "640797092118",
+  appId: "1:640797092118:web:0533dc2c81a82c70e38837"
+};
 const SUPA_TABLES = ['customers','salespeople','leads','invoices','payments','stock','deals','tasks','campaigns','suppliers','users'];
-// Additional tables synced via dedicated functions (not generic SUPA_TABLES loop)
-// announcements → leads table with uid prefix 'ann_'
-// settings → embedded in admin user record
-// businessCards, savedReports → payments table with uid prefix 'bc_' / 'sr_'
-async function supaFetch(table, method='GET', body=null, params=''){
-  const res = await fetch(SUPA_URL+'/rest/v1/'+table+(params?'?'+params:''), {
-    method, headers: {
-      'apikey': SUPA_KEY,
-      'Authorization': 'Bearer '+SUPA_KEY,
-      'Content-Type': 'application/json',
-      'Prefer': 'return=minimal'
-    },
-    body: body ? JSON.stringify(body) : null
+
+// ── Firebase SDK (loaded via CDN) ───────────────────────────────────
+let _fbApp = null, _fbDb = null, _fbReady = false;
+function _initFirebase(){
+  if(_fbReady) return Promise.resolve();
+  return new Promise((resolve)=>{
+    if(typeof firebase !== 'undefined' && firebase.apps){
+      _fbApp = firebase.apps.length ? firebase.apps[0] : firebase.initializeApp(FIREBASE_CONFIG);
+      _fbDb = firebase.firestore(_fbApp);
+      _fbDb.settings({ ignoreUndefinedProperties: true });
+      _fbReady = true;
+      resolve();
+    } else {
+      // Wait for SDK to load
+      const check = setInterval(()=>{
+        if(typeof firebase !== 'undefined' && firebase.apps){
+          clearInterval(check);
+          _fbApp = firebase.apps.length ? firebase.apps[0] : firebase.initializeApp(FIREBASE_CONFIG);
+          _fbDb = firebase.firestore(_fbApp);
+          _fbDb.settings({ ignoreUndefinedProperties: true });
+          _fbReady = true;
+          resolve();
+        }
+      }, 100);
+    }
   });
-  if(!res.ok){ console.warn('[SUPA]',method,table,res.status,await res.text()); return null; }
-  if(method==='GET') return res.json();
-  return true;
 }
+
+// ── Core Firebase CRUD — drop-in replacements for Supabase functions ─
+async function supaFetch(table, method='GET', body=null, params=''){
+  // Compatibility shim — only GET is used via supaFetch externally
+  await _initFirebase();
+  if(method==='GET'){
+    try{
+      const snap = await _fbDb.collection(table).get();
+      return snap.docs.map(d=>({ uid:d.id, data:d.data() }));
+    }catch(e){ console.warn('[FB] fetch',table,e); return null; }
+  }
+  return null;
+}
+
 async function supaLoadAll(){
+  await _initFirebase();
   const result = {};
-  await Promise.all(SUPA_TABLES.map(async t => {
-    const rows = await supaFetch(t,'GET',null,'select=uid,data&limit=5000');
-    result[t] = (rows||[]).map(r=>r.data||r).filter(Boolean);
+  await Promise.all(SUPA_TABLES.map(async t=>{
+    try{
+      const snap = await _fbDb.collection(t).get();
+      result[t] = snap.docs.map(d=>d.data()).filter(Boolean);
+    }catch(e){ console.warn('[FB] loadAll',t,e); result[t]=[]; }
   }));
   return result;
 }
+
 async function supaSaveTable(table, rows){
   if(!rows||!rows.length) return;
-  // Per-record UPSERT — never DELETE all, safe for concurrent multi-user access
+  await _initFirebase();
   const STRIP_KEYS = ['photo','bcImg','kycDocs','activityLog'];
-  const clean=rows.map(r=>{
-    const uid=r.uid||r.id||('u'+Math.random().toString(36).slice(2));
-    const slim={};
-    Object.keys(r).forEach(k=>{ if(!STRIP_KEYS.includes(k)) slim[k]=r[k]; });
-    slim.uid=uid;
-    return {uid, data:slim};
-  });
-  for(let i=0;i<clean.length;i+=100){
-    const resp = await fetch(SUPA_URL+'/rest/v1/'+table, {
-      method:'POST',
-      headers:{'apikey':SUPA_KEY,'Authorization':'Bearer '+SUPA_KEY,
-        'Content-Type':'application/json','Prefer':'resolution=merge-duplicates,return=minimal'},
-      body:JSON.stringify(clean.slice(i,i+100))
-    });
-    if(!resp.ok){
-      const err = await resp.text().catch(()=>'unknown');
-      console.warn('[SUPA] Save failed:',table,'HTTP',resp.status,err);
-      // Add to retry queue for background retry
+  const batch = _fbDb.batch();
+  let batchCount = 0;
+  const flushBatch = async(b)=>{ await b.commit(); };
+
+  for(const r of rows){
+    const uid = r.uid||r.id||('u'+Math.random().toString(36).slice(2));
+    const slim = {};
+    Object.keys(r).forEach(k=>{ if(!STRIP_KEYS.includes(k) && r[k]!==undefined) slim[k]=r[k]; });
+    slim.uid = uid;
+    const ref = _fbDb.collection(table).doc(uid);
+    batch.set(ref, slim, {merge:true});
+    batchCount++;
+    if(batchCount>=490){
+      // Firestore batch limit is 500 — flush early
+      await flushBatch(batch);
+      batchCount=0;
+    }
+  }
+  if(batchCount>0){
+    try{
+      await batch.commit();
+    }catch(e){
+      console.warn('[FB] Save failed:',table,e);
       _enqueueRetry(table, rows);
-      throw new Error('[SUPA] '+table+' HTTP '+resp.status+': '+err);
+      throw new Error('[FB] '+table+' save failed: '+e.message);
     }
   }
 }
 
 async function supaDeleteOne(table, uid){
   if(!uid) return;
-  await fetch(SUPA_URL+'/rest/v1/'+table+'?uid=eq.'+encodeURIComponent(uid),{
-    method:'DELETE',headers:{'apikey':SUPA_KEY,'Authorization':'Bearer '+SUPA_KEY}
-  });
+  await _initFirebase();
+  try{
+    await _fbDb.collection(table).doc(uid).delete();
+  }catch(e){ console.warn('[FB] delete',table,uid,e); }
 }
+
 async function supaDeleteMissing(table, currentRows){
-  // Get all uids in Supabase, delete ones not in currentRows
-  const existing = await supaFetch(table,'GET',null,'select=uid');
-  if(!existing) return;
-  const currentUids = new Set((currentRows||[]).map(r=>r.uid||r.id).filter(Boolean));
-  const toDelete = existing.filter(r=>r.uid && !currentUids.has(r.uid));
-  for(const r of toDelete){
-    await fetch(SUPA_URL+'/rest/v1/'+table+'?uid=eq.'+r.uid, {
-      method:'DELETE',
-      headers:{'apikey':SUPA_KEY,'Authorization':'Bearer '+SUPA_KEY}
-    });
-  }
+  await _initFirebase();
+  try{
+    const snap = await _fbDb.collection(table).get();
+    const currentUids = new Set((currentRows||[]).map(r=>r.uid||r.id).filter(Boolean));
+    const batch = _fbDb.batch();
+    snap.docs.forEach(d=>{ if(!currentUids.has(d.id)) batch.delete(d.ref); });
+    await batch.commit();
+  }catch(e){ console.warn('[FB] deleteMissing',table,e); }
 }
 let currentUser = null; // set after login
 let importState = null; // excel import state
@@ -1341,14 +1383,8 @@ async function confirmTotpSetup(){
   user.totpEnrolled=true;
   // Push TOTP enrolment via PATCH — avoids UPSERT conflict that retains old null values
   try{
-    const _slim={}; Object.keys(user).forEach(k=>{ if(!['photo','bcImg','kycDocs','activityLog'].includes(k)) _slim[k]=user[k]; });
-    const _patchResp = await fetch(SUPA_URL+'/rest/v1/users?uid=eq.'+encodeURIComponent(user.uid),{
-      method:'PATCH',
-      headers:{'apikey':SUPA_KEY,'Authorization':'Bearer '+SUPA_KEY,
-        'Content-Type':'application/json','Prefer':'return=minimal'},
-      body:JSON.stringify({uid:user.uid, data:_slim})
-    });
-    if(!_patchResp.ok){ const _e=await _patchResp.text().catch(()=>''); console.warn('[SUPA] TOTP PATCH failed:',_patchResp.status,_e); }
+    // Save TOTP enrollment to Firebase
+    await supaSaveTable('users',[user]);
     // Also update in localStorage immediately
     const idx=(db.users||[]).findIndex(u=>u.username===user.username);
     if(idx>=0) db.users[idx]=user;
@@ -1600,7 +1636,7 @@ function isAdmin(){ return currentUser && currentUser.role==='admin'; }
 
 /* ══════════════════════════════════════════════
    AUTO-BACKUP SYSTEM
-   - Daily snapshot stored in Supabase (payments table, uid prefixed backup_)
+   - Daily snapshot stored in Firebase (backups collection)
    - Keeps last 7 snapshots, purges older
    - Auto-download JSON on login if >23h since last backup
    - Admin can view, download and restore from Settings → Data
@@ -1643,22 +1679,9 @@ async function autoBackup(forceDownload){
     const payloadStr = JSON.stringify([{uid, data: snapshot}]);
     console.log('[BACKUP] Payload size:', Math.round(payloadStr.length/1024)+'KB');
 
-    // Save to Supabase payments table
-    const resp = await fetch(SUPA_URL+'/rest/v1/payments',{
-      method:'POST',
-      headers:{'apikey':SUPA_KEY,'Authorization':'Bearer '+SUPA_KEY,
-        'Content-Type':'application/json','Prefer':'resolution=merge-duplicates,return=minimal'},
-      body: payloadStr
-    });
-
-    if(!resp.ok){
-      const errText = await resp.text();
-      console.warn('[BACKUP] Supabase save failed:', resp.status, errText);
-      // Still download locally even if cloud save fails
-      _downloadBackupJSON(snapshot, ts);
-      showToast('⚠️ Cloud backup failed — JSON downloaded locally only','warning');
-      return;
-    }
+    // Save to Firebase backups collection
+    await _initFirebase();
+    await _fbDb.collection('backups').doc(uid).set({uid, data:snapshot, savedAt:new Date().toISOString()});
 
     await _purgeOldBackups();
     try{ localStorage.setItem('jvd_last_backup_ts', String(now)); }catch(e){}
@@ -1675,17 +1698,12 @@ async function autoBackup(forceDownload){
 
 async function _purgeOldBackups(){
   try{
-    const rows = await supaFetch('payments','GET',null,'select=uid&limit=100');
-    const backupRows = (rows||[])
-      .filter(r=>(r.uid||'').startsWith(BACKUP_PREFIX))
-      .sort((a,b)=>b.uid.localeCompare(a.uid)); // newest first
-    const toDelete = backupRows.slice(BACKUP_MAX);
-    for(const r of toDelete){
-      await fetch(SUPA_URL+'/rest/v1/payments?uid=eq.'+encodeURIComponent(r.uid),{
-        method:'DELETE',
-        headers:{'apikey':SUPA_KEY,'Authorization':'Bearer '+SUPA_KEY}
-      });
-    }
+    await _initFirebase();
+    const snap = await _fbDb.collection('backups').orderBy('savedAt','desc').get();
+    const toDelete = snap.docs.slice(BACKUP_MAX);
+    const batch = _fbDb.batch();
+    toDelete.forEach(d=>batch.delete(d.ref));
+    if(toDelete.length) await batch.commit();
   }catch(e){ console.warn('[BACKUP] Purge failed:',e); }
 }
 
@@ -1704,20 +1722,19 @@ function _downloadBackupJSON(snapshot, ts){
 
 async function loadBackupList(){
   try{
-    const rows = await supaFetch('payments','GET',null,'select=uid,data&limit=100');
-    return (rows||[])
-      .filter(r=>(r.uid||'').startsWith(BACKUP_PREFIX))
-      .map(r=>r.data||{})
-      .sort((a,b)=>(b.uid||'').localeCompare(a.uid||''));
+    await _initFirebase();
+    const snap = await _fbDb.collection('backups').orderBy('savedAt','desc').limit(10).get();
+    return snap.docs.map(d=>({ ...d.data(), uid:d.id }));
   }catch(e){ return []; }
 }
 
 async function downloadBackup(uid){
   try{
     showToast('Fetching backup…','info');
-    const rows = await supaFetch('payments','GET',null,`select=uid,data&uid=eq.${encodeURIComponent(uid)}&limit=1`);
-    if(!rows||!rows.length){ showToast('Backup not found','warning'); return; }
-    const snap = rows[0].data||{};
+    await _initFirebase();
+    const doc = await _fbDb.collection('backups').doc(uid).get();
+    if(!doc.exists){ showToast('Backup not found','warning'); return; }
+    const snap = doc.data()?.data||{};
     const ts = (snap.ts||uid).replace(/[:.]/g,'-').slice(0,19);
     _downloadBackupJSON(snap, ts);
     showToast('✅ Backup downloaded','success');
@@ -1733,9 +1750,10 @@ async function restoreFromBackup(uid){
     await autoBackup(true);
     // Now fetch the snapshot
     showToast('Restoring from snapshot…','info');
-    const rows = await supaFetch('payments','GET',null,`select=uid,data&uid=eq.${encodeURIComponent(uid)}&limit=1`);
-    if(!rows||!rows.length){ showToast('Snapshot not found in cloud','warning'); return; }
-    const snap = rows[0].data||{};
+    await _initFirebase();
+    const snapDoc = await _fbDb.collection('backups').doc(uid).get();
+    if(!snapDoc.exists){ showToast('Snapshot not found in cloud','warning'); return; }
+    const snap = snapDoc.data()?.data||{};
     if(!snap.data){ showToast('Invalid snapshot format','warning'); return; }
     // Replace db with snapshot data
     SUPA_TABLES.forEach(t=>{ if(snap.data[t]) db[t]=snap.data[t]; });
@@ -1762,157 +1780,138 @@ setInterval(()=>{ if(currentUser&&isAdmin()) autoBackup(false); }, BACKUP_INTERV
    announcements → leads table (uid prefix ann_)
    settings → embedded in admin user record
    ══════════════════════════════════════════════ */
+// ── Firebase secondary sync functions ────────────────────────────────
+// Announcements stored in 'announcements' collection in Firebase
 async function syncAnnouncementsToSupabase(){
   try{
+    await _initFirebase();
     const anns = db.announcements||[];
-    const existing = await supaFetch('leads','GET',null,'select=uid&limit=500');
-    const annRows = (existing||[]).filter(r=>(r.uid||'').startsWith('ann_'));
-    const currentIds = new Set(anns.map(a=>'ann_'+(a.id||a.uid)));
-    for(const r of annRows){
-      if(!currentIds.has(r.uid)){
-        await fetch(SUPA_URL+'/rest/v1/leads?uid=eq.'+encodeURIComponent(r.uid),{
-          method:'DELETE', headers:{'apikey':SUPA_KEY,'Authorization':'Bearer '+SUPA_KEY}
-        });
-      }
-    }
-    if(anns.length){
-      const payload = anns.map(a=>({ uid:'ann_'+(a.id||a.uid||('a'+Date.now())), data:{...a, _type:'announcement'} }));
-      const resp = await fetch(SUPA_URL+'/rest/v1/leads',{
-        method:'POST',
-        headers:{'apikey':SUPA_KEY,'Authorization':'Bearer '+SUPA_KEY,
-          'Content-Type':'application/json','Prefer':'resolution=merge-duplicates,return=minimal'},
-        body:JSON.stringify(payload)
-      });
-      if(!resp.ok) console.warn('[SUPA] Announcements sync failed HTTP',resp.status);
-    }
-  }catch(e){ console.warn('[SUPA] Announcements sync failed:',e); }
+    const batch = _fbDb.batch();
+    // Delete removed announcements
+    const snap = await _fbDb.collection('announcements').get();
+    const currentIds = new Set(anns.map(a=>String(a.id||a.uid)));
+    snap.docs.forEach(d=>{ if(!currentIds.has(d.id)) batch.delete(d.ref); });
+    // Upsert current announcements
+    anns.forEach(a=>{
+      const aid = String(a.id||a.uid||('a'+Date.now()));
+      batch.set(_fbDb.collection('announcements').doc(aid), {...a, uid:aid}, {merge:true});
+    });
+    await batch.commit();
+  }catch(e){ console.warn('[FB] Announcements sync failed:',e); }
 }
 
 async function loadAnnouncementsFromSupabase(){
   try{
-    const rows = await supaFetch('leads','GET',null,'select=uid,data&limit=500');
-    const annRows = (rows||[]).filter(r=>(r.uid||'').startsWith('ann_'));
-    if(!annRows.length) return;
-    const remote = annRows.map(r=>{ const d={...r.data}; delete d._type; return d; });
-    const remoteIds = new Set(remote.map(a=>a.id||a.uid).filter(Boolean));
-    const localOnly = (db.announcements||[]).filter(a=>!remoteIds.has(a.id||a.uid));
+    await _initFirebase();
+    const snap = await _fbDb.collection('announcements').get();
+    if(snap.empty) return;
+    const remote = snap.docs.map(d=>d.data());
+    const remoteIds = new Set(remote.map(a=>String(a.id||a.uid)).filter(Boolean));
+    const localOnly = (db.announcements||[]).filter(a=>!remoteIds.has(String(a.id||a.uid)));
     db.announcements = [...remote, ...localOnly];
-  }catch(e){ console.warn('[SUPA] Announcements load failed:',e); }
+  }catch(e){ console.warn('[FB] Announcements load failed:',e); }
 }
 
 async function syncSettingsToSupabase(){
   try{
-    const admin = (db.users||[]).find(u=>u.role==='admin');
-    if(!admin) return;
-    admin._settings = db.settings||{};
-    await supaSaveTable('users',[admin]);
-  }catch(e){ console.warn('[SUPA] Settings sync failed:',e); }
+    await _initFirebase();
+    await _fbDb.collection('_meta').doc('settings').set(db.settings||{}, {merge:true});
+  }catch(e){ console.warn('[FB] Settings sync failed:',e); }
 }
 
 function loadSettingsFromSupabase(remoteUsers){
-  try{
-    const admin = (remoteUsers||[]).find(u=>u.role==='admin');
-    if(admin&&admin._settings&&Object.keys(admin._settings).length){
-      db.settings = admin._settings;
-    }
-  }catch(e){ console.warn('[SUPA] Settings load failed:',e); }
+  // Settings loaded separately in loadDBFromSupabase via _loadFBSettings
 }
 
-/* ── Generic payments-table prefix helper ── */
-async function _syncPaymentsPrefix(prefix, arr, typeLabel){
+async function _loadFBSettings(){
   try{
-    if(!arr||!arr.length) return;
-    const payload = arr.map(item=>({
-      uid: prefix+(item.id||item.uid||('x'+Date.now()+Math.random().toString(36).slice(2,6))),
-      data: {...item, _type:typeLabel}
-    }));
-    // Upsert in batches of 50
-    for(let i=0;i<payload.length;i+=50){
-      const resp = await fetch(SUPA_URL+'/rest/v1/payments',{
-        method:'POST',
-        headers:{'apikey':SUPA_KEY,'Authorization':'Bearer '+SUPA_KEY,
-          'Content-Type':'application/json','Prefer':'resolution=merge-duplicates,return=minimal'},
-        body:JSON.stringify(payload.slice(i,i+50))
-      });
-      if(!resp.ok) console.warn('[SUPA]',typeLabel,'sync failed HTTP',resp.status);
-    }
-  }catch(e){ console.warn('[SUPA]',typeLabel,'sync failed:',e); }
-}
-
-async function _loadPaymentsPrefix(prefix){
-  try{
-    const rows = await supaFetch('payments','GET',null,'select=uid,data&limit=1000');
-    return (rows||[])
-      .filter(r=>(r.uid||'').startsWith(prefix))
-      .map(r=>{ const d={...r.data}; delete d._type; return d; });
-  }catch(e){ return []; }
-}
-
-async function _deletePaymentsPrefix(prefix, currentIds){
-  try{
-    const rows = await supaFetch('payments','GET',null,'select=uid&limit=1000');
-    const existing = (rows||[]).filter(r=>(r.uid||'').startsWith(prefix));
-    for(const r of existing){
-      if(!currentIds.has(r.uid)){
-        await fetch(SUPA_URL+'/rest/v1/payments?uid=eq.'+encodeURIComponent(r.uid),{
-          method:'DELETE', headers:{'apikey':SUPA_KEY,'Authorization':'Bearer '+SUPA_KEY}
-        });
-      }
-    }
-  }catch(e){ console.warn('[SUPA] delete prefix failed:',e); }
+    await _initFirebase();
+    const doc = await _fbDb.collection('_meta').doc('settings').get();
+    if(doc.exists && Object.keys(doc.data()).length) db.settings = doc.data();
+  }catch(e){ console.warn('[FB] Settings load failed:',e); }
 }
 
 /* ── Audit Log ── */
 async function syncAuditLogToSupabase(){
-  const logs = (db.auditLog||[]);
-  if(!logs.length) return;
-  await _syncPaymentsPrefix('aud_', logs, 'auditLog');
-  // Remove purged entries from Supabase (older than 30 days)
-  const currentIds = new Set(logs.map(e=>'aud_'+(e.id||'')));
-  await _deletePaymentsPrefix('aud_', currentIds);
+  try{
+    await _initFirebase();
+    const logs = (db.auditLog||[]);
+    if(!logs.length) return;
+    const batch = _fbDb.batch();
+    const cutoff = Date.now() - 30*24*60*60*1000;
+    logs.filter(e=>e.loginTime && new Date(e.loginTime).getTime()>cutoff).forEach(e=>{
+      const eid = e.id||('aud_'+Date.now()+Math.random().toString(36).slice(2));
+      batch.set(_fbDb.collection('auditLog').doc(eid), {...e, id:eid}, {merge:true});
+    });
+    await batch.commit();
+  }catch(e){ console.warn('[FB] AuditLog sync failed:',e); }
 }
 
 async function loadAuditLogFromSupabase(){
-  const remote = await _loadPaymentsPrefix('aud_');
-  if(!remote.length) return;
-  const remoteIds = new Set(remote.map(e=>e.id).filter(Boolean));
-  const localOnly = (db.auditLog||[]).filter(e=>!remoteIds.has(e.id));
-  const cutoff = Date.now() - 30*24*60*60*1000;
-  db.auditLog = [...remote, ...localOnly]
-    .filter(e=>e.loginTime && new Date(e.loginTime).getTime() > cutoff)
-    .sort((a,b)=>new Date(b.loginTime)-new Date(a.loginTime));
+  try{
+    await _initFirebase();
+    const snap = await _fbDb.collection('auditLog').get();
+    if(snap.empty) return;
+    const remote = snap.docs.map(d=>d.data());
+    const remoteIds = new Set(remote.map(e=>e.id).filter(Boolean));
+    const localOnly = (db.auditLog||[]).filter(e=>!remoteIds.has(e.id));
+    const cutoff = Date.now() - 30*24*60*60*1000;
+    db.auditLog = [...remote, ...localOnly]
+      .filter(e=>e.loginTime && new Date(e.loginTime).getTime()>cutoff)
+      .sort((a,b)=>new Date(b.loginTime)-new Date(a.loginTime));
+  }catch(e){ console.warn('[FB] AuditLog load failed:',e); }
 }
 
 /* ── Business Cards ── */
 async function syncBusinessCardsToSupabase(){
-  const cards = (db.businessCards||[]);
-  await _syncPaymentsPrefix('bc_', cards, 'businessCard');
-  const currentIds = new Set(cards.map(c=>'bc_'+(c.id||'')));
-  await _deletePaymentsPrefix('bc_', currentIds);
+  try{
+    await _initFirebase();
+    const cards = (db.businessCards||[]);
+    const batch = _fbDb.batch();
+    cards.forEach(c=>{
+      const cid = c.id||('bc_'+Date.now()+Math.random().toString(36).slice(2));
+      batch.set(_fbDb.collection('businessCards').doc(cid), {...c, id:cid}, {merge:true});
+    });
+    await batch.commit();
+  }catch(e){ console.warn('[FB] BusinessCards sync failed:',e); }
 }
 
 async function loadBusinessCardsFromSupabase(){
-  const remote = await _loadPaymentsPrefix('bc_');
-  if(!remote.length) return;
-  const remoteIds = new Set(remote.map(c=>c.id).filter(Boolean));
-  const localOnly = (db.businessCards||[]).filter(c=>!remoteIds.has(c.id));
-  db.businessCards = [...remote, ...localOnly];
+  try{
+    await _initFirebase();
+    const snap = await _fbDb.collection('businessCards').get();
+    if(snap.empty) return;
+    const remote = snap.docs.map(d=>d.data());
+    const remoteIds = new Set(remote.map(c=>c.id).filter(Boolean));
+    const localOnly = (db.businessCards||[]).filter(c=>!remoteIds.has(c.id));
+    db.businessCards = [...remote, ...localOnly];
+  }catch(e){ console.warn('[FB] BusinessCards load failed:',e); }
 }
 
 /* ── Saved Reports ── */
 async function syncSavedReportsToSupabase(){
-  const reports = (db.savedReports||[]);
-  await _syncPaymentsPrefix('rpt_', reports, 'savedReport');
-  const currentIds = new Set(reports.map(r=>'rpt_'+(r.name||r.id||'')));
-  await _deletePaymentsPrefix('rpt_', currentIds);
+  try{
+    await _initFirebase();
+    const reports = (db.savedReports||[]);
+    const batch = _fbDb.batch();
+    reports.forEach(r=>{
+      const rid = r.name||r.id||('rpt_'+Date.now());
+      batch.set(_fbDb.collection('savedReports').doc(rid), {...r}, {merge:true});
+    });
+    await batch.commit();
+  }catch(e){ console.warn('[FB] SavedReports sync failed:',e); }
 }
 
 async function loadSavedReportsFromSupabase(){
-  const remote = await _loadPaymentsPrefix('rpt_');
-  if(!remote.length) return;
-  const remoteNames = new Set(remote.map(r=>r.name).filter(Boolean));
-  const localOnly = (db.savedReports||[]).filter(r=>!remoteNames.has(r.name));
-  db.savedReports = [...remote, ...localOnly];
+  try{
+    await _initFirebase();
+    const snap = await _fbDb.collection('savedReports').get();
+    if(snap.empty) return;
+    const remote = snap.docs.map(d=>d.data());
+    const remoteNames = new Set(remote.map(r=>r.name).filter(Boolean));
+    const localOnly = (db.savedReports||[]).filter(r=>!remoteNames.has(r.name));
+    db.savedReports = [...remote, ...localOnly];
+  }catch(e){ console.warn('[FB] SavedReports load failed:',e); }
 }
 
 /* ══════════════════════════════════════════════
@@ -2175,22 +2174,8 @@ function doApproveUser(){
   u.approvedAt=new Date().toISOString();
   if(!u.uid) u.uid=u.id;
   saveDB();
-  // PATCH existing record or POST new one
-  (async()=>{
-    try{
-      const pr=await fetch(SUPA_URL+'/rest/v1/users?uid=eq.'+encodeURIComponent(u.uid),{
-        method:'PATCH',
-        headers:{'apikey':SUPA_KEY,'Authorization':'Bearer '+SUPA_KEY,'Content-Type':'application/json','Prefer':'return=representation'},
-        body:JSON.stringify({data:u})});
-      const patched=await pr.json();
-      if(!patched||!patched.length){
-        await fetch(SUPA_URL+'/rest/v1/users',{
-          method:'POST',
-          headers:{'apikey':SUPA_KEY,'Authorization':'Bearer '+SUPA_KEY,'Content-Type':'application/json','Prefer':'resolution=merge-duplicates,return=minimal'},
-          body:JSON.stringify([{uid:u.uid,data:u}])});
-      }
-    }catch(e){console.warn('[SUPA] approve:',e);}
-  })();
+  // Save approved user to Firebase
+  supaSaveTable('users',[u]).catch(e=>console.warn('[FB] approve:',e));
   closeModal('modal-approve');renderUsers();updatePendingBadge();
 }
 
@@ -3491,16 +3476,8 @@ async function bulkConvert(type){
     if(!c.cif) c.cif=generateCIF();
   });
   saveDB();
-  try{ await supaSaveTable('users', []); } catch(e){}
-  // PATCH each converted record to Supabase
-  for(const c of toConvert){
-    const slim={}; Object.keys(c).forEach(k=>{ if(!['photo','bcImg','kycDocs','activityLog'].includes(k)) slim[k]=c[k]; });
-    await fetch(SUPA_URL+'/rest/v1/customers?uid=eq.'+encodeURIComponent(c.id),{
-      method:'PATCH',
-      headers:{'apikey':SUPA_KEY,'Authorization':'Bearer '+SUPA_KEY,'Content-Type':'application/json','Prefer':'return=minimal'},
-      body:JSON.stringify({uid:c.id, data:slim})
-    }).catch(e=>console.warn('[SUPA] bulk convert patch:',e));
-  }
+  // Save converted records to Firebase
+  await supaSaveTable('customers', toConvert).catch(e=>console.warn('[FB] bulk convert:',e));
   showToast(`${toConvert.length} record${toConvert.length>1?'s':''} converted to ${label}.`,'success');
   selectedCusts.clear(); renderCustomers();
 }
@@ -9522,12 +9499,14 @@ function clearAllData(){
   (async()=>{
     try{
       showToast('Clearing cloud data…','info');
-      await Promise.all(SUPA_TABLES.map(t=>
-        fetch(SUPA_URL+'/rest/v1/'+t+'?uid=neq.NOMATCH',{
-          method:'DELETE',
-          headers:{'apikey':SUPA_KEY,'Authorization':'Bearer '+SUPA_KEY}
-        })
-      ));
+      // Delete all documents from all Firebase collections
+      await _initFirebase();
+      await Promise.all(SUPA_TABLES.map(async t=>{
+        const snap = await _fbDb.collection(t).get();
+        const batch = _fbDb.batch();
+        snap.docs.forEach(d=>batch.delete(d.ref));
+        if(!snap.empty) await batch.commit();
+      }));
       showToast('All data cleared ✓','success');
     }catch(e){ console.warn('Supabase clear error:',e); }
   })();
