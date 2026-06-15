@@ -1123,11 +1123,12 @@ function ownedRecords(arr){
   return arr.filter(r=>!r.createdBy||r.createdBy===currentUser.id);
 }
 
-function saveDB(){
-  // Ensure every record has a uid for Supabase upsert
+function saveDB(onlyTable){
+  // Ensure every record has a uid for Firebase upsert
   const now=new Date().toISOString();
   const ensureUid = arr => (arr||[]).forEach(r=>{ if(!r.uid) r.uid=r.id||uid(); if(!r.updatedAt) r.updatedAt=now; });
-  SUPA_TABLES.forEach(t=>ensureUid(db[t]));
+  if(onlyTable) ensureUid(db[onlyTable]||[]);
+  else SUPA_TABLES.forEach(t=>ensureUid(db[t]));
   try{ localStorage.setItem(DB_KEY, JSON.stringify(db)); }catch(e){
     console.warn('[CRM] localStorage error: '+e.message);
     if(e.name==='QuotaExceededError'||e.name==='NS_ERROR_DOM_QUOTA_REACHED'){
@@ -1135,27 +1136,28 @@ function saveDB(){
     }
   }
   updateBadges();
-  // SAFETY GUARD: never push to Supabase until initial sync from Supabase has completed
-  // This prevents empty localStorage from wiping cloud data on first load
-  if(!window._supaLoaded){ console.log('[SUPA] saveDB skipping push — initial sync not yet complete'); return; }
-  // SAFETY: never push empty tables — Supabase keeps what it has
+  if(!window._supaLoaded){ console.log('[FB] saveDB skipping push — initial sync not yet complete'); return; }
   (async()=>{
     try{
-      await Promise.all(SUPA_TABLES.map(async t=>{
-        if(!db[t]||!db[t].length) return;
-        await supaSaveTable(t, db[t]);
-      }));
-      // Sync all localStorage-only tables cross-device
-      await syncAnnouncementsToSupabase();
-      await syncSettingsToSupabase();
-      await syncAuditLogToSupabase();
-      await syncBusinessCardsToSupabase();
-      await syncSavedReportsToSupabase();
-      console.log('[SUPA] Saved to Supabase');
+      if(onlyTable){
+        // Push only the changed table — targeted write
+        if(db[onlyTable]&&db[onlyTable].length) await supaSaveTable(onlyTable, db[onlyTable]);
+      } else {
+        // Full push — for restore, import, or multi-table operations
+        await Promise.all(SUPA_TABLES.map(async t=>{
+          if(!db[t]||!db[t].length) return;
+          await supaSaveTable(t, db[t]);
+        }));
+        await syncAnnouncementsToSupabase();
+        await syncSettingsToSupabase();
+        await syncAuditLogToSupabase();
+        await syncBusinessCardsToSupabase();
+        await syncSavedReportsToSupabase();
+      }
       if(!_supaHealthy){ _supaHealthy=true; _updateHealthDot(); }
       if(_retryQueue.length) _flushRetryQueue();
     }catch(e){
-      console.warn('[SUPA] Save error:',e);
+      console.warn('[FB] Save error:',e);
       _supaHealthy=false; _updateHealthDot();
     }
   })();
@@ -1163,7 +1165,7 @@ function saveDB(){
 const VIP_DEFAULTS={bronze:500000,silver:1500000,gold:4000000,platinum:8000000};
 function getVipThresholds(){ return Object.assign({},VIP_DEFAULTS,db.settings&&db.settings.vipThresholds||{}); }
 function calcVipLevel(cid){ const t=getVipThresholds(); const tlv=(db.invoices||[]).filter(i=>i.customerId===cid).reduce((s,i)=>s+(i.paidAmount||0),0); if(tlv>=t.platinum) return 'Platinum'; if(tlv>=t.gold) return 'Gold'; if(tlv>=t.silver) return 'Silver'; if(tlv>=t.bronze) return 'Bronze'; return 'None'; }
-function recalcAllVip(){ (db.customers||[]).forEach(c=>{ c.vipLevel=calcVipLevel(c.id); }); saveDB(); }
+function recalcAllVip(){ (db.customers||[]).forEach(c=>{ c.vipLevel=calcVipLevel(c.id); }); saveDB('customers'); }
 function uid(){ return Date.now().toString(36)+Math.random().toString(36).slice(2); }
 function fmt(n){ return '฿'+Number(n||0).toLocaleString(); }
 function fmtDate(d){ if(!d) return ''; return new Date(d).toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'}); }
@@ -1229,7 +1231,7 @@ async function verifyAndUpgradePwd(user, plainPwd){
   if(user.pwd === _djb2(plainPwd)){
     // Upgrade silently
     user.pwd = sha;
-    saveDB();
+    saveDB('users');
     supaSaveTable('users',[user]).catch(()=>{});
     return true;
   }
@@ -1447,7 +1449,7 @@ async function verifyForgotOtp(){
     if(user){
       user.pwd = hashed;
       user.updatedAt = new Date().toISOString();
-      saveDB();
+      saveDB('users');
       // Push to Firebase
       await supaSaveTable('users',[user]).catch(e=>console.warn('[OTP] pwd push:',e));
     } else {
@@ -1683,7 +1685,7 @@ function completeLogin(user){
   setTimeout(_checkSupaHealth, 2000); // check health after Firebase SDK warms up
   const isFirstApprovedLogin = user.approvedAt && !user.lastLoginAt;
   user.lastLoginAt = new Date().toISOString();
-  saveDB();
+  saveDB('customers');
   recordAuditLogin(user, 'Success');
   // Push this user's record to Supabase on every login — keeps all devices in sync
   if(user.uid && user.pwd && user.pwd.length>0){
@@ -1751,7 +1753,7 @@ function doChangePassword(userId){
   hashPwdAsync(np).then(hashed=>{
     user.pwd=hashed;
     user.mustChangePwd=false;
-    saveDB();
+    saveDB('users');
     supaSaveTable('users',[user]).catch(e=>console.warn('[SUPA] pwd sync:',e));
     // Now log in
     currentUser=user;
@@ -1823,7 +1825,7 @@ function doSignUp(){
     const _nu={id:'u'+Date.now(),username:uname,pwd:pwdHash,name:name,role:'pending',active:false,mustChangePwd:false,permissions:JSON.parse(JSON.stringify(RBAC_DEFAULT_USER)),createdAt:new Date().toISOString(),pendingSignup:true};
     _nu.uid=_nu.id;
     db.users.push(_nu);
-    saveDB();
+    saveDB('users');
     supaSaveTable('users',[_nu]).catch(e=>console.warn('[FB] signup:',e));
     document.getElementById('su-success').style.display='block';
     document.getElementById('su-btn').style.display='none';
@@ -2043,7 +2045,7 @@ async function restoreFromBackup(uid){
     if(!snapData||!Object.keys(snapData).length){ showToast('Invalid snapshot format','warning'); return; }
     // Replace db with snapshot data
     SUPA_TABLES.forEach(t=>{ if(snapData[t]) db[t]=snapData[t]; });
-    saveDB();
+    saveDB('invoices');
     // Push restored data back to Supabase
     await Promise.all(SUPA_TABLES.map(t=>
       db[t]&&db[t].length ? supaSaveTable(t,db[t]) : Promise.resolve()
@@ -2239,7 +2241,7 @@ async function recordAuditLogin(user, result){
     result: result
   };
   db.auditLog.push(entry);
-  saveDB();
+  saveDB('users');
 
   // Async: fetch IP then location
   try{
@@ -2255,7 +2257,7 @@ async function recordAuditLogin(user, result){
         : 'N/A';
     } catch(e){ entry.location='N/A'; }
   } catch(e){ entry.ip='N/A'; entry.location='N/A'; }
-  saveDB();
+  saveDB('users');
 }
 
 function recordAuditLogout(){
@@ -2265,7 +2267,7 @@ function recordAuditLogout(){
     entry.logoutTime = new Date().toISOString();
   }
   _auditSessionId = null;
-  saveDB();
+  saveDB('users');
 }
 
 function _fmtAuditTime(iso){
@@ -2431,7 +2433,7 @@ function resetUserTotp(id){
   if(!confirm('Reset 2FA for '+u.name+'? They will be prompted to re-enrol on their next login.')) return;
   u.totpSecret=null;
   u.totpEnrolled=false;
-  saveDB();
+  saveDB('users');
   renderUsers();
   showToast('2FA reset for '+u.name+'. They will re-enrol on next login.');
 }
@@ -2459,7 +2461,7 @@ function doApproveUser(){
   u.permissions=JSON.parse(JSON.stringify(role==='admin'?RBAC_DEFAULT_ADMIN:RBAC_DEFAULT_USER));
   u.approvedAt=new Date().toISOString();
   if(!u.uid) u.uid=u.id;
-  saveDB();
+  saveDB('salespeople');
   // Save approved user to Firebase
   supaSaveTable('users',[u]).catch(e=>console.warn('[FB] approve:',e));
   closeModal('modal-approve');renderUsers();updatePendingBadge();
@@ -2469,7 +2471,7 @@ function rejectUser(id){
   if(!confirm('Reject and delete this sign-up request?'))return;
   const _ru=(db.users||[]).find(u=>u.id===id);
   db.users=(db.users||[]).filter(u=>u.id!==id);
-  saveDB();
+  saveDB('salespeople');
   // Delete from Supabase immediately so it doesn't come back on other devices
   if(_ru&&(_ru.uid||_ru.id)){
     supaDeleteOne('users',_ru.uid||_ru.id);
@@ -2758,7 +2760,7 @@ async function saveUser(id){
       const emailToSave = email || db.users[idx].email || '';
       Object.assign(db.users[idx],{username,name,email:emailToSave,role,salespersonId:spId,active,permissions});
       if(pwdHash) db.users[idx].pwd=pwdHash;
-      saveDB();
+      saveDB('users');
       // Update currentUser session if editing self
       if(currentUser&&currentUser.id===id){
         currentUser.permissions=permissions;
@@ -2790,7 +2792,7 @@ async function saveUser(id){
     const forceChg=document.getElementById('mu-force-pwd')&&document.getElementById('mu-force-pwd').checked;
     const newUser={id:'u'+Date.now(),username,pwd:pwdHash,role,salespersonId:spId,name,email,active,permissions,mustChangePwd:!!forceChg,createdAt:new Date().toISOString()};
     db.users.push(newUser);
-    saveDB();
+    saveDB('users');
     try{
       await supaSaveTable('users',[newUser]);
       showToast('User created and synced ✓','success');
@@ -2806,7 +2808,7 @@ function deleteUser(id){
   if(currentUser&&id===currentUser.id){ alert('You cannot delete your own account.'); return; }
   if(!confirm('Delete this user? They will no longer be able to log in.')) return;
   db.users=(db.users||[]).filter(u=>u.id!==id);
-  saveDB(); renderUsers();
+  saveDB('users'); renderUsers();
 }
 
 /* ══════════════════════════════════════════════
@@ -3018,7 +3020,7 @@ function confirmImport(){
     db.customers.push(newC);
   });
   recalcAllVip();
-  saveDB();
+  saveDB('customers');
   const count = importState.newRecs.length;
   closeModal('modal-import');
   importState=null;
@@ -3761,7 +3763,7 @@ async function bulkConvert(type){
     c.recordType='Customer';
     if(!c.cif) c.cif=generateCIF();
   });
-  saveDB();
+  saveDB('customers');
   // Save converted records to Firebase
   await supaSaveTable('customers', toConvert).catch(e=>console.warn('[FB] bulk convert:',e));
   showToast(`${toConvert.length} record${toConvert.length>1?'s':''} converted to ${label}.`,'success');
@@ -3773,7 +3775,7 @@ function bulkDeleteCusts(){
   if(!confirm(`Delete ${selectedCusts.size} selected contact${selectedCusts.size>1?'s':''}? This cannot be undone.`)) return;
   const toDelete=(db.customers||[]).filter(c=>selectedCusts.has(c.id));
   db.customers=db.customers.filter(c=>!selectedCusts.has(c.id));
-  selectedCusts.clear(); saveDB(); renderCustomers();
+  selectedCusts.clear(); saveDB('customers'); renderCustomers();
   toDelete.forEach(c=>{ if(c.uid||c.id) supaDeleteOne('customers',c.uid||c.id); });
 }
 function openColChooser(){
@@ -3899,7 +3901,7 @@ function logActivity(id){
   if(!c.activityLog) c.activityLog=[];
   c.activityLog.push({type,note,ts});
   c.updatedAt=new Date().toISOString();
-  saveDB(); renderCustomers();
+  saveDB('customers'); renderCustomers();
 }
 
 function fmtDatetime(iso){
@@ -3908,7 +3910,7 @@ function fmtDatetime(iso){
   return d.toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'})+' '+d.toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'});
 }
 
-function deleteCust(id){ if(confirm('Delete this customer?')){ const _r=(db.customers||[]).find(c=>c.id===id); db.customers=db.customers.filter(c=>c.id!==id); if(selectedCustId===id) selectedCustId=null; saveDB(); if(_r) supaDeleteOne('customers',_r.uid||_r.id); renderCustomers(); } }
+function deleteCust(id){ if(confirm('Delete this customer?')){ const _r=(db.customers||[]).find(c=>c.id===id); db.customers=db.customers.filter(c=>c.id!==id); if(selectedCustId===id) selectedCustId=null; saveDB('customers'); if(_r) supaDeleteOne('customers',_r.uid||_r.id); renderCustomers(); } }
 
 // ── Customer Form ──
 function openCustModal(id){
@@ -4420,7 +4422,7 @@ function saveCust(){
     obj.createdBy=obj.createdBy||(currentUser?currentUser.id:null);
     db.customers.push(obj);
   }
-  saveDB();
+  saveDB('customers');
   recalcAllVip(); closeModal('modal-cust'); renderCustomers();
 }
 
@@ -4791,9 +4793,9 @@ function saveSP(){
     startDate:document.getElementById('sp-start').value,notes:document.getElementById('sp-notes').value,photo};
   if(editSPId){ const i=db.salespeople.findIndex(x=>x.id===editSPId); db.salespeople[i]=obj; }
   else db.salespeople.push(obj);
-  saveDB(); closeModal('modal-sp'); renderSalespeople();
+  saveDB('salespeople'); closeModal('modal-sp'); renderSalespeople();
 }
-function deleteSP(id){ if(confirm('Remove salesperson?')){ const _r=(db.salespeople||[]).find(s=>s.id===id); db.salespeople=db.salespeople.filter(s=>s.id!==id); saveDB(); if(_r) supaDeleteOne('salespeople',_r.uid||_r.id); renderSalespeople(); } }
+function deleteSP(id){ if(confirm('Remove salesperson?')){ const _r=(db.salespeople||[]).find(s=>s.id===id); db.salespeople=db.salespeople.filter(s=>s.id!==id); saveDB('salespeople'); if(_r) supaDeleteOne('salespeople',_r.uid||_r.id); renderSalespeople(); } }
 
 // ══════════════════════════════════════════════
 // REPORTS
@@ -5477,7 +5479,7 @@ function rbSaveReport(){
   const config={name,cols:[..._rbState.cols],filters:JSON.parse(JSON.stringify(_rbState.filters)),sortBy:_rbState.sortBy,sortDir:_rbState.sortDir,groupBy:_rbState.groupBy};
   if(existing>-1) db.savedReports[existing]=config;
   else db.savedReports.push(config);
-  saveDB(); renderReportBuilder();
+  saveDB('savedReports'); renderReportBuilder();
 }
 
 function rbLoadSaved(){
@@ -5494,7 +5496,7 @@ function rbDeleteSaved(){
   if(!sel||!sel.value) return;
   if(!confirm('Delete this saved report?')) return;
   db.savedReports.splice(parseInt(sel.value),1);
-  saveDB(); renderReportBuilder();
+  saveDB('savedReports'); renderReportBuilder();
 }
 
 function exportData(){
@@ -5506,7 +5508,7 @@ function importData(input){
   if(!isAdmin()){ showToast('Only admin can restore data','warning'); return; }
   if(!confirm('⚠️ This will overwrite ALL current data with the backup file.\n\nMake sure you have exported a current backup first.\n\nAre you sure?')) return;
   const f=input.files[0]; if(!f) return;
-  const r=new FileReader(); r.onload=e=>{ try{ db=JSON.parse(e.target.result); saveDB(); nav(currentNav); showToast('Data restored from backup','success'); }catch(err){ alert('Invalid JSON file'); } }; r.readAsText(f);
+  const r=new FileReader(); r.onload=e=>{ try{ db=JSON.parse(e.target.result); saveDB('savedReports'); nav(currentNav); showToast('Data restored from backup','success'); }catch(err){ alert('Invalid JSON file'); } }; r.readAsText(f);
 }
 // clearData() removed — use clearAllData() in Settings → Data which properly wipes both localStorage and Supabase
 
@@ -5603,9 +5605,9 @@ function saveCamp(){
   const obj={id:editCampId||uid(),name,channel:document.getElementById('c-chan').value,status:document.getElementById('c-stat').value,sendDate:document.getElementById('c-date').value,subject:document.getElementById('c-subj').value,body:document.getElementById('c-body').value,...c,recipientCount:calcRecipients(c),createdAt:editCampId?(db.campaigns.find(x=>x.id===editCampId)||{}).createdAt||new Date().toISOString():new Date().toISOString(),createdBy:editCampId?(db.campaigns.find(x=>x.id===editCampId)||{}).createdBy||(currentUser?currentUser.id:null):(currentUser?currentUser.id:null)};
   if(editCampId){ const i=db.campaigns.findIndex(x=>x.id===editCampId); db.campaigns[i]=obj; }
   else db.campaigns.push(obj);
-  saveDB(); closeModal('modal-camp'); renderCampaigns();
+  saveDB('campaigns'); closeModal('modal-camp'); renderCampaigns();
 }
-function deleteCamp(id){ if(confirm('Delete campaign?')){ const _r=(db.campaigns||[]).find(c=>c.id===id); db.campaigns=db.campaigns.filter(c=>c.id!==id); saveDB(); if(_r) supaDeleteOne('campaigns',_r.uid||_r.id); renderCampaigns(); } }
+function deleteCamp(id){ if(confirm('Delete campaign?')){ const _r=(db.campaigns||[]).find(c=>c.id===id); db.campaigns=db.campaigns.filter(c=>c.id!==id); saveDB('campaigns'); if(_r) supaDeleteOne('campaigns',_r.uid||_r.id); renderCampaigns(); } }
 
 // ══════════════════════════════════════════════
 // BUSINESS CARDS -- AUTO OCR
@@ -6155,7 +6157,7 @@ function saveSelectedCards(){
       handwrittenNotes:f.handwrittenNotes||'', notes:combinedNotes,
       dateCollected:new Date().toISOString().slice(0,10),createdAt:new Date().toISOString()});
   });
-  saveDB();
+  saveDB('businessCards');
   parsedCards=[];
   document.getElementById('mc-gallery-wrap').style.display='none';
   document.getElementById('bc-file-input').value='';
@@ -6197,7 +6199,7 @@ function convertSelectedToLeads(){
         createdAt:new Date().toISOString(),updatedAt:new Date().toISOString()});
       count++;
     });
-    saveDB();
+    saveDB('customers');
     parsedCards=[];
     document.getElementById('mc-gallery-wrap').style.display='none';
     alert(`Created ${count} lead${count>1?'s':''} from business cards.`);
@@ -6518,7 +6520,7 @@ function saveInv(status){
   if(!db.invoices) db.invoices=[];
   if(editInvId){ const idx=db.invoices.findIndex(i=>i.id===editInvId); db.invoices[idx]=obj; }
   else { obj.createdBy=currentUser?currentUser.id:null; db.invoices.push(obj); }
-  saveDB(); closeModal('modal-inv'); renderAccounting();
+  saveDB('invoices'); closeModal('modal-inv'); renderAccounting();
 }
 
 function openPaymentModal(id){
@@ -6557,7 +6559,7 @@ function recordPayment(id){
   inv.balanceDue=Math.max(0,(inv.total||0)-inv.paidAmount);
   inv.status=inv.balanceDue<=0?'Paid':'Partial';
   inv.updatedAt=new Date().toISOString();
-  saveDB(); closeModal('modal-payment'); renderAccounting();
+  saveDB('invoices'); closeModal('modal-payment'); renderAccounting();
 }
 
 function viewInvoice(id){
@@ -6609,7 +6611,7 @@ ${inv.notes?`<div style="margin-top:16px;padding:12px;background:#FAF7F2;border-
 
 function deleteInv(id){
   if(confirm('Delete this invoice? This cannot be undone.')){
-    const _r=(db.invoices||[]).find(i=>i.id===id); db.invoices=db.invoices.filter(i=>i.id!==id); saveDB(); if(_r) supaDeleteOne('invoices',_r.uid||_r.id); renderAccounting();
+    const _r=(db.invoices||[]).find(i=>i.id===id); db.invoices=db.invoices.filter(i=>i.id!==id); saveDB('invoices'); if(_r) supaDeleteOne('invoices',_r.uid||_r.id); renderAccounting();
   }
 }
 
@@ -6911,7 +6913,7 @@ function getConfig(){
 function saveConfig(partial){
   if(!db.settings) db.settings={};
   db.settings.config=Object.assign({},getConfig(),partial);
-  saveDB();
+  saveDB('customers');
 }
 
 function getCfgVal(key){ return getConfig()[key]; }
@@ -8079,7 +8081,7 @@ function renderKYC(){
 
 function openKycModal(custId){
   const c=db.customers.find(x=>x.id===custId); if(!c) return;
-  if(!c.cif) { c.cif=generateCIF(); saveDB(); }
+  if(!c.cif) { c.cif=generateCIF(); saveDB('customers'); }
   const docs=c.kycDocs||[];
   const st=kycStatus(c);
 
@@ -8149,7 +8151,7 @@ function handleKycFileUpload(custId, input){
     c.kycDocs.push({type:docType,data:e.target.result,ext,uploadedAt:new Date().toISOString()});
     if(nextDate) c.kycNextDate=nextDate;
     c.updatedAt=new Date().toISOString();
-    saveDB();
+    saveDB('customers');
     openKycModal(custId);
     updateBadges();
   };
@@ -8160,7 +8162,7 @@ function removeKycDoc(custId, idx){
   if(!confirm('Remove this KYC document?')) return;
   const c=db.customers.find(x=>x.id===custId); if(!c) return;
   c.kycDocs.splice(idx,1);
-  saveDB(); openKycModal(custId); updateBadges();
+  saveDB('customers'); openKycModal(custId); updateBadges();
 }
 
 function saveKycNextDate(custId){
@@ -8168,7 +8170,7 @@ function saveKycNextDate(custId){
   const d=document.getElementById('kyc-next-date').value;
   if(!d){ alert('Please set a KYC review date'); return; }
   c.kycNextDate=d; c.updatedAt=new Date().toISOString();
-  saveDB(); openKycModal(custId); updateBadges();
+  saveDB('customers'); openKycModal(custId); updateBadges();
 }
 
 function exportKycReport(){
@@ -8389,7 +8391,7 @@ function saveSupplier(id){
     obj.createdBy=currentUser?currentUser.id:null;
     db.suppliers.push(obj);
   }
-  saveDB();
+  saveDB('suppliers');
   document.getElementById('modal-sup').style.display='none';
   renderSuppliers();
   updateBadges();
@@ -8399,7 +8401,7 @@ function saveSupplier(id){
 // ── Supplier KYC Modal ────────────────────────────────────────────────────
 function openSupKycModal(id){
   const s=(db.suppliers||[]).find(x=>x.id===id); if(!s) return;
-  if(!s.vid){s.vid=generateVID();saveDB();}
+  if(!s.vid){s.vid=generateVID();saveDB('suppliers');}
   const docs=s.kycDocs||[];
   const st=supKycStatus(s);
   const stCol={valid:'var(--green)',expiring:'var(--orange)',expired:'var(--red)',missing:'var(--red)'}[st];
@@ -8466,7 +8468,7 @@ function handleSupKycUpload(supId,input){
     s.kycDocs.push({type:docType,data:e.target.result,ext,uploadedAt:new Date().toISOString()});
     if(nd)s.kycNextDate=nd;
     s.updatedAt=new Date().toISOString();
-    saveDB();openSupKycModal(supId);updateBadges();
+    saveDB('suppliers');openSupKycModal(supId);updateBadges();
   };
   reader.readAsDataURL(file);
 }
@@ -8474,7 +8476,7 @@ function handleSupKycUpload(supId,input){
 function removeSupKycDoc(supId,idx){
   if(!confirm('Remove this document?'))return;
   const s=(db.suppliers||[]).find(x=>x.id===supId);if(!s)return;
-  s.kycDocs.splice(idx,1);saveDB();openSupKycModal(supId);updateBadges();
+  s.kycDocs.splice(idx,1);saveDB('suppliers');openSupKycModal(supId);updateBadges();
 }
 
 function saveSupKycDate(supId){
@@ -8482,7 +8484,7 @@ function saveSupKycDate(supId){
   const d=document.getElementById('sup-kyc-date').value;
   if(!d){alert('Please set a review date');return;}
   s.kycNextDate=d;s.updatedAt=new Date().toISOString();
-  saveDB();openSupKycModal(supId);updateBadges();showToast('KYC date saved');
+  saveDB('suppliers');openSupKycModal(supId);updateBadges();showToast('KYC date saved');
 }
 
 // ── Purchase History Modal ────────────────────────────────────────────────
@@ -8530,13 +8532,13 @@ function addSupPurchase(supId){
   if(!s.purchases)s.purchases=[];
   s.purchases.push({description:desc,amount:amt,date,refNo:ref,addedAt:new Date().toISOString()});
   s.updatedAt=new Date().toISOString();
-  saveDB();openSupPurchaseModal(supId);showToast('Purchase added');
+  saveDB('suppliers');openSupPurchaseModal(supId);showToast('Purchase added');
 }
 
 function removeSupPurchase(supId,idx){
   if(!confirm('Remove this purchase record?'))return;
   const s=(db.suppliers||[]).find(x=>x.id===supId);if(!s)return;
-  s.purchases.splice(idx,1);saveDB();openSupPurchaseModal(supId);
+  s.purchases.splice(idx,1);saveDB('suppliers');openSupPurchaseModal(supId);
 }
 
 // ══════════════════════════════════════════════
@@ -8857,7 +8859,7 @@ function saveStockItem(id){
     db.stock.push(obj);
   }
   logActivity(id?'Edited':'Added','Stock',obj.certNo||obj.shape||'');
-  saveDB();
+  saveDB('stock');
   document.getElementById('modal-stock').style.display='none';
   renderStockInventory();
   updateBadges();
@@ -8868,7 +8870,7 @@ function deleteStockItem(id){
   if(!confirm('Delete this stock item? This cannot be undone.')) return;
   const _r=(db.stock||[]).find(x=>x.id===id); db.stock=(db.stock||[]).filter(x=>x.id!==id);
   if(_r){ logActivity('Deleted','Stock',_r.certNo||_r.shape||id); supaDeleteOne('stock',_r.uid||_r.id); }
-  saveDB();
+  saveDB('stock');
   document.getElementById('modal-stock').style.display='none';
   renderStockInventory();
   updateBadges();
@@ -9186,7 +9188,7 @@ function saveDeal(id){
     db.deals.push(obj);
   }
   logActivity(id?'Edited':'Added','Deal',obj.clientName||obj.dealNo||id||'');
-  saveDB();
+  saveDB('deals');
   document.getElementById('modal-deal').style.display='none';
   renderDeals();
   updateBadges();
@@ -9203,7 +9205,7 @@ function deleteDeal(id){
     if(stk&&stk.status==='Sold'){stk.status='Available';stk.updatedAt=new Date().toISOString();}
   }
   db.deals=(db.deals||[]).filter(x=>x.id!==id);
-  saveDB();
+  saveDB('deals');
   document.getElementById('modal-deal').style.display='none';
   renderDeals();
   updateBadges();
@@ -9233,7 +9235,7 @@ function quickCompleteTask(id,done){
   const t=(db.tasks||[]).find(x=>x.id===id);if(!t)return;
   t.status=done?'Done':'Open';t.updatedAt=new Date().toISOString();
   if(done)t.completedAt=new Date().toISOString();
-  saveDB();updateBadges();if(done)showToast('Task completed');
+  saveDB('deals');updateBadges();if(done)showToast('Task completed');
 }
 
 const TASK_PRIORITIES=['High','Medium','Low'];
@@ -9343,12 +9345,12 @@ function saveTask(id){
     obj.createdBy=currentUser?currentUser.id:null;
     db.tasks.push(obj);
   }
-  saveDB();document.getElementById('modal-task').style.display='none';renderTasks();updateBadges();showToast(id?'Task updated':'Task created');
+  saveDB('tasks');document.getElementById('modal-task').style.display='none';renderTasks();updateBadges();showToast(id?'Task updated':'Task created');
 }
 
 function deleteTask(id){
   if(!confirm('Delete task?'))return;
-  const _r=(db.tasks||[]).find(x=>x.id===id); db.tasks=(db.tasks||[]).filter(x=>x.id!==id); saveDB(); if(_r) supaDeleteOne('tasks',_r.uid||_r.id);
+  const _r=(db.tasks||[]).find(x=>x.id===id); db.tasks=(db.tasks||[]).filter(x=>x.id!==id); saveDB('tasks'); if(_r) supaDeleteOne('tasks',_r.uid||_r.id);
   document.getElementById('modal-task').style.display='none';renderTasks();updateBadges();showToast('Task deleted','error');
 }
 
@@ -9679,7 +9681,7 @@ function renderAnnList(anns){
 function deleteAnnFromSettings(id){
   if(!confirm('Delete this announcement?')) return;
   db.announcements=(db.announcements||[]).filter(a=>a.id!==id);
-  saveDB(); updateTicker();
+  saveDB('settings'); updateTicker();
   document.getElementById('ann-settings-list').innerHTML=renderAnnList(db.announcements);
 }
 
@@ -10012,7 +10014,7 @@ function editAnnById(id){
 function deleteAnnById(id){
   if(!confirm('Delete this announcement?')) return;
   db.announcements=(db.announcements||[]).filter(a=>a.id!==id);
-  saveDB(); renderAnnouncements(); updateTicker();
+  saveDB('announcements'); renderAnnouncements(); updateTicker();
   _newsCache['ann']=null;
 }
 
@@ -10031,7 +10033,7 @@ function saveAnn(idx){
   if(!db.announcements) db.announcements=[];
   if(idx!==null && idx!==undefined){ db.announcements[idx]=ann; }
   else { db.announcements.push(ann); }
-  saveDB();
+  saveDB('announcements');
   document.getElementById('ann-modal-bg').remove();
   renderAnnouncements();
   updateTicker();
@@ -10042,7 +10044,7 @@ function saveAnn(idx){
 function deleteAnn(idx){
   if(!confirm('Delete this announcement?')) return;
   db.announcements=(db.announcements||[]).filter((_,i)=>i!==idx);
-  saveDB(); renderAnnouncements(); updateTicker();
+  saveDB('announcements'); renderAnnouncements(); updateTicker();
   _newsCache['ann']=null;
 }
 
@@ -10050,7 +10052,7 @@ function setTickerSpeed(val){
   const s=parseInt(val)||25;
   if(!db.settings) db.settings={};
   db.settings.tickerSpeed=s;
-  saveDB();
+  saveDB('announcements');
   const track=document.getElementById('ann-ticker-track');
   if(track) track.style.animationDuration=s+'s';
   showToast('Ticker speed updated','success');
