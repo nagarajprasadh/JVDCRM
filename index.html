@@ -2483,13 +2483,15 @@ async function saveUser(id){
   if(id){
     const idx=db.users.findIndex(u=>u.id===id);
     if(idx>-1){
-      Object.assign(db.users[idx],{username,name,email,role,salespersonId:spId,active,permissions});
+      // Preserve existing email if field was left blank (prevents accidental wipe)
+      const emailToSave = email || db.users[idx].email || '';
+      Object.assign(db.users[idx],{username,name,email:emailToSave,role,salespersonId:spId,active,permissions});
       if(pwdHash) db.users[idx].pwd=pwdHash;
       saveDB();
       // Update currentUser session if editing self
       if(currentUser&&currentUser.id===id){
         currentUser.permissions=permissions;
-        if(pwdRaw) currentUser.pwd=hashPwd(pwdRaw);
+        if(pwdHash) currentUser.pwd=pwdHash;
         applyNavPermissions();
       }
       // Await Supabase push so it's committed before modal closes
@@ -2498,7 +2500,18 @@ async function saveUser(id){
         showToast('User saved and synced ✓','success');
       } catch(e){
         console.warn('[SUPA] user edit:',e);
-        showToast('Saved locally — sync failed, will retry','warning');
+        showToast('Saved locally — retrying sync in 5s…','warning');
+        // Auto-retry once after 5 seconds
+        const _retryUser = {...db.users[idx]};
+        setTimeout(async()=>{
+          try{
+            await supaSaveTable('users',[_retryUser]);
+            showToast('✅ Sync recovered — user saved to cloud','success');
+          }catch(e2){
+            console.warn('[SUPA] user edit retry failed:',e2);
+            showToast('⚠️ Still offline — will sync when connection restores','warning');
+          }
+        },5000);
       }
       closeModal('modal-users'); renderUsers();
     }
