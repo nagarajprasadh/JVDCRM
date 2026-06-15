@@ -694,8 +694,9 @@ th[data-tip]{cursor:pointer}
       <div class="ub-avatar" id="ub-initials">?</div>
       <div><div id="ub-name" style="font-weight:600">User</div><div class="ub-role" id="ub-role">—</div></div>
     </div>
-    <button id="news-btn" onclick="toggleNews()" title="News & Announcements" style="background:none;border:none;cursor:pointer;color:var(--text2);font-size:18px;padding:4px 8px;border-radius:8px;margin-right:4px" title="News">📰</button>
-      <button class="btn btn-outline btn-sm" id="btn-logout" onclick="doLogout()" style="display:none;font-size:11px">Sign Out</button>
+    <button id="news-btn" onclick="toggleNews()" title="News & Announcements" style="background:none;border:none;cursor:pointer;color:var(--text2);font-size:18px;padding:4px 8px;border-radius:8px;margin-right:4px">📰</button>
+    <div id="supa-health-dot" title="Cloud sync: checking…" style="width:9px;height:9px;border-radius:50%;background:#94a3b8;flex-shrink:0;cursor:default;transition:background .4s,box-shadow .4s;margin-right:6px"></div>
+    <button class="btn btn-outline btn-sm" id="btn-logout" onclick="doLogout()" style="display:none;font-size:11px">Sign Out</button>
   </div>
   <div id="ann-ticker"><div id="ann-ticker-track"></div></div>
 <div class="content" id="content"></div>
@@ -771,6 +772,57 @@ th[data-tip]{cursor:pointer}
 // DATA STORE
 // ══════════════════════════════════════════════
 const DB_KEY = 'diamondCRM_v3'; // v3: clean start — no demo data
+
+// ── Supabase health + retry queue ───────────────────────────────────
+let _supaHealthy = true;
+let _retryQueue = []; // [{table, rows, ts}]
+const _MAX_RETRY_AGE = 10 * 60 * 1000; // discard after 10 min
+
+function _enqueueRetry(table, rows){
+  if(!rows||!rows.length) return;
+  _retryQueue = _retryQueue.filter(r=>Date.now()-r.ts < _MAX_RETRY_AGE);
+  // Replace existing entry for same table to avoid stacking
+  _retryQueue = _retryQueue.filter(r=>r.table!==table);
+  _retryQueue.push({table, rows:[...rows], ts:Date.now()});
+}
+
+async function _flushRetryQueue(){
+  if(!_retryQueue.length) return;
+  const toRetry = [..._retryQueue];
+  _retryQueue = [];
+  for(const item of toRetry){
+    try{
+      await supaSaveTable(item.table, item.rows);
+      console.log('[RETRY] Flushed', item.table);
+    }catch(e){
+      // Re-queue if still failing
+      _retryQueue.push({...item, ts:Date.now()});
+    }
+  }
+}
+
+async function _checkSupaHealth(){
+  try{
+    const r = await Promise.race([
+      supaFetch('users','GET',null,'select=uid&limit=1'),
+      new Promise((_,rej)=>setTimeout(()=>rej(new Error('timeout')),5000))
+    ]);
+    _supaHealthy = !!(r !== null);
+  }catch(e){ _supaHealthy = false; }
+  _updateHealthDot();
+  if(_supaHealthy && _retryQueue.length) _flushRetryQueue();
+}
+
+function _updateHealthDot(){
+  const dot = document.getElementById('supa-health-dot');
+  if(!dot) return;
+  dot.title = _supaHealthy ? 'Cloud sync: Online' : 'Cloud sync: Offline — changes saved locally';
+  dot.style.background = _supaHealthy ? '#22c55e' : '#ef4444';
+  dot.style.boxShadow = _supaHealthy ? '0 0 0 2px rgba(34,197,94,.25)' : '0 0 0 2px rgba(239,68,68,.25)';
+}
+
+// Check health every 30s
+setInterval(_checkSupaHealth, 30000);
 const AUTH_KEY = 'diamondCRM_auth';
 // ── Supabase backend ──
 const SUPA_URL = 'https://vpiulxwkxyhnvuchqafc.supabase.co';
@@ -823,6 +875,9 @@ async function supaSaveTable(table, rows){
     if(!resp.ok){
       const err = await resp.text().catch(()=>'unknown');
       console.warn('[SUPA] Save failed:',table,'HTTP',resp.status,err);
+      // Add to retry queue for background retry
+      _enqueueRetry(table, rows);
+      throw new Error('[SUPA] '+table+' HTTP '+resp.status+': '+err);
     }
   }
 }
@@ -1014,7 +1069,12 @@ function saveDB(){
   const now=new Date().toISOString();
   const ensureUid = arr => (arr||[]).forEach(r=>{ if(!r.uid) r.uid=r.id||uid(); if(!r.updatedAt) r.updatedAt=now; });
   SUPA_TABLES.forEach(t=>ensureUid(db[t]));
-  try{ localStorage.setItem(DB_KEY, JSON.stringify(db)); }catch(e){ console.log('[CRM] localStorage error: '+e.message); }
+  try{ localStorage.setItem(DB_KEY, JSON.stringify(db)); }catch(e){
+    console.warn('[CRM] localStorage error: '+e.message);
+    if(e.name==='QuotaExceededError'||e.name==='NS_ERROR_DOM_QUOTA_REACHED'){
+      showToast('⚠️ Local storage full — data saved to cloud only. Consider clearing browser cache.','warning');
+    }
+  }
   updateBadges();
   // SAFETY GUARD: never push to Supabase until initial sync from Supabase has completed
   // This prevents empty localStorage from wiping cloud data on first load
@@ -1033,7 +1093,12 @@ function saveDB(){
       await syncBusinessCardsToSupabase();
       await syncSavedReportsToSupabase();
       console.log('[SUPA] Saved to Supabase');
-    }catch(e){ console.warn('[SUPA] Save error:',e); }
+      if(!_supaHealthy){ _supaHealthy=true; _updateHealthDot(); }
+      if(_retryQueue.length) _flushRetryQueue();
+    }catch(e){
+      console.warn('[SUPA] Save error:',e);
+      _supaHealthy=false; _updateHealthDot();
+    }
   })();
 }
 const VIP_DEFAULTS={bronze:500000,silver:1500000,gold:4000000,platinum:8000000};
@@ -1084,10 +1149,32 @@ function closeSidebar(){
 /* ══════════════════════════════════════════════
    AUTHENTICATION
    ══════════════════════════════════════════════ */
+// ── SHA-256 password hashing (replaces weak djb2) ──────────────────
+// Synchronous fallback used for compare; async used for new hashes
+// Legacy djb2 hashes are 8 hex chars — SHA-256 are 64 chars
+// On first successful login with old hash, password is auto-upgraded
+function _djb2(str){ let h=5381; for(let i=0;i<str.length;i++) h=((h*33)^str.charCodeAt(i))>>>0; return h.toString(16).padStart(8,'0'); }
+async function hashPwdAsync(str){
+  const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(str));
+  return Array.from(new Uint8Array(buf)).map(b=>b.toString(16).padStart(2,'0')).join('');
+}
 function hashPwd(str){
-  let h=5381;
-  for(let i=0;i<str.length;i++) h=((h*33)^str.charCodeAt(i))>>>0;
-  return h.toString(16).padStart(8,'0');
+  // Returns djb2 synchronously for legacy compare — new saves use hashPwdAsync
+  return _djb2(str);
+}
+async function verifyAndUpgradePwd(user, plainPwd){
+  // Returns true if password matches (either legacy djb2 or SHA-256)
+  // If legacy match, upgrades to SHA-256 in background
+  const sha = await hashPwdAsync(plainPwd);
+  if(user.pwd === sha) return true;
+  if(user.pwd === _djb2(plainPwd)){
+    // Upgrade silently
+    user.pwd = sha;
+    saveDB();
+    supaSaveTable('users',[user]).catch(()=>{});
+    return true;
+  }
+  return false;
 }
 
 // ── TOTP helpers ────────────────────────────────────────
@@ -1126,16 +1213,19 @@ function doLogin(){
   const uname=(document.getElementById('login-user').value||'').trim().toLowerCase();
   const pass=document.getElementById('login-pass').value||'';
   if(!uname||!pass){ showLoginError('Please enter username and password.'); return; }
-  // Fetch latest user record from Supabase before authenticating
-  // This ensures cross-device password + 2FA secret are always current
-  _doLoginWithSupaSync(uname, pass);
+  // Show connecting state during Supabase sync
+  const btn=document.querySelector('.login-btn');
+  if(btn){ btn.textContent='Connecting…'; btn.disabled=true; }
+  _doLoginWithSupaSync(uname, pass).finally(()=>{
+    if(btn){ btn.textContent='Sign In'; btn.disabled=false; }
+  });
 }
 
 async function _doLoginWithSupaSync(uname, pass){
   try{
-    // Try Supabase with 3 second timeout — if down, fall back to localStorage immediately
-    const _supaTimeout = new Promise((_,rej)=>setTimeout(()=>rej(new Error('timeout')),3000));
-    const _supaReq = supaFetch('users','GET',null,'select=uid,data&limit=200');
+    // Try Supabase with 4 second timeout — if down, fall back to localStorage immediately
+    const _supaTimeout = new Promise((_,rej)=>setTimeout(()=>rej(new Error('timeout')),4000));
+    const _supaReq = supaFetch('users','GET',null,'select=uid,data&limit=500');
     const remote = await Promise.race([_supaReq, _supaTimeout]);
     if(remote && remote.length){
       // Only use remote records that have a real password — skip empty/corrupt records
@@ -1162,20 +1252,36 @@ async function _doLoginWithSupaSync(uname, pass){
   _doLoginCheck(uname, pass);
 }
 
-function _doLoginCheck(uname, pass){
+async function _doLoginCheck(uname, pass){
   const users=db.users||[];
+
+  // ── Rate limiting: max 5 attempts per 5 min per username ──
+  const _rlKey='_loginAttempts_'+uname;
+  let _rl; try{ _rl=JSON.parse(sessionStorage.getItem(_rlKey)||'null'); }catch(e){ _rl=null; }
+  if(_rl && _rl.count>=5 && (Date.now()-_rl.ts)<5*60*1000){
+    const mins=Math.ceil((5*60*1000-(Date.now()-_rl.ts))/60000);
+    showLoginError('Too many failed attempts. Try again in '+mins+' minute'+(mins>1?'s':'')+'.'); return;
+  }
+
   const anyUser=users.find(u=>u.username.toLowerCase()===uname);
   if(anyUser&&anyUser.active===false&&anyUser.pendingSignup){
-    const failMsg = anyUser.pwd===hashPwd(pass)?'Your account is pending admin approval.':'Incorrect username or password.';
-    if(anyUser.pwd!==hashPwd(pass)) recordAuditLogin({username:uname,name:uname},'Failed — Wrong Password');
+    const pwdOk = await verifyAndUpgradePwd(anyUser, pass);
+    const failMsg = pwdOk?'Your account is pending admin approval.':'Incorrect username or password.';
+    if(!pwdOk) recordAuditLogin({username:uname,name:uname},'Failed — Wrong Password');
     showLoginError(failMsg);
     return;
   }
   const user=users.find(u=>u.username.toLowerCase()===uname && u.active!==false);
-  if(!user||user.pwd!==hashPwd(pass)){
+  const pwdOk = user && await verifyAndUpgradePwd(user, pass);
+  if(!user||!pwdOk){
+    // Increment rate limit counter
+    const cur = (_rl&&(Date.now()-_rl.ts)<5*60*1000) ? _rl : {count:0,ts:Date.now()};
+    cur.count++; try{ sessionStorage.setItem(_rlKey,JSON.stringify(cur)); }catch(e){}
     recordAuditLogin({username:uname,name:uname},'Failed — Wrong Password');
     showLoginError('Incorrect username or password.'); return;
   }
+  // Clear rate limit on success
+  try{ sessionStorage.removeItem(_rlKey); }catch(e){}
   if(user.mustChangePwd){ showChangePwdScreen(user); return; }
   // 2FA disabled for UAT — direct login
   completeLogin(user);
@@ -1310,6 +1416,7 @@ function navFirstAccessible(){
 
 function completeLogin(user){
   currentUser=user;
+  setTimeout(_checkSupaHealth, 500); // check health right after login
   const isFirstApprovedLogin = user.approvedAt && !user.lastLoginAt;
   user.lastLoginAt = new Date().toISOString();
   saveDB();
@@ -1377,19 +1484,21 @@ function doChangePassword(userId){
   if(np!==cp){ errEl.textContent='Passwords do not match.'; errEl.style.display='block'; return; }
   const user=(db.users||[]).find(u=>u.id===userId);
   if(!user){ errEl.textContent='User not found.'; errEl.style.display='block'; return; }
-  user.pwd=hashPwd(np);
-  user.mustChangePwd=false;
-  saveDB();
-  supaSaveTable('users',[user]).catch(e=>console.warn('[SUPA] pwd sync:',e));
-  // Now log in
-  currentUser=user;
-  try{ sessionStorage.setItem(AUTH_KEY, JSON.stringify({id:user.id,username:user.username})); }catch(e){}
-  document.getElementById('login-overlay').style.display='none';
-  // Restore login overlay HTML for next logout
-  _restoreLoginOverlay();
-  updateUserBadge();
-  applyNavPermissions();
-  nav('dashboard');
+  hashPwdAsync(np).then(hashed=>{
+    user.pwd=hashed;
+    user.mustChangePwd=false;
+    saveDB();
+    supaSaveTable('users',[user]).catch(e=>console.warn('[SUPA] pwd sync:',e));
+    // Now log in
+    currentUser=user;
+    try{ sessionStorage.setItem(AUTH_KEY, JSON.stringify({id:user.id,username:user.username})); }catch(e){}
+    document.getElementById('login-overlay').style.display='none';
+    // Restore login overlay HTML for next logout
+    _restoreLoginOverlay();
+    updateUserBadge();
+    applyNavPermissions();
+    nav('dashboard');
+  });
 }
 
 var _loginOverlayHTML = null;
@@ -2367,13 +2476,15 @@ async function saveUser(id){
 
   // Collect permissions from matrix UI
   const permissions = role==='admin' ? Object.fromEntries(RBAC_MODULES.map(m=>[m.key,'full'])) : _getCurrentPermsFromUI();
+  // Hash password with SHA-256
+  const pwdHash = pwdRaw ? await hashPwdAsync(pwdRaw) : null;
 
   if(!db.users) db.users=[];
   if(id){
     const idx=db.users.findIndex(u=>u.id===id);
     if(idx>-1){
       Object.assign(db.users[idx],{username,name,email,role,salespersonId:spId,active,permissions});
-      if(pwdRaw) db.users[idx].pwd=hashPwd(pwdRaw);
+      if(pwdHash) db.users[idx].pwd=pwdHash;
       saveDB();
       // Update currentUser session if editing self
       if(currentUser&&currentUser.id===id){
@@ -2393,7 +2504,7 @@ async function saveUser(id){
     }
   } else {
     const forceChg=document.getElementById('mu-force-pwd')&&document.getElementById('mu-force-pwd').checked;
-    const newUser={id:'u'+Date.now(),username,pwd:hashPwd(pwdRaw),role,salespersonId:spId,name,email,active,permissions,mustChangePwd:!!forceChg,createdAt:new Date().toISOString()};
+    const newUser={id:'u'+Date.now(),username,pwd:pwdHash,role,salespersonId:spId,name,email,active,permissions,mustChangePwd:!!forceChg,createdAt:new Date().toISOString()};
     db.users.push(newUser);
     saveDB();
     try{
@@ -3047,6 +3158,7 @@ let custFilter={search:"",status:"All",stage:"All",vip:"All",sp:"All",sort:"newe
 let leadFilter={search:"",status:"All",stage:"All",vip:"All",sp:"All",sort:"newest",overdue:"",advFilters:[]};
 let custActiveTab='leads'; // 'leads' or 'customers'
 let editCustId=null;
+let _editOpenedAt=null;
 let custPhoto=null; // base64 string or null during form editing
 let custBcImg=null;  // business card image base64
 let selectedCustId=null;
@@ -3525,6 +3637,7 @@ function deleteCust(id){ if(confirm('Delete this customer?')){ const _r=(db.cust
 // ── Customer Form ──
 function openCustModal(id){
   editCustId=id;
+  _editOpenedAt=new Date().toISOString();
   const c=id?db.customers.find(x=>x.id===id):{};
   custPhoto=(c&&c.photo)||null;
   custBcImg=(c&&c.bcImg)||null;
@@ -3932,6 +4045,7 @@ function togglePaymentFields(val){
 
 function openCustModalFull(id){
   editCustId=id;
+  _editOpenedAt=new Date().toISOString();
   const c=id?db.customers.find(x=>x.id===id):{};
   custPhoto=(c&&c.photo)||null;
   custBcImg=(c&&c.bcImg)||null;
@@ -3974,6 +4088,15 @@ function saveCust(){
 
   const tags=g('f-tags').split(',').map(t=>t.trim()).filter(Boolean);
   const payPref = g('f-pay');
+
+  // ── Concurrent edit guard ───────────────────────────────────────
+  if(editCustId){
+    const existing=(db.customers||[]).find(c=>c.id===editCustId);
+    if(existing && existing.updatedAt && _editOpenedAt && existing.updatedAt > _editOpenedAt){
+      if(!confirm('⚠️ This record was updated by someone else while you had it open.\n\nSave anyway and overwrite their changes?')) return;
+    }
+  }
+
   const obj={
     id: editCustId||uid(),
     salutation:g('f-sal'), firstName:fn, lastName:g('f-ln'), nickname:g('f-nick'),
@@ -6877,10 +7000,9 @@ setInterval(async()=>{
     const tablesDirty = SUPA_TABLES.filter(t=>t!=='users' && countProbe[t]>=0 && countProbe[t]!==_syncRowCounts[t]);
 
     // Users always checked (approval / sign-up flow) — pull users count too
-    let usersDirty = false;
+    let usersDirty = true; // Always pull users — password/permission changes don't change row count
     try{
       const uRows = await supaFetch('users','GET',null,'select=uid&limit=1000');
-      usersDirty = (uRows||[]).length !== (_syncRowCounts['users']||0);
       countProbe['users'] = (uRows||[]).length;
     }catch(e){}
 
