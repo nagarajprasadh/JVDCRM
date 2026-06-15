@@ -910,29 +910,22 @@ async function supaSaveTable(table, rows){
   if(!rows||!rows.length) return;
   await _initFirebase();
   const STRIP_KEYS = ['photo','bcImg','kycDocs','activityLog'];
-  const batch = _fbDb.batch();
-  let batchCount = 0;
-  const flushBatch = async(b)=>{ await b.commit(); };
-
-  for(const r of rows){
-    const uid = r.uid||r.id||('u'+Math.random().toString(36).slice(2));
-    const slim = {};
-    Object.keys(r).forEach(k=>{ if(!STRIP_KEYS.includes(k) && r[k]!==undefined) slim[k]=r[k]; });
-    slim.uid = uid;
-    const ref = _fbDb.collection(table).doc(uid);
-    batch.set(ref, slim, {merge:true});
-    batchCount++;
-    if(batchCount>=490){
-      // Firestore batch limit is 500 — flush early
-      await flushBatch(batch);
-      batchCount=0;
-    }
-  }
-  if(batchCount>0){
+  // Process in chunks of 490 (Firestore batch limit = 500)
+  const CHUNK = 490;
+  for(let start=0; start<rows.length; start+=CHUNK){
+    const chunk = rows.slice(start, start+CHUNK);
+    const b = _fbDb.batch();
+    chunk.forEach(r=>{
+      const uid = r.uid||r.id||('u'+Math.random().toString(36).slice(2));
+      const slim = {};
+      Object.keys(r).forEach(k=>{ if(!STRIP_KEYS.includes(k) && r[k]!==undefined) slim[k]=r[k]; });
+      slim.uid = uid;
+      b.set(_fbDb.collection(table).doc(uid), slim, {merge:true});
+    });
     try{
-      await batch.commit();
+      await b.commit();
     }catch(e){
-      console.warn('[FB] Save failed:',table,e);
+      console.warn('[FB] Save failed:',table,'chunk',start,e);
       _enqueueRetry(table, rows);
       throw new Error('[FB] '+table+' save failed: '+e.message);
     }
@@ -1099,7 +1092,7 @@ async function loadDBFromSupabase(){
     }
     // Load all localStorage-only tables from Supabase
     await loadAnnouncementsFromSupabase();
-    loadSettingsFromSupabase(remote['users']||[]);
+    await _loadFBSettings();
     await loadAuditLogFromSupabase();
     await loadBusinessCardsFromSupabase();
     await loadSavedReportsFromSupabase();
@@ -1816,14 +1809,16 @@ function doSignUp(){
   if(pass!==pass2){err.textContent='Passwords do not match.';err.style.display='block';return;}
   if((db.users||[]).find(u=>u.username.toLowerCase()===uname)){err.textContent='Username already taken.';err.style.display='block';return;}
   if(!db.users)db.users=[];
-  const _nu={id:'u'+Date.now(),username:uname,pwd:hashPwd(pass),name:name,role:'pending',active:false,mustChangePwd:false,permissions:JSON.parse(JSON.stringify(RBAC_DEFAULT_USER)),createdAt:new Date().toISOString(),pendingSignup:true};
-  _nu.uid=_nu.id;
-  db.users.push(_nu);
-  saveDB();
-  supaSaveTable('users',[_nu]).catch(e=>console.warn('[SUPA] signup:',e));
-  document.getElementById('su-success').style.display='block';
-  document.getElementById('su-btn').style.display='none';
-  ['su-name','su-user','su-pass','su-pass2'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
+  hashPwdAsync(pass).then(pwdHash=>{
+    const _nu={id:'u'+Date.now(),username:uname,pwd:pwdHash,name:name,role:'pending',active:false,mustChangePwd:false,permissions:JSON.parse(JSON.stringify(RBAC_DEFAULT_USER)),createdAt:new Date().toISOString(),pendingSignup:true};
+    _nu.uid=_nu.id;
+    db.users.push(_nu);
+    saveDB();
+    supaSaveTable('users',[_nu]).catch(e=>console.warn('[FB] signup:',e));
+    document.getElementById('su-success').style.display='block';
+    document.getElementById('su-btn').style.display='none';
+    ['su-name','su-user','su-pass','su-pass2'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
+  }); // end hashPwdAsync
 }
 
 function doLogout(){
@@ -7339,7 +7334,7 @@ setInterval(async()=>{
       await loadAuditLogFromSupabase();
       await loadBusinessCardsFromSupabase();
       await loadSavedReportsFromSupabase();
-      if(remote) loadSettingsFromSupabase(remote['users']||[]);
+      if(remote) await _loadFBSettings();
       updateTicker();
       _lastSecondarySync = Date.now();
       try{localStorage.setItem(DB_KEY,JSON.stringify(db));}catch(e){}
