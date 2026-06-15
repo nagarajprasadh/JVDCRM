@@ -1877,13 +1877,22 @@ async function autoBackup(forceDownload){
       snapshot.counts[t] = (remote[t]||[]).length;
     });
 
-    // Check payload size — warn if too large
-    const payloadStr = JSON.stringify([{uid, data: snapshot}]);
-    console.log('[BACKUP] Payload size:', Math.round(payloadStr.length/1024)+'KB');
+    // Serialize data as JSON string — Firestore has nesting/size limits on raw objects
+    const dataJson = JSON.stringify(snapshot.data);
+    const sizeKB = Math.round(dataJson.length/1024);
+    console.log('[BACKUP] Payload size:', sizeKB+'KB');
 
-    // Save to Firebase backups collection
+    // Save to Firebase backups collection (data stored as JSON string to avoid nesting limits)
     await _initFirebase();
-    await _fbDb.collection('backups').doc(uid).set({uid, data:snapshot, savedAt:new Date().toISOString()});
+    await _fbDb.collection('backups').doc(uid).set({
+      uid,
+      savedAt: new Date().toISOString(),
+      createdBy: currentUser.username,
+      ts: snapshot.ts,
+      counts: snapshot.counts,
+      sizeKB,
+      dataJson  // JSON string — avoids Firestore nested array/object limits
+    });
 
     await _purgeOldBackups();
     try{ localStorage.setItem('jvd_last_backup_ts', String(now)); }catch(e){}
@@ -1935,7 +1944,17 @@ async function loadBackupList(){
     await _initFirebase();
     const snap = await _fbDb.collection('backups').get();
     return snap.docs
-      .map(d=>({ ...d.data(), uid:d.id }))
+      .map(d=>{
+        const raw = d.data();
+        return {
+          uid: d.id,
+          savedAt: raw.savedAt||'',
+          ts: raw.ts||'',
+          createdBy: raw.createdBy||'',
+          counts: raw.counts||{},
+          sizeKB: raw.sizeKB||0
+        };
+      })
       .sort((a,b)=>(b.savedAt||'').localeCompare(a.savedAt||''))
       .slice(0,10);
   }catch(e){ return []; }
@@ -1947,9 +1966,11 @@ async function downloadBackup(uid){
     await _initFirebase();
     const doc = await _fbDb.collection('backups').doc(uid).get();
     if(!doc.exists){ showToast('Backup not found','warning'); return; }
-    const snap = doc.data()?.data||{};
-    const ts = (snap.ts||uid).replace(/[:.]/g,'-').slice(0,19);
-    _downloadBackupJSON(snap, ts);
+    const raw = doc.data()||{};
+    // data stored as JSON string to bypass Firestore nesting limits
+    const snapData = raw.dataJson ? JSON.parse(raw.dataJson) : (raw.data||{});
+    const ts = (raw.ts||uid).replace(/[:.]/g,'-').slice(0,19);
+    _downloadBackupJSON({data:snapData, ts:raw.ts, counts:raw.counts}, ts);
     showToast('✅ Backup downloaded','success');
   }catch(e){ showToast('Download failed','warning'); }
 }
@@ -1966,10 +1987,12 @@ async function restoreFromBackup(uid){
     await _initFirebase();
     const snapDoc = await _fbDb.collection('backups').doc(uid).get();
     if(!snapDoc.exists){ showToast('Snapshot not found in cloud','warning'); return; }
-    const snap = snapDoc.data()?.data||{};
-    if(!snap.data){ showToast('Invalid snapshot format','warning'); return; }
+    const raw = snapDoc.data()||{};
+    // data stored as JSON string to bypass Firestore nesting limits
+    const snapData = raw.dataJson ? JSON.parse(raw.dataJson) : (raw.data||{}).data||raw.data||{};
+    if(!snapData||!Object.keys(snapData).length){ showToast('Invalid snapshot format','warning'); return; }
     // Replace db with snapshot data
-    SUPA_TABLES.forEach(t=>{ if(snap.data[t]) db[t]=snap.data[t]; });
+    SUPA_TABLES.forEach(t=>{ if(snapData[t]) db[t]=snapData[t]; });
     saveDB();
     // Push restored data back to Supabase
     await Promise.all(SUPA_TABLES.map(t=>
