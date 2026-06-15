@@ -1130,8 +1130,10 @@ function doLogin(){
 
 async function _doLoginWithSupaSync(uname, pass){
   try{
-    // Try to get latest user record from Supabase (non-blocking fallback to local)
-    const remote = await supaFetch('users','GET',null,'select=uid,data&limit=200');
+    // Try Supabase with 3 second timeout — if down, fall back to localStorage immediately
+    const _supaTimeout = new Promise((_,rej)=>setTimeout(()=>rej(new Error('timeout')),3000));
+    const _supaReq = supaFetch('users','GET',null,'select=uid,data&limit=200');
+    const remote = await Promise.race([_supaReq, _supaTimeout]);
     if(remote && remote.length){
       // Only use remote records that have a real password — skip empty/corrupt records
       const remoteUsers = remote.map(r=>({...r.data, uid:r.uid})).filter(ru=>ru.pwd&&ru.pwd.length>0);
