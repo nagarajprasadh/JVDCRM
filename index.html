@@ -1860,8 +1860,21 @@ async function autoBackup(forceDownload){
     const remote = await supaLoadAll();
     if(!remote) { showToast('⚠️ Backup failed — could not reach cloud','warning'); return; }
 
+    // Strip large/binary fields and truncate strings over 8KB
     const STRIP = ['photo','bcImg','kycDocs','activityLog'];
-    const strip = arr => (arr||[]).map(r=>{ const o={}; Object.keys(r).forEach(k=>{ if(!STRIP.includes(k)) o[k]=r[k]; }); return o; });
+    const MAX_STR = 8000;
+    function deepStrip(val, depth){
+      if(depth > 5) return null;
+      if(typeof val === 'string') return val.length > MAX_STR ? val.slice(0, MAX_STR)+'…' : val;
+      if(Array.isArray(val)) return val.slice(0,500).map(i=>deepStrip(i, depth+1));
+      if(val && typeof val === 'object'){
+        const o={};
+        Object.keys(val).forEach(k=>{ if(!STRIP.includes(k)) o[k]=deepStrip(val[k], depth+1); });
+        return o;
+      }
+      return val;
+    }
+    const strip = arr => (arr||[]).map(r=>deepStrip(r,0)).filter(Boolean);
 
     const ts = new Date().toISOString().replace(/[:.]/g,'-').slice(0,19);
     const uid = BACKUP_PREFIX + ts;
@@ -1872,17 +1885,26 @@ async function autoBackup(forceDownload){
       counts: {},
       data: {}
     };
+
+    // Use local db for backup — most complete and avoids a Firebase round-trip
     SUPA_TABLES.forEach(t=>{
-      snapshot.data[t] = strip(remote[t]||[]);
-      snapshot.counts[t] = (remote[t]||[]).length;
+      snapshot.data[t] = strip(db[t]||[]);
+      snapshot.counts[t] = (db[t]||[]).length;
     });
 
-    // Serialize data as JSON string — Firestore has nesting/size limits on raw objects
+    // Serialize as JSON string and check size
     const dataJson = JSON.stringify(snapshot.data);
     const sizeKB = Math.round(dataJson.length/1024);
     console.log('[BACKUP] Payload size:', sizeKB+'KB');
 
-    // Save to Firebase backups collection (data stored as JSON string to avoid nesting limits)
+    if(sizeKB > 900){
+      // Safety: if still too large, customers-only backup
+      snapshot.data = { customers: snapshot.data.customers, users: snapshot.data.users };
+      const dataJsonSmall = JSON.stringify(snapshot.data);
+      console.warn('[BACKUP] Oversized — trimmed to customers+users only:', Math.round(dataJsonSmall.length/1024)+'KB');
+    }
+
+    // Save to Firebase backups collection
     await _initFirebase();
     await _fbDb.collection('backups').doc(uid).set({
       uid,
@@ -1891,7 +1913,7 @@ async function autoBackup(forceDownload){
       ts: snapshot.ts,
       counts: snapshot.counts,
       sizeKB,
-      dataJson  // JSON string — avoids Firestore nested array/object limits
+      dataJson
     });
 
     await _purgeOldBackups();
