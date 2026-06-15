@@ -7978,8 +7978,13 @@ function helpSearch(q){
 // KYC MODULE
 // ══════════════════════════════════════════════
 function generateCIF(){
-  const existing=(db.customers||[]).map(c=>parseInt((c.cif||'').replace(/\D/g,''))||0);
-  const next=existing.length?Math.max(...existing)+1:1001;
+  // Extract only the last numeric segment (e.g. CIF-2026-0042 → 42)
+  // Avoids parseInt overflow on corrupt/long CIF strings
+  const existing=(db.customers||[]).map(c=>{
+    const m=(c.cif||'').match(/CIF-\d{4}-(\d{1,6})$/);
+    return m ? parseInt(m[1],10) : 0;
+  }).filter(n=>n>0 && n<100000);
+  const next = existing.length ? Math.max(...existing)+1 : 1001;
   return 'CIF-'+new Date().getFullYear()+'-'+String(next).padStart(4,'0');
 }
 
