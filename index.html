@@ -2880,9 +2880,11 @@ function deleteUser(id){
    EXCEL / CSV IMPORT
    ══════════════════════════════════════════════ */
 const IMPORT_COL_MAP = {
+  // Identity
   'first name':'firstName','firstname':'firstName','first':'firstName',
   'last name':'lastName','lastname':'lastName','last':'lastName','surname':'lastName',
   'salutation':'salutation','title':'salutation',
+  // Contact
   'email':'email','email address':'email','email 1':'email','email1':'email',
   'email 2':'email2','email2':'email2','alternate email':'email2',
   'phone':'phone','phone number':'phone','phone work 1':'phone','phone work1':'phone','work phone':'phone','tel':'phone',
@@ -2890,31 +2892,51 @@ const IMPORT_COL_MAP = {
   'phone mobile 1':'mobile','phone mobile1':'mobile','mobile':'mobile','mobile 1':'mobile','cell':'mobile',
   'phone mobile 2':'mobile2','phone mobile2':'mobile2','mobile 2':'mobile2',
   'whatsapp':'whatsapp','whatsapp number':'whatsapp',
+  'wechat':'wechat','we chat':'wechat','wechat id':'wechat',
+  'line':'line','line id':'line','line app':'line',
   'website':'website','website url':'website','web':'website','url':'website',
+  // Personal
   'nationality':'nationality',
   'language':'language','languages':'language',
   'dob':'dob','date of birth':'dob','birthday':'dob',
+  // Address
   'city':'city','city / town':'city','town':'city',
   'state':'state','state / province':'state','province':'state',
   'post code':'postcode','postcode':'postcode','postal code':'postcode','zip':'postcode','zip code':'postcode',
   'country':'country',
   'address line 1':'addr1','address1':'addr1','addr1':'addr1','street':'addr1','street address':'addr1',
   'address line 2':'addr2','address2':'addr2','addr2':'addr2','apartment':'addr2','suite':'addr2',
+  // Company
   'company':'company','organization':'company','organisation':'company',
   'designation':'designation','job title':'designation','position':'designation',
+  // CRM Classification
+  'record type':'recordType','recordtype':'recordType','type':'recordType',
+  'b2b or b2c':'bizType','biztype':'bizType','b2b/b2c':'bizType','business type':'bizType','customer type':'bizType',
   'lead source':'leadSource','leadsource':'leadSource','source':'leadSource',
+  'referred by':'referredBy','referredby':'referredBy','referral':'referredBy','referred':'referredBy',
   'lead status':'leadStatus','leadstatus':'leadStatus','status':'leadStatus',
   'pipeline stage':'pipelineStage','pipelinestage':'pipelineStage','stage':'pipelineStage',
   'assigned to':'assignedTo','assignedto':'assignedTo','salesperson':'assignedTo',
+  'assigned to 2':'assignedTo2','assignedto2':'assignedTo2','salesperson 2':'assignedTo2','secondary salesperson':'assignedTo2',
   'budget min':'budgetMin','budgetmin':'budgetMin','min budget':'budgetMin',
   'budget max':'budgetMax','budgetmax':'budgetMax','max budget':'budgetMax',
   'deal value':'dealValue','dealvalue':'dealValue','value':'dealValue',
-  'diamond type':'diamondType','diamondtype':'diamondType','type':'diamondType',
+  'vip level':'vipLevel','viplevel':'vipLevel','vip':'vipLevel',
+  'currency':'currency',
+  // Diamond Preferences
+  'diamond type':'diamondType','diamondtype':'diamondType',
   'purpose':'purpose',
+  'preferred shapes':'preferredShapes','preferredshapes':'preferredShapes','shapes':'preferredShapes','shape':'preferredShapes',
+  'color grade':'colorGrade','colorgrade':'colorGrade','colour grade':'colorGrade','color':'colorGrade',
+  'clarity grade':'clarityGrade','claritygrade':'clarityGrade','clarity':'clarityGrade',
+  'certification':'certification','cert':'certification','certifications':'certification',
+  'metal preference':'metalPreference','metalpreference':'metalPreference','metal':'metalPreference',
+  'comm preference':'commPref','commpreference':'commPref','communication preference':'commPref','comm pref':'commPref',
+  // Extra
   'notes':'notes','note':'notes','comments':'notes',
   'tags':'tags',
-  'currency':'currency',
-  'vip level':'vipLevel','viplevel':'vipLevel','vip':'vipLevel',
+  'last contacted date':'lastContactedDate','lastcontacteddate':'lastContactedDate','last contacted':'lastContactedDate',
+  'probability':'probability','probability %':'probability','probability%':'probability',
 };
 
 function showImportModal(){
@@ -3099,12 +3121,56 @@ function confirmImport(){
 
 function downloadImportTemplate(){
   if(!window.XLSX){ alert('SheetJS not loaded.'); return; }
-  const headers=['First Name','Last Name','Salutation','Email 1','Email 2','Phone Work 1','Phone Work 2','Phone Mobile 1','Phone Mobile 2','WhatsApp','Website','Nationality','Language','DOB','Address Line 1','Address Line 2','City','State','Post Code','Country','Company','Designation','Lead Source','Referred By','Lead Status','Pipeline Stage','Assigned To','Budget Min','Budget Max','Deal Value','Diamond Type','Purpose','Currency','VIP Level','Last Contacted Date','Notes','Tags'];
-  const sample=[];
-  const ws=XLSX.utils.aoa_to_sheet([headers,...sample]);
+  const headers=[
+    'First Name','Last Name','Salutation',
+    'Email 1','Email 2','Phone Work 1','Phone Work 2','Phone Mobile 1','Phone Mobile 2',
+    'WhatsApp','WeChat','Line','Website',
+    'Nationality','Language','DOB',
+    'Address Line 1','Address Line 2','City','State','Post Code','Country',
+    'Company','Designation',
+    'Record Type','B2B or B2C','Lead Source','Referred By','Lead Status','Pipeline Stage',
+    'Assigned To','Assigned To 2','VIP Level','Currency',
+    'Diamond Type','Purpose','Budget Min','Budget Max','Deal Value',
+    'Preferred Shapes','Color Grade','Clarity Grade','Certification','Metal Preference','Comm Preference',
+    'Tags','Notes','Last Contacted Date','Probability %'
+  ];
+  const sample1=[
+    'Priya','Sharma','Ms.',
+    'priya.sharma@luxe.com','priya.sharma@gmail.com','+66 2 123 4567','','+66 81 234 5678','',
+    '+66 81 234 5678','','','www.luxejewels.com',
+    'Indian','English, Hindi','1985-04-22',
+    '28 Silom Road','Suite 1402','Bangkok','Bangkok','10500','Thailand',
+    'Luxe Jewels Co., Ltd.','Director',
+    'Customer','B2B','Exhibition','Mr. Ravi Agrawal','Active','Interest',
+    'Ravi','','Gold','THB',
+    'Natural','Engagement Ring','100000','500000','350000',
+    'Round, Oval','D, E, F','VVS1, VVS2','GIA','Platinum, White Gold','WhatsApp, Email',
+    'VIP, HK Fair 2026','Met at HK Fair. Interested in 3ct D FL round. Follow up Q3.','2026-06-10','70'
+  ];
+  const sample2=[
+    'Karim','Al-Rashid','Mr.',
+    'karim@dubaigemco.ae','','+971 4 567 8901','','+971 55 234 5678','',
+    '+971 55 234 5678','','','www.dubaigemco.ae',
+    'Emirati','Arabic, English','1978-11-05',
+    'Level 12 Jumeirah Business Centre','Tower 3','Dubai','Dubai','12345','United Arab Emirates',
+    'Dubai Gem Co.','CEO',
+    'Customer','B2B','Exhibition','','Active','Proposal',
+    'Ganesh','','Platinum','USD',
+    'Natural','Investment','500000','2000000','1200000',
+    'Cushion, Emerald','D, E','VVS1, VVS2','GIA, IGI','White Gold, Platinum','Email, Phone',
+    'Dubai, Exhibition 2026','Long-standing client. Prefers GIA certified stones only.','2026-05-28','85'
+  ];
+  const ws=XLSX.utils.aoa_to_sheet([headers, sample1, sample2]);
+  // Style header row bold
+  const range=XLSX.utils.decode_range(ws['!ref']);
+  for(let c=range.s.c;c<=range.e.c;c++){
+    const addr=XLSX.utils.encode_cell({r:0,c});
+    if(!ws[addr]) ws[addr]={v:headers[c],t:'s'};
+    ws[addr].s={font:{bold:true},fill:{fgColor:{rgb:'1B4D3E'}}};
+  }
   const wb=XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(wb,ws,'Customers');
-  XLSX.writeFile(wb,'Diamond_CRM_Import_Template.xlsx');
+  XLSX.utils.book_append_sheet(wb,ws,'Customer Import');
+  XLSX.writeFile(wb,'JVDCRM_Customer_Import_Template.xlsx');
 }
 
 function nav(section){
