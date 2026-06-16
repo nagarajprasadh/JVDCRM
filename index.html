@@ -2,10 +2,59 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
+<!-- Error monitoring — captures all JS errors, stores to Firebase errors collection -->
+<script>
+(function(){
+  var _errQueue = [];
+  var _errFlushing = false;
+
+  async function _flushErrors(){
+    if(_errFlushing || !_errQueue.length) return;
+    _errFlushing = true;
+    try{
+      if(typeof _fbDb === 'undefined' || !_fbDb) { _errFlushing=false; return; }
+      var batch = _fbDb.batch();
+      _errQueue.splice(0,10).forEach(function(e){
+        var ref = _fbDb.collection('_errors').doc('e'+Date.now()+Math.random().toString(36).slice(2,6));
+        batch.set(ref, e);
+      });
+      await batch.commit();
+    }catch(ex){ console.warn('[ERR]',ex); }
+    _errFlushing = false;
+    if(_errQueue.length) setTimeout(_flushErrors, 2000);
+  }
+
+  function _captureError(msg, src, line, col, err){
+    var entry = {
+      ts: new Date().toISOString(),
+      msg: String(msg).slice(0,500),
+      src: String(src||'').replace(location.origin,'').slice(0,200),
+      line: line||0, col: col||0,
+      stack: (err&&err.stack||'').slice(0,1000),
+      user: (typeof currentUser!=='undefined'&&currentUser)?currentUser.username:'(pre-login)',
+      ua: navigator.userAgent.slice(0,200),
+      url: location.pathname
+    };
+    _errQueue.push(entry);
+    console.error('[CRM ERROR]', entry.msg, 'L'+entry.line);
+    setTimeout(_flushErrors, 3000); // wait for Firebase to init
+    return false; // don't suppress error
+  }
+
+  window.onerror = _captureError;
+  window.addEventListener('unhandledrejection', function(e){
+    _captureError('UnhandledPromise: '+(e.reason&&e.reason.message||e.reason), location.href, 0, 0, e.reason);
+  });
+
+  // Expose for manual error capture
+  window._captureError = _captureError;
+})();
+</script>
 <!-- Firebase SDK -->
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-check-compat.js"></script>
 <!-- EmailJS SDK for forgot password emails -->
 <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@3/dist/email.min.js"></script>
 <meta name="viewport" content="width=device-width,initial-scale=1">
@@ -869,6 +918,15 @@ function _initFirebase(){
       if(!_fbAuth.currentUser){
         _fbAuth.signInAnonymously().catch(e=>console.warn('[FB] anon auth:',e));
       }
+      // App Check — verifies requests come from real browsers running this app
+      if(typeof firebase.appCheck !== 'undefined'){
+        try{
+          firebase.appCheck(_fbApp).activate(
+            new firebase.appCheck.ReCaptchaEnterpriseProvider('6LeIxAcTAAAAAJcZVRqyHh71UMIEGNQ_MXjiZKhI'),
+            true
+          );
+        }catch(e){ console.warn('[FB] AppCheck:',e); }
+      }
       _fbReady = true;
       resolve();
     } else {
@@ -1683,6 +1741,7 @@ function navFirstAccessible(){
 function completeLogin(user){
   currentUser=user;
   setTimeout(_checkSupaHealth, 2000); // check health after Firebase SDK warms up
+  setTimeout(_startRealtimeListeners, 2500); // start realtime listeners after Firebase warms up
   const isFirstApprovedLogin = user.approvedAt && !user.lastLoginAt;
   user.lastLoginAt = new Date().toISOString();
   saveDB('customers');
@@ -1834,6 +1893,7 @@ function doSignUp(){
 }
 
 function doLogout(){
+  _stopRealtimeListeners(); // stop Firebase push listeners on logout
   recordAuditLogout();
   // Capture name and time before clearing currentUser
   const loggedOutName = currentUser ? currentUser.name : '';
@@ -7262,6 +7322,80 @@ setInterval(loadTickerData,5*60*1000);
 let _lastSecondarySync = 0;
 let _syncRowCounts = {}; // table -> last known remote row count
 
+// ── Realtime Firebase listeners (onSnapshot) ────────────────────────
+// Pushes customer and user changes to all open browsers within 1 second
+// Replaces polling for those two critical tables
+let _unsubCustomers = null;
+let _unsubUsers = null;
+
+function _startRealtimeListeners(){
+  if(!_fbDb || !currentUser) return;
+  _stopRealtimeListeners();
+
+  // Customers — instant push to all open browsers on any change
+  try{
+    const DEMO = new Set(['c001','c002','c003','c004','c005','c006','c007','c008','c009','c010']);
+    _unsubCustomers = _fbDb.collection('customers').onSnapshot(snap=>{
+      if(!window._supaLoaded) return;
+      let changed = false;
+      snap.docChanges().forEach(change=>{
+        const r = change.doc.data();
+        if(!r || DEMO.has(r.uid||r.id)) return;
+        if(change.type === 'removed'){
+          db.customers = (db.customers||[]).filter(c=>(c.uid||c.id)!==(r.uid||r.id));
+          changed = true;
+        } else {
+          const idx = (db.customers||[]).findIndex(c=>(c.uid||c.id)===(r.uid||r.id));
+          if(idx>=0){ db.customers[idx]=r; }
+          else { if(!db.customers) db.customers=[]; db.customers.push(r); }
+          changed = true;
+        }
+      });
+      if(changed){
+        try{ localStorage.setItem(DB_KEY, JSON.stringify(db)); }catch(e){}
+        recalcAllVip();
+        updateBadges();
+        if(currentNav==='customers'||currentNav==='dashboard') try{ nav(currentNav); }catch(e){}
+        console.log('[RT] Customers pushed from Firebase');
+      }
+    }, e=>console.warn('[RT] Customers listener:',e));
+    console.log('[RT] Realtime customer listener active');
+  }catch(e){ console.warn('[RT] Customer listener failed:',e); }
+
+  // Users — instant push for password resets, approvals, permission changes
+  try{
+    _unsubUsers = _fbDb.collection('users').onSnapshot(snap=>{
+      if(!window._supaLoaded) return;
+      let changed = false;
+      snap.docChanges().forEach(change=>{
+        const r = change.doc.data();
+        if(!r || !r.pwd || !r.username) return;
+        if(change.type==='removed'){
+          db.users = (db.users||[]).filter(u=>u.username!==r.username);
+          changed = true;
+        } else {
+          const idx = (db.users||[]).findIndex(u=>u.username===r.username);
+          if(idx>=0){ db.users[idx]=r; }
+          else { if(!db.users) db.users=[]; db.users.push(r); }
+          changed = true;
+        }
+      });
+      if(changed){
+        try{ localStorage.setItem(DB_KEY, JSON.stringify(db)); }catch(e){}
+        if(typeof isAdmin==='function'&&isAdmin()) try{ updatePendingBadge(); }catch(e){}
+        if(currentNav==='users') try{ renderUsers(); }catch(e){}
+        console.log('[RT] Users pushed from Firebase');
+      }
+    }, e=>console.warn('[RT] Users listener:',e));
+    console.log('[RT] Realtime user listener active');
+  }catch(e){ console.warn('[RT] User listener failed:',e); }
+}
+
+function _stopRealtimeListeners(){
+  if(_unsubCustomers){ try{ _unsubCustomers(); }catch(e){} _unsubCustomers=null; }
+  if(_unsubUsers){ try{ _unsubUsers(); }catch(e){} _unsubUsers=null; }
+}
+
 setInterval(async()=>{
   if(!currentUser) return;
   try{
@@ -7367,17 +7501,20 @@ loadDB();
 loadCustColOrder();
 if(db.customers && db.customers.length > 0){ recalcAllVip(); } else { updateBadges(); }
 nav('dashboard');
-// Pull fresh data from Supabase in background (includes users for cross-device sync)
-loadDBFromSupabase();
-// Sync users to Supabase on startup (users only — preserves cross-device auth)
+// Firebase-primary: pull from cloud first, render after
+// On fresh devices this means users always see live data, not empty localStorage
 (async()=>{
+  try{
+    await loadDBFromSupabase(); // waits for Firebase before rendering
+  }catch(e){ console.warn('[FB] Startup load failed:', e); }
+// Sync users to Firebase on startup (ensures all devices have latest user records)
   try{
     if(db.users && db.users.length){
       db.users.forEach(u=>{ if(!u.uid) u.uid=u.id||('u'+Date.now()+Math.random().toString(36).slice(2)); });
       await supaSaveTable('users', db.users);
-      console.log('[SUPA] Users synced to Supabase on startup');
+      console.log('[FB] Users synced on startup');
     }
-  }catch(e){ console.warn('[SUPA] Users startup sync failed:', e); }
+  }catch(e){ console.warn('[FB] Users startup sync failed:', e); }
 })();
 
 // ══════════════════════════════════════════════
