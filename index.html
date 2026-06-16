@@ -2325,9 +2325,12 @@ function recordAuditLogout(){
   const entry = db.auditLog.find(e=>e.id===_auditSessionId);
   if(entry){
     entry.logoutTime = new Date().toISOString();
+    entry.duration = _calcDuration(entry.loginTime, entry.logoutTime);
   }
   _auditSessionId = null;
-  saveDB('users');
+  saveDB('auditLog');
+  // Push logout to Firebase so admin sees accurate session durations
+  syncAuditLogToSupabase().catch(e=>console.warn('[AUDIT] logout sync:',e));
 }
 
 function _fmtAuditTime(iso){
@@ -2636,7 +2639,7 @@ function renderUsers(){
             <span style="font-size:16px">🔍</span>
             <div>
               <div style="font-size:13px;font-weight:700;color:var(--text)">Login Audit Log</div>
-              <div style="font-size:11px;color:var(--text3);margin-top:1px">Last 30 days · Admin only · ${(db.auditLog||[]).length} entries</div>
+              <div style="font-size:11px;color:var(--text3);margin-top:1px">Last 30 days · All users · ${(db.auditLog||[]).length} entries</div>
             </div>
           </div>
           <span id="audit-chevron" style="font-size:12px;color:var(--text3)">▼</span>
