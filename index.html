@@ -1443,6 +1443,9 @@ async function sendForgotOtp(){
       await emailjs.send(EMAILJS_SERVICE_ID, EMAILJS_TEMPLATE_ID, {
         to_email: user.email,
         to_name: user.name || user.username,
+        name: user.name || user.username,   // matches {{name}} in From Name field
+        email: user.email,                  // matches {{email}} in Reply To field
+        title: 'Password Reset',            // matches {{title}} in Subject field
         otp_code: otp,
         expiry_mins: '15',
         company: 'Jay Vijay Diamond Co., Ltd.'
