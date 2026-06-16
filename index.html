@@ -1174,11 +1174,29 @@ async function loadDBFromSupabase(){
   }
 }
 // Returns records visible to current user:
-// Admin sees all. Others see only their own (createdBy matches) OR records with no createdBy (legacy/shared).
+// Admin sees all.
+// Others see customers where:
+//   - assignedTo matches their name (primary salesperson)
+//   - OR assignedTo2 matches their name (secondary salesperson)
+//   - OR createdBy matches their user ID
+// Customers with no assignedTo and no createdBy are admin-only (unassigned).
 function ownedRecords(arr){
   if(!arr||!arr.length) return [];
   if(!currentUser||currentUser.role==='admin') return arr;
-  return arr.filter(r=>!r.createdBy||r.createdBy===currentUser.id);
+  const fullName = (currentUser.name||'').toLowerCase().trim();
+  const firstName = fullName.split(' ')[0]; // e.g. 'ganesh' from 'ganesh agrawal'
+  const username = (currentUser.username||'').toLowerCase().trim();
+  const uid = currentUser.id||currentUser.uid||'';
+  return arr.filter(r=>{
+    const at1 = (r.assignedTo||'').toLowerCase().trim();
+    const at2 = (r.assignedTo2||'').toLowerCase().trim();
+    // Match by full name, first name, or username against assignedTo fields
+    const matches = v => v && (v===fullName || v===firstName || v===username);
+    if(matches(at1)||matches(at2)) return true;
+    // Created by this user
+    if(r.createdBy && r.createdBy===uid) return true;
+    return false;
+  });
 }
 
 function saveDB(onlyTable){
@@ -3173,7 +3191,7 @@ function renderDashboard(){
   const won=db.customers.filter(c=>c.leadStatus==='Won');
   const lost=db.customers.filter(c=>c.leadStatus==='Lost');
   const pipeline=active.reduce((s,c)=>s+(c.dealValue||0),0);
-  const ltv=db.customers.reduce((s,c)=>s+(c.dealValue||0),0);
+  const ltv=ownedRecords(db.customers||[]).reduce((s,c)=>s+(c.dealValue||0),0);
   const winRate=total?(won.length/Math.max(1,won.length+lost.length)*100):0;
 
   // Build ordered widget HTML
@@ -3797,7 +3815,7 @@ function renderCustTableHTML(list){
 
 function selectAllVisibleCards(){
   // select all currently filtered list -- re-filter same way renderCustomers does
-  let list=[...db.customers];
+  let list=[...ownedRecords(db.customers||[])];
   if(custFilter.search){const s=custFilter.search.toLowerCase();list=list.filter(c=>((c.firstName||'')+' '+(c.lastName||'')+' '+(c.email||'')+' '+(c.email2||'')+' '+(c.phone||'')+' '+(c.mobile||'')+' '+(c.website||'')).toLowerCase().includes(s));}
   if(custFilter.status&&custFilter.status!=='All')list=list.filter(c=>(c.leadStatus||'New')===custFilter.status);
   if(custFilter.stage&&custFilter.stage!=='All')list=list.filter(c=>(c.pipelineStage||'Awareness')===custFilter.stage);
@@ -5437,7 +5455,7 @@ function rbToggleCol(key,checked){
 }
 
 function rbGetRows(){
-  let rows=[...db.customers];
+  let rows=[...ownedRecords(db.customers||[])];
   // Apply filters
   _rbState.filters.forEach(fl=>{
     const fieldDef=RB_FIELDS.find(f=>f.key===fl.field);
