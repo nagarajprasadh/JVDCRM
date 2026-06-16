@@ -4554,6 +4554,10 @@ function saveCust(){
     obj.createdAt=new Date().toISOString();
     obj.cif=obj.cif||generateCIF();
     obj.createdBy=obj.createdBy||(currentUser?currentUser.id:null);
+    // Auto-assign to creator if no salesperson set and user is not admin
+    if(!obj.assignedTo && currentUser && currentUser.role!=='admin'){
+      obj.assignedTo = currentUser.name||currentUser.username;
+    }
     db.customers.push(obj);
   }
   saveDB('customers');
