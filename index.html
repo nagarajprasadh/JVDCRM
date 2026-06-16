@@ -2867,8 +2867,13 @@ async function saveUser(id){
 function deleteUser(id){
   if(currentUser&&id===currentUser.id){ alert('You cannot delete your own account.'); return; }
   if(!confirm('Delete this user? They will no longer be able to log in.')) return;
+  const _u=(db.users||[]).find(u=>u.id===id);
   db.users=(db.users||[]).filter(u=>u.id!==id);
-  saveDB('users'); renderUsers();
+  saveDB('users');
+  // Delete from Firebase — critical: without this, deleted users come back via sync
+  if(_u) supaDeleteOne('users', _u.uid||_u.id).catch(e=>console.warn('[FB] deleteUser:',e));
+  renderUsers();
+  showToast('User deleted','success');
 }
 
 /* ══════════════════════════════════════════════
