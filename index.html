@@ -3714,6 +3714,7 @@ function renderCustomers(){
     ⭐ Customers <span style="background:${custActiveTab==='customers'?'var(--gold)':'var(--border)'};color:${custActiveTab==='customers'?'#fff':'var(--text2)'};border-radius:20px;padding:1px 8px;font-size:11px;margin-left:4px">${custCount}</span>
   </button>
   <div style="flex:1"></div>
+  <button class="btn btn-outline btn-sm" onclick="exportCustomersCSV()" style="margin-bottom:6px">⬇ Export CSV</button>
   <button class="btn btn-gold btn-sm" onclick="openCustModal(null)" style="margin-bottom:6px">+ Add ${custActiveTab==='customers'?'Customer':'Lead'}</button>
 </div>
 
@@ -4053,6 +4054,27 @@ function fmtDatetime(iso){
 function deleteCust(id){ if(confirm('Delete this customer?')){ const _r=(db.customers||[]).find(c=>c.id===id); db.customers=db.customers.filter(c=>c.id!==id); if(selectedCustId===id) selectedCustId=null; saveDB('customers'); if(_r) supaDeleteOne('customers',_r.uid||_r.id); renderCustomers(); } }
 
 // ── Customer Form ──
+function exportCustomersCSV(){
+  const rows=ownedRecords(db.customers||[]);
+  if(!rows.length){showToast('No customers to export','warning');return;}
+  const hdrs=['CIF','First Name','Last Name','Company','Email','Phone','Status',
+    'Lead Source','Deal Value','Diamond Type','Shapes','Carat Min','Carat Max',
+    'City','Country','VIP Tier','Salesperson','Created Date'];
+  const spName=id=>(db.salespeople||[]).find(s=>s.id===id)?.name||'';
+  const esc=v=>'"'+String(v||'').replace(/"/g,'""')+'"';
+  const lines=rows.map(c=>[c.cif||'',c.firstName||'',c.lastName||'',c.company||'',
+    c.email||'',c.phone||'',c.status||'',c.leadSource||'',c.dealValue||'',
+    c.diamondType||'',(c.shapes||[]).join('|'),c.caratMin||'',c.caratMax||'',
+    c.city||'',c.country||'',c.vipTier||'',spName(c.salespersonId),(c.createdAt||'').slice(0,10)
+  ].map(esc).join(','));
+  const csv='\uFEFF'+hdrs.map(esc).join(',')+lines.map(l=>'\n'+l).join('');
+  const a=document.createElement('a');
+  a.href='data:text/csv;charset=utf-8,'+encodeURIComponent(csv);
+  a.download='customers_'+new Date().toISOString().slice(0,10)+'.csv';
+  a.click();
+  showToast('Exported '+rows.length+' records','success');
+}
+
 function openCustModal(id){
   editCustId=id;
   _editOpenedAt=new Date().toISOString();
